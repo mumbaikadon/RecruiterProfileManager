@@ -225,6 +225,16 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         return;
       }
       
+      // If work authorization is "other" without custom input, show error
+      if (values.workAuthorization === "other" && !otherAuthorization) {
+        toast({
+          title: "Missing Information",
+          description: "Please specify the work authorization type.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Include resume data and match results if available
       onSubmit({
         ...values,
@@ -514,6 +524,19 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                         <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
+                    {showOtherAuthorizationInput && (
+                      <div className="mt-2">
+                        <Input 
+                          placeholder="Specify work authorization" 
+                          value={otherAuthorization}
+                          onChange={(e) => {
+                            setOtherAuthorization(e.target.value);
+                            // Update the form value to include custom input
+                            field.onChange(`other:${e.target.value}`);
+                          }}
+                        />
+                      </div>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
