@@ -38,6 +38,7 @@ import { Plus } from "lucide-react";
 
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
+  jobId: z.string().min(3, "Job ID must be at least 3 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
   status: z.string().default("active"),
   createdBy: z.number().optional(),
@@ -60,6 +61,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
+      jobId: "",
       description: "",
       status: "active",
       createdBy: 1, // In a real app, this would be the current user's ID
@@ -128,11 +130,19 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
               </div>
               
               <div className="sm:col-span-3">
-                <div className="block text-sm font-medium text-gray-700">Job ID</div>
-                <div className="mt-1">
-                  <Input disabled placeholder="Auto-generated" />
-                </div>
-                <p className="mt-2 text-sm text-gray-500">Job ID will be generated automatically.</p>
+                <FormField
+                  control={form.control}
+                  name="jobId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Job ID</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. JOB-2025-001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
               
               <div className="sm:col-span-6">
