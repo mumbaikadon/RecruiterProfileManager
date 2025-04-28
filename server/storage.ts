@@ -130,29 +130,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createJob(insertJob: InsertJob): Promise<Job> {
-    // Generate a job ID
-    const jobIdPrefix = "JOB";
-    const currentYear = new Date().getFullYear();
-    
-    // Get the current max job number for this year
-    const [result] = await db.select({
-      count: count()
-    }).from(jobs).where(
-      sql`EXTRACT(YEAR FROM ${jobs.createdAt}) = ${currentYear}`
-    );
-    
-    const jobCount = result?.count ?? 0;
-    const newJobNumber = jobCount + 1;
-    
-    // Format: JOB-YYYY-001 (padded to ensure sorting)
-    const jobId = `${jobIdPrefix}-${currentYear}-${newJobNumber.toString().padStart(3, '0')}`;
-
     const [job] = await db
       .insert(jobs)
-      .values({
-        ...insertJob,
-        jobId
-      })
+      .values(insertJob)
       .returning();
     
     return job;
