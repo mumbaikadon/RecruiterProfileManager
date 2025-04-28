@@ -87,16 +87,16 @@ const SubmissionsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">Submissions</h2>
-          <p className="mt-1 text-sm text-gray-500">View and manage all candidate submissions</p>
+          <h2 className="text-2xl font-semibold text-foreground">Submissions</h2>
+          <p className="mt-1 text-sm text-muted-foreground">View and manage all candidate submissions</p>
         </div>
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+      <div className="bg-card shadow overflow-hidden sm:rounded-lg border border-border">
+        <div className="px-4 py-5 sm:px-6 border-b border-border">
           <div className="flex flex-col space-y-4 md:flex-row md:items-end md:space-y-0 md:space-x-4">
             <div className="w-full md:w-64 relative">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchTerm}
                 onChange={handleSearchChange}
