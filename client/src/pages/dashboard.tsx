@@ -44,7 +44,7 @@ const Dashboard: React.FC = () => {
   };
   
   const handleViewAllJobs = () => {
-    navigate("/jobs");
+    setLocation("/jobs");
   };
 
   return (
