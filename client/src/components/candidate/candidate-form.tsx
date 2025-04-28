@@ -77,6 +77,8 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   const [matchResults, setMatchResults] = useState<any | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [candidateExists, setCandidateExists] = useState(false);
+  const [showOtherAuthorizationInput, setShowOtherAuthorizationInput] = useState(false);
+  const [otherAuthorization, setOtherAuthorization] = useState("");
   
   const { toast } = useToast();
   const { mutateAsync: checkCandidate } = useCheckCandidate();
@@ -488,7 +490,15 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                   <FormItem>
                     <FormLabel>Work Authorization</FormLabel>
                     <Select 
-                      onValueChange={field.onChange} 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        if (value === "other") {
+                          setShowOtherAuthorizationInput(true);
+                        } else {
+                          setShowOtherAuthorizationInput(false);
+                          setOtherAuthorization("");
+                        }
+                      }} 
                       defaultValue={field.value}
                     >
                       <FormControl>
