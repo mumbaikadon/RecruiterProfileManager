@@ -1,0 +1,79 @@
+
+
+
+
+
+
+The system is designed to streamline the process where recruiters f need to efficiently record and track their submissions while preventing duplicate efforts.
+
+This application integrates with an existing "Talent Pipeline" microservice that's already implemented.
+
+The application should focus on these core functionalities:
+
+On the main dashboard, a recruiter and recruiter lead should be able to open a job id, add the description and assign to recruiters. they can assign to 1 or more so that options has to be there. in main dashboard, we will need to see all the job id and its title that is created on a specific date. so need so calendar stuff integration too.
+
+Create jobs with unique IDs, titles, and descriptions. 
+Once it is created, we should be able to assign recruiters, can assign more than 1 too. Once that is done, there has to be a way to click that particular job and recruiter should be able to submit the profiles of candidate. to submit they should be able to paste or manually make an entry. 
+
+Efficient Candidate Information Input
+You need a way to quickly paste candidate information that automatically maps to the correct fields or manually make an entry:
+Legal names (First, Middle, Last)
+Date of birth (Month/Day)
+Current location
+LinkedIn profile
+Contact information (Phone, Email)
+Work authorization status
+Along with this information, recruiters need to record the agreed rate and upload the candidate's resume.
+
+once this is done, we have job description already + we have candidate's resume, then the resume and job description has should be able to show match score by analyzing resume. if there is any points that needs to added, give the suggestions. 
+
+Candidate Profile Management with Duplicate Prevention
+Recruiters search for candidates on different websites for specific job descriptions
+When adding candidates to the system, their unique identity is established using the last four digits of SSN and DOB
+The system prevents duplicate submissions for the same job ID by different recruiters
+When a duplicate is detected, the system shows a notification that the candidate has already been applied for that job ID
+
+Candidate Status Tracking
+Not all submitted candidates get interviews
+You need configurable status tracking fields to follow the candidate's progress through the recruitment pipeline
+
+
+Intelligent Resume Processing
+Instead of storing the entire resume file in the database, you want to use AI/tools to extract key information:
+Client name
+Job title
+Dates mentioned in the resume
+This extracted data will be stored instead of the full file to save database space
+Historical Data Comparison
+When a candidate is considered for a new role in the future, you want to:
+Check their previously agreed rates
+Compare new resume content with historical records
+If a new resume upload matches stored data (client, title, dates), the system should notify that there's a match
+
+
+Data Model Implications
+You'll need tables for jobs, candidates, submissions, and resume data
+Unique constraints on candidate identifiers + job ID to prevent duplicates
+Status tracking fields with possible workflow automation
+Resume metadata storage rather than full files
+This appears to be a specialized ATS (Applicant Tracking System) with duplicate prevention, intelligent resume parsing, and historical comparison features. The system would help recruiters avoid submitting the same candidates to clients and track candidate progression efficiently.
+
+
+in nutshell 
+The main requirements remain:
+
+Job creation and assignment to one or more recruiters
+Candidate submission with comprehensive data collection
+Prevention of duplicate submissions for the same job ID
+Candidate uniqueness verification (using DOB and last four SSN)
+Status tracking for candidates through the recruitment process
+Resume processing to extract key information rather than storing full files
+Historical comparison to alert if candidates were previously submitted
+For the dashboard, recruiters need to see:
+
+All job IDs and titles
+Creation dates for jobs
+Assignments (which recruiters are assigned to which jobs)
+
+
+ tell me what have you understood so far. do not implement
