@@ -112,7 +112,7 @@ export const activities = pgTable("activities", {
 
 // Zod schemas for validation
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
-export const insertJobSchema = createInsertSchema(jobs).omit({ id: true, createdAt: true, jobId: true });
+export const insertJobSchema = createInsertSchema(jobs).omit({ id: true, createdAt: true });
 export const insertJobAssignmentSchema = createInsertSchema(jobAssignments).omit({ id: true, assignedAt: true });
 export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: true, createdAt: true });
 export const insertResumeDataSchema = createInsertSchema(resumeData).omit({ id: true, uploadedAt: true });
