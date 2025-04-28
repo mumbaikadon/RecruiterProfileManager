@@ -1,6 +1,6 @@
 import React from "react";
 import { useLocation } from "wouter";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 
 import {
   Table,
@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Job } from "@shared/schema";
 import { formatDate } from "@/lib/date-utils";
+import { cn } from "@/lib/utils";
 
 interface JobTableProps {
   jobs: Job[];
@@ -35,9 +36,9 @@ const JobTable: React.FC<JobTableProps> = ({
 
   // Status badge color mapping
   const statusColors: Record<string, string> = {
-    active: "bg-green-100 text-green-800",
-    reviewing: "bg-yellow-100 text-yellow-800",
-    closed: "bg-gray-100 text-gray-800",
+    active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+    reviewing: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+    closed: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300",
   };
   
   if (isLoading) {
@@ -50,7 +51,7 @@ const JobTable: React.FC<JobTableProps> = ({
 
   if (jobs.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-muted-foreground">
         No jobs found. Create a new job to get started.
       </div>
     );
@@ -61,12 +62,12 @@ const JobTable: React.FC<JobTableProps> = ({
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Job ID</TableHead>
+            <TableRow className="border-border hover:bg-transparent">
+              <TableHead className="w-[120px]">Job ID</TableHead>
               <TableHead>Title</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Assigned To</TableHead>
-              <TableHead>Submissions</TableHead>
+              <TableHead className="hidden md:table-cell">Created</TableHead>
+              <TableHead className="hidden lg:table-cell">Assigned To</TableHead>
+              <TableHead className="hidden md:table-cell">Submissions</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -75,19 +76,21 @@ const JobTable: React.FC<JobTableProps> = ({
             {jobs.map((job) => (
               <TableRow 
                 key={job.id} 
-                className="hover:bg-gray-50 cursor-pointer"
+                className="cursor-pointer border-border transition-colors duration-200 hover:bg-accent/5"
                 onClick={() => handleRowClick(job.id)}
               >
                 <TableCell className="font-medium">{job.jobId}</TableCell>
-                <TableCell>{job.title}</TableCell>
-                <TableCell>{formatDate(job.createdAt)}</TableCell>
-                <TableCell>
+                <TableCell className="font-medium md:font-normal">{job.title}</TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {formatDate(job.createdAt)}
+                </TableCell>
+                <TableCell className="hidden lg:table-cell">
                   {assignedRecruiters[job.id] && assignedRecruiters[job.id].length > 0 ? (
                     <div className="flex -space-x-2 overflow-hidden">
-                      {assignedRecruiters[job.id].slice(0, 3).map((recruiter, index) => (
+                      {assignedRecruiters[job.id].slice(0, 3).map((recruiter) => (
                         <div 
                           key={recruiter.id} 
-                          className="inline-block h-6 w-6 rounded-full ring-2 ring-white bg-gray-300 flex items-center justify-center text-xs font-bold text-gray-600"
+                          className="inline-block h-6 w-6 rounded-full ring-2 ring-background bg-primary/10 flex items-center justify-center text-xs font-bold text-primary"
                           title={recruiter.name}
                         >
                           {recruiter.name.charAt(0)}
@@ -95,12 +98,17 @@ const JobTable: React.FC<JobTableProps> = ({
                       ))}
                     </div>
                   ) : (
-                    <span className="text-gray-400">None</span>
+                    <span className="text-muted-foreground">None</span>
                   )}
                 </TableCell>
-                <TableCell>{submissionCounts[job.id] || 0}</TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {submissionCounts[job.id] || 0}
+                </TableCell>
                 <TableCell>
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[job.status] || "bg-gray-100 text-gray-800"}`}>
+                  <span className={cn(
+                    "px-2 inline-flex text-xs leading-5 font-semibold rounded-full", 
+                    statusColors[job.status] || "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                  )}>
                     {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                   </span>
                 </TableCell>
@@ -108,13 +116,14 @@ const JobTable: React.FC<JobTableProps> = ({
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="text-primary"
+                    className="text-primary hover:text-primary/80 transition-colors"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleRowClick(job.id);
                     }}
                   >
-                    View
+                    <Eye className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">View</span>
                   </Button>
                 </TableCell>
               </TableRow>
@@ -124,29 +133,29 @@ const JobTable: React.FC<JobTableProps> = ({
       </div>
 
       {/* Pagination (static for now) */}
-      <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+      <div className="bg-card dark:bg-card px-4 py-3 flex items-center justify-between border-t border-border">
         <div className="flex-1 flex justify-between sm:hidden">
-          <Button variant="outline" size="sm">Previous</Button>
-          <Button variant="outline" size="sm">Next</Button>
+          <Button variant="outline" size="sm" disabled>Previous</Button>
+          <Button variant="outline" size="sm" disabled>Next</Button>
         </div>
         <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-gray-700">
-              Showing <span className="font-medium">1</span> to <span className="font-medium">{jobs.length}</span> of <span className="font-medium">{jobs.length}</span> results
+            <p className="text-sm text-muted-foreground">
+              Showing <span className="font-medium text-foreground">1</span> to <span className="font-medium text-foreground">{jobs.length}</span> of <span className="font-medium text-foreground">{jobs.length}</span> results
             </p>
           </div>
           <div>
             <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-              <Button variant="outline" size="sm" className="rounded-l-md">
+              <Button variant="outline" size="sm" className="rounded-l-md" disabled>
                 <span className="sr-only">Previous</span>
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className="h-4 w-4" />
               </Button>
               <Button variant="outline" size="sm" className="bg-primary border-primary text-white">
                 1
               </Button>
-              <Button variant="outline" size="sm" className="rounded-r-md">
+              <Button variant="outline" size="sm" className="rounded-r-md" disabled>
                 <span className="sr-only">Next</span>
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </nav>
           </div>

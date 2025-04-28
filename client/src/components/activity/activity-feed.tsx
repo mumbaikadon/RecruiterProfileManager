@@ -4,9 +4,13 @@ import {
   UserPlus, 
   AlertTriangle,
   Bell,
-  Briefcase
+  Briefcase,
+  MapPin,
+  Shield,
+  Clock
 } from "lucide-react";
 import { formatTimeAgo } from "@/lib/date-utils";
+import { cn } from "@/lib/utils";
 
 interface ActivityItem {
   id: number;
@@ -51,7 +55,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
 
   if (!activities || activities.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-muted-foreground">
         No activity to display.
       </div>
     );
@@ -60,30 +64,30 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
   const getIconForActivity = (type: string) => {
     switch (type) {
       case "job_created":
-        return <Briefcase className="h-6 w-6 text-white" />;
+        return <Briefcase className="h-5 w-5 text-white" />;
       case "candidate_submitted":
-        return <UserPlus className="h-6 w-6 text-white" />;
+        return <UserPlus className="h-5 w-5 text-white" />;
       case "status_changed":
-        return <CheckCircle className="h-6 w-6 text-white" />;
+        return <CheckCircle className="h-5 w-5 text-white" />;
       case "duplicate_detected":
-        return <AlertTriangle className="h-6 w-6 text-white" />;
+        return <AlertTriangle className="h-5 w-5 text-white" />;
       default:
-        return <Bell className="h-6 w-6 text-white" />;
+        return <Bell className="h-5 w-5 text-white" />;
     }
   };
 
   const getColorForActivity = (type: string) => {
     switch (type) {
       case "job_created":
-        return "bg-primary";
+        return "bg-blue-500 dark:bg-blue-600";
       case "candidate_submitted":
-        return "bg-primary";
+        return "bg-blue-500 dark:bg-blue-600";
       case "status_changed":
-        return "bg-amber-500";
+        return "bg-purple-500 dark:bg-purple-600";
       case "duplicate_detected":
-        return "bg-red-500";
+        return "bg-red-500 dark:bg-red-600";
       default:
-        return "bg-gray-500";
+        return "bg-slate-500 dark:bg-slate-600";
     }
   };
 
@@ -92,25 +96,25 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
       case "job_created":
       case "candidate_submitted":
         return (
-          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
             New
           </p>
         );
       case "status_changed":
         return (
-          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
             Updated
           </p>
         );
       case "duplicate_detected":
         return (
-          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
             Alert
           </p>
         );
       default:
         return (
-          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300">
             Info
           </p>
         );
@@ -118,22 +122,23 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
   };
 
   return (
-    <ul className="divide-y divide-gray-200">
+    <ul className="divide-y divide-border">
       {activities.map((activity) => (
-        <li key={activity.id} className="px-4 py-4 sm:px-6">
+        <li key={activity.id} className="px-4 py-4 sm:px-6 transition-colors duration-200 hover:bg-muted/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div
-                className={`flex-shrink-0 h-10 w-10 ${getColorForActivity(
-                  activity.type
-                )} rounded-full flex items-center justify-center`}
+                className={cn(
+                  "flex-shrink-0 h-9 w-9 rounded-full flex items-center justify-center shadow-sm",
+                  getColorForActivity(activity.type)
+                )}
               >
                 {getIconForActivity(activity.type)}
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-900">{activity.message}</p>
+                <p className="text-sm font-medium text-foreground">{activity.message}</p>
                 {activity.job && (
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     {activity.job.title} • {activity.job.jobId}
                   </p>
                 )}
@@ -144,48 +149,16 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
             </div>
           </div>
           <div className="mt-2 sm:flex sm:justify-between">
-            <div className="sm:flex">
+            <div className="sm:flex flex-wrap gap-x-6 gap-y-2">
               {activity.candidate && (
                 <>
-                  <p className="flex items-center text-sm text-gray-500">
-                    <svg
-                      className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
+                  <p className="flex items-center text-sm text-muted-foreground">
+                    <MapPin className="flex-shrink-0 mr-1.5 h-4 w-4 text-muted-foreground/70" />
                     {activity.candidate.location}
                   </p>
                   {activity.candidate.workAuthorization && (
-                    <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
-                      <svg
-                        className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                        />
-                      </svg>
+                    <p className="mt-2 flex items-center text-sm text-muted-foreground sm:mt-0">
+                      <Shield className="flex-shrink-0 mr-1.5 h-4 w-4 text-muted-foreground/70" />
                       {activity.candidate.workAuthorization === "citizen"
                         ? "US Citizen"
                         : activity.candidate.workAuthorization === "green-card"
@@ -200,21 +173,8 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
                 </>
               )}
             </div>
-            <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-              <svg
-                className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
+            <div className="mt-2 flex items-center text-sm text-muted-foreground sm:mt-0">
+              <Clock className="flex-shrink-0 mr-1.5 h-4 w-4 text-muted-foreground/70" />
               <p>{formatTimeAgo(activity.createdAt)}</p>
             </div>
           </div>
