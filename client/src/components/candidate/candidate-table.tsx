@@ -11,6 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Eye } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface CandidateTableProps {
   candidates: Candidate[];
@@ -52,7 +54,7 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
 
   if (candidates.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-muted-foreground">
         No candidates found.
       </div>
     );
@@ -62,13 +64,13 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="border-border hover:bg-transparent">
             <TableHead>Name</TableHead>
-            <TableHead>Date of Birth</TableHead>
-            <TableHead>Location</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead>Work Authorization</TableHead>
-            <TableHead>Created At</TableHead>
+            <TableHead className="hidden sm:table-cell">Date of Birth</TableHead>
+            <TableHead className="hidden md:table-cell">Location</TableHead>
+            <TableHead className="hidden md:table-cell">Contact</TableHead>
+            <TableHead className="hidden lg:table-cell">Work Authorization</TableHead>
+            <TableHead className="hidden sm:table-cell">Created At</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -76,37 +78,38 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
           {candidates.map((candidate) => (
             <TableRow 
               key={candidate.id} 
-              className="hover:bg-gray-50 cursor-pointer"
+              className="cursor-pointer border-border transition-colors duration-200 hover:bg-accent/5"
               onClick={() => handleViewCandidate(candidate.id)}
             >
               <TableCell className="font-medium">
                 {candidate.firstName} {candidate.middleName ? `${candidate.middleName} ` : ''}{candidate.lastName}
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden sm:table-cell">
                 {formatDob(candidate.dobMonth, candidate.dobDay)}
               </TableCell>
-              <TableCell>{candidate.location}</TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">{candidate.location}</TableCell>
+              <TableCell className="hidden md:table-cell">
                 <div className="text-sm">
                   <div>{candidate.email}</div>
-                  <div className="text-gray-500">{candidate.phone}</div>
+                  <div className="text-muted-foreground">{candidate.phone}</div>
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden lg:table-cell">
                 {getWorkAuthorizationDisplay(candidate.workAuthorization)}
               </TableCell>
-              <TableCell>{formatDate(candidate.createdAt)}</TableCell>
+              <TableCell className="hidden sm:table-cell">{formatDate(candidate.createdAt)}</TableCell>
               <TableCell className="text-right">
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="text-primary"
+                  className="text-primary hover:text-primary/80 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleViewCandidate(candidate.id);
                   }}
                 >
-                  View
+                  <Eye className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">View</span>
                 </Button>
               </TableCell>
             </TableRow>

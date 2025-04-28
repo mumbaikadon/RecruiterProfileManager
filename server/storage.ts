@@ -9,7 +9,7 @@ import {
   type Activity, type InsertActivity
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, sql, gte } from "drizzle-orm";
+import { eq, and, desc, count, sql, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -55,8 +55,8 @@ export interface IStorage {
   getDashboardStats(): Promise<{
     activeJobs: number;
     totalSubmissions: number;
-    newToday: number;
-    successRate: number;
+    assignedActiveJobs: number;
+    submissionsThisWeek: number;
   }>;
 }
 
