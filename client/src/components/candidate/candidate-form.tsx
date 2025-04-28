@@ -102,17 +102,33 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   useEffect(() => {
     // Attempt to extract data from pasted text
     if (pastedData.length > 0) {
-      // Simple pattern matching to extract fields from paste
-      // In a real app, this would be much more sophisticated
-      const nameMatch = pastedData.match(/([A-Z][a-z]+)\s+(?:([A-Z][a-z]+)\s+)?([A-Z][a-z]+)/);
-      if (nameMatch) {
-        form.setValue("firstName", nameMatch[1]);
-        if (nameMatch[2] && nameMatch[3]) {
-          form.setValue("middleName", nameMatch[2]);
-          form.setValue("lastName", nameMatch[3]);
-        } else if (nameMatch[2]) {
-          form.setValue("lastName", nameMatch[2]);
-        }
+      // First, check for structured data format with field labels
+      const firstNameMatch = pastedData.match(/Legal First Name:([^\n]+)/i);
+      if (firstNameMatch && firstNameMatch[1].trim()) {
+        form.setValue("firstName", firstNameMatch[1].trim());
+      }
+
+      const middleNameMatch = pastedData.match(/Legal Middle Name:([^\n]+)/i);
+      if (middleNameMatch && middleNameMatch[1].trim()) {
+        form.setValue("middleName", middleNameMatch[1].trim());
+      }
+
+      const lastNameMatch = pastedData.match(/Legal Last Name:([^\n]+)/i);
+      if (lastNameMatch && lastNameMatch[1].trim()) {
+        form.setValue("lastName", lastNameMatch[1].trim());
+      }
+
+      // Extract DOB in MM/DD format
+      const dobMatch = pastedData.match(/Month\/Day of Birth:?\s*(\d{1,2})\/(\d{1,2})/i);
+      if (dobMatch) {
+        form.setValue("dobMonth", parseInt(dobMatch[1]));
+        form.setValue("dobDay", parseInt(dobMatch[2]));
+      }
+
+      // Extract SSN last 4
+      const ssnMatch = pastedData.match(/Social Security Text:?\s*(\d{4})/i);
+      if (ssnMatch) {
+        form.setValue("ssn4", ssnMatch[1]);
       }
 
       // Extract email
@@ -137,6 +153,20 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       const locationMatch = pastedData.match(/(?:located in|located at|location:|from)\s+([A-Za-z\s]+,\s+[A-Z]{2})/i);
       if (locationMatch) {
         form.setValue("location", locationMatch[1]);
+      }
+
+      // If no structured matches were found, try general pattern matching as fallback
+      if (!firstNameMatch && !lastNameMatch) {
+        const nameMatch = pastedData.match(/([A-Z][a-z]+)\s+(?:([A-Z][a-z]+)\s+)?([A-Z][a-z]+)/);
+        if (nameMatch) {
+          form.setValue("firstName", nameMatch[1]);
+          if (nameMatch[2] && nameMatch[3]) {
+            form.setValue("middleName", nameMatch[2]);
+            form.setValue("lastName", nameMatch[3]);
+          } else if (nameMatch[2]) {
+            form.setValue("lastName", nameMatch[2]);
+          }
+        }
       }
     }
   }, [pastedData, form]);
