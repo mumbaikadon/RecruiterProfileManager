@@ -41,16 +41,16 @@ const JobsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">Jobs</h2>
-          <p className="mt-1 text-sm text-gray-500">View and manage all job listings</p>
+          <h2 className="text-2xl font-semibold text-foreground">Jobs</h2>
+          <p className="mt-1 text-sm text-muted-foreground">View and manage all job listings</p>
         </div>
         <div className="mt-4 md:mt-0">
           <CreateJobDialog />
         </div>
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+      <div className="bg-card shadow overflow-hidden sm:rounded-lg border border-border">
+        <div className="px-4 py-5 sm:px-6 border-b border-border">
           <JobFilter onFilterChange={handleFilterChange} />
         </div>
         <JobTable 
