@@ -71,8 +71,8 @@ export function useDashboardStats() {
   return useQuery<{
     activeJobs: number;
     totalSubmissions: number;
-    newToday: number;
-    successRate: number;
+    assignedActiveJobs: number;
+    submissionsThisWeek: number;
   }>({
     queryKey: ["/api/dashboard/stats"]
   });

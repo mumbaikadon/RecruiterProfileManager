@@ -338,8 +338,8 @@ export class DatabaseStorage implements IStorage {
   async getDashboardStats(): Promise<{
     activeJobs: number;
     totalSubmissions: number;
-    newToday: number;
-    successRate: number;
+    assignedActiveJobs: number;
+    submissionsThisWeek: number;
   }> {
     // Get active jobs count
     const [activeJobsResult] = await db
@@ -352,40 +352,49 @@ export class DatabaseStorage implements IStorage {
       .select({ count: count() })
       .from(submissions);
     
-    // Get submissions created today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get assigned active jobs count - jobs that are active and have at least one recruiter assigned
+    const assignedActiveJobsQuery = await db
+      .select({
+        jobId: jobAssignments.jobId,
+      })
+      .from(jobAssignments)
+      .innerJoin(
+        jobs,
+        and(
+          eq(jobAssignments.jobId, jobs.id),
+          eq(jobs.status, "active")
+        )
+      )
+      .groupBy(jobAssignments.jobId);
     
-    const [newTodayResult] = await db
-      .select({ count: count() })
-      .from(submissions)
-      .where(gte(submissions.submittedAt, today));
+    const assignedActiveJobs = assignedActiveJobsQuery.length;
     
-    // Calculate success rate (hired submissions / total completed submissions)
-    const [hiredResult] = await db
-      .select({ count: count() })
-      .from(submissions)
-      .where(eq(submissions.status, "hired"));
+    // Get submissions created this week (from Monday to Sunday)
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    const monday = new Date(now.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
     
-    const [completedResult] = await db
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    
+    const [submissionsThisWeekResult] = await db
       .select({ count: count() })
       .from(submissions)
       .where(
-        sql`${submissions.status} IN ('hired', 'rejected')`
+        and(
+          gte(submissions.submittedAt, monday),
+          lte(submissions.submittedAt, sunday)
+        )
       );
-    
-    const hiredCount = hiredResult?.count ?? 0;
-    const completedCount = completedResult?.count ?? 0;
-    
-    const successRate = completedCount > 0
-      ? Math.round((hiredCount / completedCount) * 100)
-      : 0;
     
     return {
       activeJobs: activeJobsResult?.count ?? 0,
       totalSubmissions: totalSubmissionsResult?.count ?? 0,
-      newToday: newTodayResult?.count ?? 0,
-      successRate
+      assignedActiveJobs,
+      submissionsThisWeek: submissionsThisWeekResult?.count ?? 0
     };
   }
 }

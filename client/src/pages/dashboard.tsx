@@ -87,16 +87,16 @@ const Dashboard: React.FC = () => {
         />
         
         <StatCard 
-          title="New Today" 
-          value={isLoadingStats ? "Loading..." : statsData?.newToday.toString() || "0"} 
-          icon={<Calendar />} 
+          title="Assigned Active Jobs" 
+          value={isLoadingStats ? "Loading..." : statsData?.assignedActiveJobs?.toString() || "0"}
+          icon={<Briefcase />} 
           color="amber" 
         />
         
         <StatCard 
-          title="Success Rate" 
-          value={isLoadingStats ? "Loading..." : `${statsData?.successRate || 0}%`} 
-          icon={<CheckCircle />} 
+          title="Submissions This Week" 
+          value={isLoadingStats ? "Loading..." : statsData?.submissionsThisWeek?.toString() || "0"} 
+          icon={<Calendar />} 
           color="accent" 
         />
       </div>
