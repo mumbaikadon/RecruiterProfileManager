@@ -236,7 +236,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const submissions = await storage.getSubmissions(filters);
-      res.json(submissions);
+      
+      // Enhance submissions with related data
+      const enhancedSubmissions = await Promise.all(submissions.map(async (submission) => {
+        const job = await storage.getJob(submission.jobId);
+        const candidate = await storage.getCandidate(submission.candidateId);
+        const recruiter = await storage.getUser(submission.recruiterId);
+        
+        return {
+          ...submission,
+          job: job ? {
+            id: job.id,
+            jobId: job.jobId,
+            title: job.title,
+            status: job.status
+          } : undefined,
+          candidate: candidate ? {
+            id: candidate.id,
+            firstName: candidate.firstName,
+            lastName: candidate.lastName,
+            location: candidate.location,
+            workAuthorization: candidate.workAuthorization
+          } : undefined,
+          recruiter: recruiter ? {
+            id: recruiter.id,
+            name: recruiter.name
+          } : undefined
+        };
+      }));
+      
+      res.json(enhancedSubmissions);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
