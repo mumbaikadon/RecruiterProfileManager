@@ -261,7 +261,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             toast({
               title: "Candidate Already Exists",
               description: "This candidate already exists in the system.",
-              variant: "warning",
+              variant: "destructive",
             });
           }
         } catch (error) {
