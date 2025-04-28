@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/submission/status-badge";
+import { Eye } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface SubmissionTableProps {
   submissions: (Submission & {
@@ -38,7 +40,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
 
   if (submissions.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-muted-foreground">
         No submissions found.
       </div>
     );
@@ -48,62 +50,66 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="border-border hover:bg-transparent">
             <TableHead>Job</TableHead>
-            <TableHead>Candidate</TableHead>
-            <TableHead>Submitted By</TableHead>
-            <TableHead>Submitted On</TableHead>
-            <TableHead>Rate</TableHead>
-            <TableHead>Match Score</TableHead>
+            <TableHead className="hidden md:table-cell">Candidate</TableHead>
+            <TableHead className="hidden md:table-cell">Submitted By</TableHead>
+            <TableHead className="hidden sm:table-cell">Submitted On</TableHead>
+            <TableHead className="hidden lg:table-cell">Rate</TableHead>
+            <TableHead className="hidden lg:table-cell">Match Score</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {submissions.map((submission) => (
-            <TableRow key={submission.id} className="hover:bg-gray-50">
+            <TableRow 
+              key={submission.id} 
+              className="cursor-pointer border-border transition-colors duration-200 hover:bg-accent/5"
+              onClick={() => setLocation(`/submissions/${submission.id}`)}
+            >
               <TableCell>
                 {submission.job ? (
                   <div className="font-medium">
                     <div>{submission.job.title}</div>
-                    <div className="text-xs text-gray-500">{submission.job.jobId}</div>
+                    <div className="text-xs text-muted-foreground">{submission.job.jobId}</div>
                   </div>
                 ) : (
-                  <span className="text-gray-500">Unknown Job</span>
+                  <span className="text-muted-foreground">Unknown Job</span>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
                 {submission.candidate ? (
                   <div>
                     <div className="font-medium">
                       {submission.candidate.firstName} {submission.candidate.lastName}
                     </div>
-                    <div className="text-xs text-gray-500">{submission.candidate.location}</div>
+                    <div className="text-xs text-muted-foreground">{submission.candidate.location}</div>
                   </div>
                 ) : (
-                  <span className="text-gray-500">Unknown Candidate</span>
+                  <span className="text-muted-foreground">Unknown Candidate</span>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
                 {submission.recruiter ? (
                   submission.recruiter.name
                 ) : (
-                  <span className="text-gray-500">Unknown</span>
+                  <span className="text-muted-foreground">Unknown</span>
                 )}
               </TableCell>
-              <TableCell>{formatDate(submission.submittedAt)}</TableCell>
-              <TableCell>
+              <TableCell className="hidden sm:table-cell">{formatDate(submission.submittedAt)}</TableCell>
+              <TableCell className="hidden lg:table-cell">
                 {submission.agreedRate ? (
                   formatRate(submission.agreedRate)
                 ) : (
-                  <span className="text-gray-500">N/A</span>
+                  <span className="text-muted-foreground">N/A</span>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden lg:table-cell">
                 {submission.matchScore ? (
                   <span className="font-medium">{submission.matchScore}%</span>
                 ) : (
-                  <span className="text-gray-500">N/A</span>
+                  <span className="text-muted-foreground">N/A</span>
                 )}
               </TableCell>
               <TableCell>
@@ -113,10 +119,14 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-primary"
-                  onClick={() => setLocation(`/submissions/${submission.id}`)}
+                  className="text-primary hover:text-primary/80 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLocation(`/submissions/${submission.id}`);
+                  }}
                 >
-                  View
+                  <Eye className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">View</span>
                 </Button>
               </TableCell>
             </TableRow>
