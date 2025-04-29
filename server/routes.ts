@@ -514,11 +514,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { resumeText, jobDescription } = req.body;
       
       if (!resumeText || typeof resumeText !== "string") {
-        return res.status(400).json({ message: "Resume text is required" });
+        return res.status(200).json({ 
+          message: "Resume text is required",
+          score: 0,
+          strengths: [],
+          weaknesses: ["Missing resume text"],
+          suggestions: ["Upload a resume to get a match score"]
+        });
       }
       
       if (!jobDescription || typeof jobDescription !== "string") {
-        return res.status(400).json({ message: "Job description is required" });
+        return res.status(200).json({ 
+          message: "Job description is required",
+          score: 0,
+          strengths: [],
+          weaknesses: ["Missing job description"],
+          suggestions: ["Provide a job description to match against"]
+        });
       }
       
       // Import the sanitization utility
@@ -528,11 +540,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sanitizedResumeText = sanitizeHtml(resumeText);
       const sanitizedJobDescription = sanitizeHtml(jobDescription);
       
+      console.log("Match resume request received:");
+      console.log("- Resume text length:", sanitizedResumeText.length);
+      console.log("- Job description length:", sanitizedJobDescription.length);
+      
       const matchResult = await matchResumeToJob(sanitizedResumeText, sanitizedJobDescription);
-      res.json(matchResult);
+      
+      // Ensure we return a properly structured response even if the matching service fails
+      const response = {
+        score: typeof matchResult.score === 'number' ? matchResult.score : 0,
+        strengths: Array.isArray(matchResult.strengths) ? matchResult.strengths : [],
+        weaknesses: Array.isArray(matchResult.weaknesses) ? matchResult.weaknesses : [],
+        suggestions: Array.isArray(matchResult.suggestions) ? matchResult.suggestions : []
+      };
+      
+      res.json(response);
     } catch (error) {
       console.error("Resume matching error:", error);
-      res.status(500).json({ message: (error as Error).message });
+      // Return a structured error response with 0 score
+      res.status(200).json({ 
+        message: (error as Error).message,
+        score: 0,
+        strengths: [],
+        weaknesses: ["Error occurred during matching"],
+        suggestions: ["Try a different resume format or contact support"]
+      });
     }
   });
   
