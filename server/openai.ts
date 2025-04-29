@@ -162,7 +162,7 @@ export async function matchResumeToJob(
   resumeText = sanitizeHtml(resumeText);
   jobDescription = sanitizeHtml(jobDescription);
   // Set timeout for OpenAI call
-  const TIMEOUT_MS = 15000;
+  const TIMEOUT_MS = 20000; // Increased timeout for more detailed analysis
   
   try {
     console.log("Matching resume to job description with OpenAI...");
@@ -180,13 +180,16 @@ export async function matchResumeToJob(
         messages: [
           {
             role: "system",
-            content: `You are an expert at matching candidates to job descriptions. Analyze the resume and job description to determine:
+            content: `You are an expert at matching candidates to job descriptions with emphasis on technical skills. Analyze the resume and job description to determine:
             1. A match score from 0-100
             2. The candidate's key strengths for this role (limit to 5)
-            3. Areas where the candidate's experience is weak compared to requirements (limit to 5)
-            4. Suggestions for how the candidate could be positioned for this role (limit to 3)
+            3. Specific technologies and skills mentioned in the job description that are missing from the resume (limit to 5)
+            4. Specific client projects and date ranges from the resume, and whether they provide relevant experience
+            5. Suggestions for how the candidate could be positioned for this role (limit to 3)
             
-            Return as a JSON object with the keys: score, strengths, weaknesses, and suggestions.`
+            Be very specific about technologies and skills that are missing. For example, instead of saying "Missing Java experience", say "Missing experience with Java Spring Boot" or "Missing experience with Java 11 features".
+            
+            Return as a JSON object with the keys: score, strengths, weaknesses, suggestions, and a new key called "technicalGaps" which contains an array of specific technologies missing.`
           },
           {
             role: "user",
@@ -194,7 +197,7 @@ export async function matchResumeToJob(
           }
         ],
         response_format: { type: "json_object" },
-        max_tokens: 1000
+        max_tokens: 1500
       });
 
       const content = response.choices[0].message.content;
@@ -205,15 +208,26 @@ export async function matchResumeToJob(
       console.log("OpenAI job matching completed successfully");
       const result = JSON.parse(content);
       
-      // Ensure we have the expected structure
+      // Ensure we have the expected structure with new technicalGaps field
       const matchSchema = z.object({
         score: z.number().min(0).max(100),
         strengths: z.array(z.string()),
         weaknesses: z.array(z.string()),
-        suggestions: z.array(z.string())
+        suggestions: z.array(z.string()),
+        technicalGaps: z.array(z.string()).optional()
       });
 
-      return matchSchema.parse(result);
+      const validatedResult = matchSchema.parse(result);
+      
+      // If technicalGaps exists, add them to weaknesses with "Missing skill: " prefix
+      if (validatedResult.technicalGaps && validatedResult.technicalGaps.length > 0) {
+        validatedResult.weaknesses = [
+          ...validatedResult.weaknesses,
+          ...validatedResult.technicalGaps.map(gap => `Missing technology: ${gap}`)
+        ].slice(0, 10); // Limit to 10 total weaknesses
+      }
+
+      return validatedResult;
     })();
     
     // Race between timeout and OpenAI request
