@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -9,6 +9,7 @@ import {
   insertActivitySchema
 } from "@shared/schema";
 import { z } from "zod";
+import { analyzeResumeText, matchResumeToJob } from "./openai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Jobs routes
@@ -450,6 +451,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getDashboardStats();
       res.json(stats);
     } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+  
+  // OpenAI integration routes
+  app.post("/api/openai/analyze-resume", async (req: Request, res: Response) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ message: "Resume text is required" });
+      }
+      
+      const analysis = await analyzeResumeText(text);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Resume analysis error:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+  
+  app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
+    try {
+      const { resumeText, jobDescription } = req.body;
+      
+      if (!resumeText || typeof resumeText !== "string") {
+        return res.status(400).json({ message: "Resume text is required" });
+      }
+      
+      if (!jobDescription || typeof jobDescription !== "string") {
+        return res.status(400).json({ message: "Job description is required" });
+      }
+      
+      const matchResult = await matchResumeToJob(resumeText, jobDescription);
+      res.json(matchResult);
+    } catch (error) {
+      console.error("Resume matching error:", error);
       res.status(500).json({ message: (error as Error).message });
     }
   });
