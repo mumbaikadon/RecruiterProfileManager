@@ -50,6 +50,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Job not found" });
       }
       
+      // Import the sanitization utility
+      const { sanitizeHtml } = await import('./utils');
+      
+      // Sanitize the job description to prevent HTML parsing issues
+      if (job.description) {
+        job.description = sanitizeHtml(job.description);
+      }
+      
       // Get assigned recruiters
       const assignments = await storage.getJobAssignments(job.id);
       const assignedUserIds = assignments.map(a => a.userId);
