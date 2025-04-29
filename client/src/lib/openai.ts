@@ -42,6 +42,10 @@ export async function matchResumeToJob(
   jobDescription: string
 ): Promise<MatchScoreResult> {
   try {
+    console.log("Sending resume and job description for matching...");
+    console.log("Resume text length:", resumeText.length);
+    console.log("Job description length:", jobDescription.length);
+    
     const result = await apiRequest<MatchScoreResult>({
       method: "POST",
       url: "/api/openai/match-resume",
@@ -51,10 +55,24 @@ export async function matchResumeToJob(
       }
     });
     
-    return result;
+    console.log("Match result received:", result);
+    
+    // Ensure we always have valid data even if the API returns incomplete information
+    return {
+      score: typeof result.score === 'number' ? result.score : 0,
+      strengths: Array.isArray(result.strengths) ? result.strengths : [],
+      weaknesses: Array.isArray(result.weaknesses) ? result.weaknesses : [],
+      suggestions: Array.isArray(result.suggestions) ? result.suggestions : []
+    };
   } catch (error) {
     console.error("Error matching resume to job:", error);
-    throw new Error("Failed to match resume to job description");
+    // Return a fallback with a message about the error
+    return {
+      score: 0,
+      strengths: [],
+      weaknesses: ["Error during resume matching"],
+      suggestions: ["Try again with a different resume format or contact support"]
+    };
   }
 }
 
