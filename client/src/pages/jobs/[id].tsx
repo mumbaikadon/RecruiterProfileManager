@@ -7,6 +7,7 @@ import { useUpdateJobStatus } from "@/hooks/use-jobs";
 import { useAssignRecruiters } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/date-utils";
+import { sanitizeHtml } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -307,7 +308,7 @@ const JobDetailPage: React.FC = () => {
               <Card>
                 <CardContent className="pt-6">
                   <div className="prose max-w-none">
-                    <p className="whitespace-pre-line">{job.description}</p>
+                    <p className="whitespace-pre-line">{sanitizeHtml(job.description)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -338,7 +339,7 @@ const JobDetailPage: React.FC = () => {
         <SubmissionDialog
           jobId={numericId}
           jobTitle={job.title}
-          jobDescription={job.description}
+          jobDescription={sanitizeHtml(job.description)}
           recruiterId={1} // This would be the current user's ID in a real app
           isOpen={isSubmissionDialogOpen}
           onClose={handleCloseSubmissionDialog}
