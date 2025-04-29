@@ -595,12 +595,23 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
               <CardContent>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-primary text-lg font-semibold">{matchResults.score}%</span>
+                    <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center
+                      ${matchResults.score >= 70 ? 'bg-green-100' : 
+                        matchResults.score >= 40 ? 'bg-yellow-100' : 'bg-red-100'}`}>
+                      <span className={`text-lg font-semibold
+                        ${matchResults.score >= 70 ? 'text-green-600' : 
+                          matchResults.score >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {matchResults.score}%
+                      </span>
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-900">Match Score</p>
                       <p className="text-sm text-gray-500">Based on job description alignment</p>
+                      {matchResults.score < 30 && (
+                        <p className="text-xs text-red-500 mt-1">
+                          Low match score indicates skills or experience may not align well with the position
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
