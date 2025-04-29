@@ -34,8 +34,12 @@ export function useJob(id: number) {
 export function useCreateJob() {
   return useMutation({
     mutationFn: async (data: InsertJob & { recruiterIds: number[] }) => {
-      const res = await apiRequest("POST", "/api/jobs", data);
-      return await res.json();
+      const res = await apiRequest({
+        method: "POST", 
+        url: "/api/jobs", 
+        data
+      });
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
@@ -48,8 +52,12 @@ export function useCreateJob() {
 export function useUpdateJobStatus() {
   return useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const res = await apiRequest("PUT", `/api/jobs/${id}/status`, { status });
-      return await res.json();
+      const res = await apiRequest({
+        method: "PUT", 
+        url: `/api/jobs/${id}/status`, 
+        data: { status }
+      });
+      return res;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/jobs/${variables.id}`] });
@@ -62,7 +70,18 @@ export function useUpdateJobStatus() {
 export function useAssignRecruiters() {
   return useMutation({
     mutationFn: async ({ jobId, recruiterIds }: { jobId: number; recruiterIds: number[] }) => {
-      const res = await apiRequest("POST", `/api/jobs/${jobId}/assign`, { recruiterIds });
+      const res = await fetch(`/api/jobs/${jobId}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recruiterIds }),
+        credentials: "include"
+      });
+      
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`${res.status}: ${text}`);
+      }
+      
       return await res.json();
     },
     onSuccess: (_data, variables) => {
