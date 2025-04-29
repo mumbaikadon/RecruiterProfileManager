@@ -472,7 +472,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Resume text is required" });
       }
       
-      const analysis = await analyzeResumeText(text);
+      // Import the sanitization utility
+      const { sanitizeHtml } = await import('./utils');
+      
+      // Sanitize the text before passing to OpenAI
+      const sanitizedText = sanitizeHtml(text);
+      
+      const analysis = await analyzeResumeText(sanitizedText);
       res.json(analysis);
     } catch (error) {
       console.error("Resume analysis error:", error);
@@ -492,7 +498,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Job description is required" });
       }
       
-      const matchResult = await matchResumeToJob(resumeText, jobDescription);
+      // Import the sanitization utility
+      const { sanitizeHtml } = await import('./utils');
+      
+      // Sanitize both the resume text and job description
+      const sanitizedResumeText = sanitizeHtml(resumeText);
+      const sanitizedJobDescription = sanitizeHtml(jobDescription);
+      
+      const matchResult = await matchResumeToJob(sanitizedResumeText, sanitizedJobDescription);
       res.json(matchResult);
     } catch (error) {
       console.error("Resume matching error:", error);

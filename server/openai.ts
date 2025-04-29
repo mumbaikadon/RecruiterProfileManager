@@ -30,6 +30,7 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
   const { sanitizeHtml } = await import('./utils');
   
   // Sanitize the resume text to remove any HTML tags
+  // (Double sanitization for safety)
   resumeText = sanitizeHtml(resumeText);
   try {
     console.log("Analyzing resume text with OpenAI...");
@@ -156,7 +157,9 @@ export async function matchResumeToJob(
   // Import the sanitization utility
   const { sanitizeHtml } = await import('./utils');
   
-  // Sanitize the job description to remove any HTML tags
+  // Sanitize both the resume text and job description to remove any HTML tags
+  // (Double sanitization for safety)
+  resumeText = sanitizeHtml(resumeText);
   jobDescription = sanitizeHtml(jobDescription);
   // Set timeout for OpenAI call
   const TIMEOUT_MS = 15000;
