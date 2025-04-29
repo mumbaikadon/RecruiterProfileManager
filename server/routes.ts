@@ -139,14 +139,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid job ID" });
       }
       
+      // Verify the job exists
+      const job = await storage.getJob(id);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+      
+      // Validate the recruiterIds
       const { recruiterIds } = req.body;
       if (!recruiterIds || !Array.isArray(recruiterIds)) {
         return res.status(400).json({ message: "Recruiter IDs are required" });
       }
       
-      const assignments = await storage.assignRecruitersToJob(id, recruiterIds);
+      // Filter out any non-numeric values to ensure data integrity
+      const validRecruiterIds = recruiterIds.filter(id => !isNaN(Number(id))).map(Number);
+      
+      if (validRecruiterIds.length === 0) {
+        return res.status(400).json({ message: "No valid recruiter IDs provided" });
+      }
+      
+      const assignments = await storage.assignRecruitersToJob(id, validRecruiterIds);
       res.status(201).json(assignments);
     } catch (error) {
+      console.error("Error assigning recruiters:", error);
       res.status(500).json({ message: (error as Error).message });
     }
   });
