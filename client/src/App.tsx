@@ -9,6 +9,7 @@ import Dashboard from "@/pages/dashboard";
 import JobsPage from "@/pages/jobs/index";
 import JobDetailPage from "@/pages/jobs/[id]";
 import CandidatesPage from "@/pages/candidates/index";
+import CandidateDetailPage from "@/pages/candidates/[id]";
 import SubmissionsPage from "@/pages/submissions/index";
 
 function Router() {
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/jobs" component={JobsPage} />
       <Route path="/jobs/:id" component={JobDetailPage} />
       <Route path="/candidates" component={CandidatesPage} />
+      <Route path="/candidates/:id" component={CandidateDetailPage} />
       <Route path="/submissions" component={SubmissionsPage} />
       <Route component={NotFound} />
     </Switch>
