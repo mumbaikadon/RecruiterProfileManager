@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { useCheckCandidate } from "@/hooks/use-candidates";
 import { analyzeResume, matchResumeToJob } from "@/lib/openai";
+import { sanitizeHtml } from "@/lib/utils";
 
 import {
   Form,
@@ -190,8 +191,12 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       setResumeText(result.text);
       setResumeData(result.analysis);
       
+      // Sanitize job description and resume text before matching
+      const sanitizedJobDescription = sanitizeHtml(jobDescription);
+      const sanitizedResumeText = sanitizeHtml(result.text);
+      
       // Match against job description
-      const matchResult = await matchResumeToJob(result.text, jobDescription);
+      const matchResult = await matchResumeToJob(sanitizedResumeText, sanitizedJobDescription);
       setMatchResults(matchResult);
       
     } catch (error) {
