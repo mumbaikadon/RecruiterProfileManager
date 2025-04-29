@@ -27,6 +27,8 @@ export interface MatchScoreResult {
  */
 export async function analyzeResumeText(resumeText: string): Promise<ResumeAnalysisResult> {
   try {
+    console.log("Analyzing resume text with OpenAI...");
+    
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -40,7 +42,8 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
           content: resumeText
         }
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      max_tokens: 1500
     });
 
     const content = response.choices[0].message.content;
@@ -48,7 +51,29 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       throw new Error("Empty response from OpenAI");
     }
 
+    console.log("OpenAI analysis completed successfully");
     const result = JSON.parse(content);
+    
+    // Convert any non-string array elements to strings
+    const normalizeStringArray = (arr: any[]): string[] => {
+      if (!Array.isArray(arr)) return [];
+      return arr.map(item => 
+        typeof item === 'string' 
+          ? item 
+          : typeof item === 'object' && item !== null
+            ? JSON.stringify(item)
+            : String(item)
+      );
+    };
+
+    // Normalize the result structure
+    const normalizedResult = {
+      clientNames: normalizeStringArray(result.clientNames || []),
+      jobTitles: normalizeStringArray(result.jobTitles || []),
+      relevantDates: normalizeStringArray(result.relevantDates || []),
+      skills: normalizeStringArray(result.skills || []),
+      education: normalizeStringArray(result.education || [])
+    };
     
     // Ensure we have the expected structure
     const resumeSchema = z.object({
@@ -59,7 +84,7 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       education: z.array(z.string()).default([])
     });
 
-    const validatedResult = resumeSchema.parse(result);
+    const validatedResult = resumeSchema.parse(normalizedResult);
 
     return {
       ...validatedResult,
@@ -72,53 +97,120 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
 }
 
 /**
+ * A simplified matcher for job and resume to avoid timeouts
+ * This can be used as a fallback if the OpenAI API times out
+ */
+function simpleResumeJobMatcher(resumeText: string, jobDescription: string): MatchScoreResult {
+  // Convert texts to lowercase for better matching
+  const resumeLower = resumeText.toLowerCase();
+  const jobLower = jobDescription.toLowerCase();
+
+  // Simple keyword extraction for skills and requirements
+  const commonSkills = [
+    'javascript', 'typescript', 'react', 'angular', 'vue', 'node', 'express',
+    'python', 'java', 'c#', 'c++', 'ruby', 'php', 'sql', 'nosql', 'mongodb',
+    'aws', 'azure', 'gcp', 'cloud', 'docker', 'kubernetes', 'ci/cd', 'git',
+    'agile', 'scrum', 'rest', 'graphql', 'microservices', 'frontend', 'backend',
+    'fullstack', 'testing', 'ui/ux', 'mobile', 'responsive', 'security', 'devops'
+  ];
+
+  // Count matching skills
+  const matchingSkills = commonSkills.filter(skill => 
+    resumeLower.includes(skill) && jobLower.includes(skill)
+  );
+  
+  // Skills in job but not in resume
+  const missingSkills = commonSkills.filter(skill => 
+    !resumeLower.includes(skill) && jobLower.includes(skill)
+  );
+
+  // Calculate a simple score based on matching skills
+  const jobSkillsCount = commonSkills.filter(skill => jobLower.includes(skill)).length;
+  const score = jobSkillsCount > 0 
+    ? Math.min(100, Math.round((matchingSkills.length / jobSkillsCount) * 100))
+    : 50; // Default to 50% if no skills found in job description
+
+  return {
+    score,
+    strengths: matchingSkills.map(skill => `Experience with ${skill}`),
+    weaknesses: missingSkills.map(skill => `No mention of ${skill}`),
+    suggestions: missingSkills.slice(0, 3).map(skill => 
+      `Consider highlighting any experience with ${skill}`
+    )
+  };
+}
+
+/**
  * Matches resume to job description using OpenAI
+ * Falls back to simple matcher if API times out
  */
 export async function matchResumeToJob(
   resumeText: string,
   jobDescription: string
 ): Promise<MatchScoreResult> {
+  // Set timeout for OpenAI call
+  const TIMEOUT_MS = 15000;
+  
   try {
-    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert at matching candidates to job descriptions. Analyze the resume and job description to determine:
-          1. A match score from 0-100
-          2. The candidate's key strengths for this role
-          3. Areas where the candidate's experience is weak compared to requirements
-          4. Suggestions for how the candidate could be positioned for this role
-          
-          Return as a JSON object with the keys: score, strengths, weaknesses, and suggestions.`
-        },
-        {
-          role: "user",
-          content: `RESUME:\n${resumeText}\n\nJOB DESCRIPTION:\n${jobDescription}`
-        }
-      ],
-      response_format: { type: "json_object" }
-    });
-
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error("Empty response from OpenAI");
-    }
-
-    const result = JSON.parse(content);
+    console.log("Matching resume to job description with OpenAI...");
     
-    // Ensure we have the expected structure
-    const matchSchema = z.object({
-      score: z.number().min(0).max(100),
-      strengths: z.array(z.string()),
-      weaknesses: z.array(z.string()),
-      suggestions: z.array(z.string())
+    // Create promise with timeout
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("OpenAI request timed out")), TIMEOUT_MS);
     });
+    
+    // Create the OpenAI request promise
+    const openAiPromise = (async () => {
+      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert at matching candidates to job descriptions. Analyze the resume and job description to determine:
+            1. A match score from 0-100
+            2. The candidate's key strengths for this role (limit to 5)
+            3. Areas where the candidate's experience is weak compared to requirements (limit to 5)
+            4. Suggestions for how the candidate could be positioned for this role (limit to 3)
+            
+            Return as a JSON object with the keys: score, strengths, weaknesses, and suggestions.`
+          },
+          {
+            role: "user",
+            content: `RESUME:\n${resumeText}\n\nJOB DESCRIPTION:\n${jobDescription}`
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 1000
+      });
 
-    return matchSchema.parse(result);
+      const content = response.choices[0].message.content;
+      if (!content) {
+        throw new Error("Empty response from OpenAI");
+      }
+
+      console.log("OpenAI job matching completed successfully");
+      const result = JSON.parse(content);
+      
+      // Ensure we have the expected structure
+      const matchSchema = z.object({
+        score: z.number().min(0).max(100),
+        strengths: z.array(z.string()),
+        weaknesses: z.array(z.string()),
+        suggestions: z.array(z.string())
+      });
+
+      return matchSchema.parse(result);
+    })();
+    
+    // Race between timeout and OpenAI request
+    return await Promise.race([openAiPromise, timeoutPromise]);
+    
   } catch (error) {
     console.error("OpenAI job matching error:", error);
-    throw new Error(`Failed to match resume to job: ${(error as Error).message}`);
+    console.log("Falling back to simple matcher due to error or timeout");
+    
+    // Fall back to simple matcher if OpenAI times out or errors
+    return simpleResumeJobMatcher(resumeText, jobDescription);
   }
 }
