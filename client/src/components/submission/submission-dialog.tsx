@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateSubmission } from "@/hooks/use-submissions";
+import { sanitizeHtml } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -159,7 +160,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         <CandidateForm
           jobId={jobId}
           jobTitle={jobTitle}
-          jobDescription={jobDescription}
+          jobDescription={sanitizeHtml(jobDescription)}
           onSubmit={handleSubmit}
           isPending={isPending}
         />
