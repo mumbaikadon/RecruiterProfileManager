@@ -72,6 +72,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/jobs", async (req: Request, res: Response) => {
     try {
+      // Import sanitization utility
+      const { sanitizeHtml } = await import('./utils');
+      
+      // Sanitize job description if it exists
+      if (req.body.description) {
+        req.body.description = sanitizeHtml(req.body.description);
+      }
+      
       const validatedData = insertJobSchema.parse(req.body);
       const job = await storage.createJob(validatedData);
       

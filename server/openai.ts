@@ -26,6 +26,11 @@ export interface MatchScoreResult {
  * Analyzes resume text using OpenAI to extract key information
  */
 export async function analyzeResumeText(resumeText: string): Promise<ResumeAnalysisResult> {
+  // Import the sanitization utility
+  const { sanitizeHtml } = await import('./utils');
+  
+  // Sanitize the resume text to remove any HTML tags
+  resumeText = sanitizeHtml(resumeText);
   try {
     console.log("Analyzing resume text with OpenAI...");
     
@@ -148,6 +153,11 @@ export async function matchResumeToJob(
   resumeText: string,
   jobDescription: string
 ): Promise<MatchScoreResult> {
+  // Import the sanitization utility
+  const { sanitizeHtml } = await import('./utils');
+  
+  // Sanitize the job description to remove any HTML tags
+  jobDescription = sanitizeHtml(jobDescription);
   // Set timeout for OpenAI call
   const TIMEOUT_MS = 15000;
   

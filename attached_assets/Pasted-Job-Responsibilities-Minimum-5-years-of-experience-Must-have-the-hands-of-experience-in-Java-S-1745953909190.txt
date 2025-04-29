@@ -1,0 +1,32 @@
+Job Responsibilities: (Minimum 5+ years of experience)
+• Must have the hands of experience in Java/Spring boot and Angular, HTML, CSS and Java Script
+• Write clean, efficient, and maintainable code for various.
+• Develop and implement APIs and web services (RESTful)
+• Integrate third-party services and tools.
+• Perform unit and integration testing to ensure the robustness and reliability of applications.
+• Optimize the application for maximum speed and scalability.
+• Troubleshoot and debug issues reported by customers or the internal team.
+• Collaborate with frontend developers to integrate user-facing elements with server-side logic.
+• Write and maintain technical documentation related to frontend and backend systems.
+• Work in an Agile environment and participate in regular sprint cycles.
+• Ensure high code quality through code reviews, pair programming, and continuous learning.
+ 
+Required Qualifications:
+• Proven experience as a Developer or similar role.
+• Strong proficiency in Java, Spring Boot, Microservice.
+• Experience with APIs in Node.js also considers if the developer has hands-on Java/Spring Boot.
+• Strong proficiency in Angular, HTML, CSS and Java Script.
+• Knowledge of database management and proficiency with relational (e.g., MySQL, PostgreSQL).
+• Strong understanding of API design and development (RESTful).
+• Familiarity with version control tools (e.g., Git, GitHub, GitLab).
+• Understanding of cloud platforms (AWS).
+• Knowledge of security best practices in backend development.
+• Excellent communication skills and ability to work in a team.
+• Familiarity with DevOps practices and CI/CD pipelines.
+• Familiarity with testing frameworks (e.g., Jest, Mocha, JUnit).
+• Experience with Agile/Scrum methodologies.
+• Coding as per design specifications & standards
+• Documentation of related work
+• Guide team development efforts towards successful project delivery.
+ 
+Please note that experience with APIs in Node.js also considers if the developer has Java/Spring Boot experience.
