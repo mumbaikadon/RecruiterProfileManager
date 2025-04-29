@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRecruiters } from "@/hooks/use-recruiters";
 import { useCreateJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
+import { sanitizeHtml } from "@/lib/utils";
 
 import {
   Dialog,
@@ -40,7 +41,7 @@ const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   jobId: z.string().min(3, "Job ID must be at least 3 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
-  status: z.string().default("active"),
+  status: z.enum(["active", "reviewing", "closed"]).default("active"),
   createdBy: z.number().optional(),
   recruiterIds: z.array(z.number()).min(1, "You must assign at least one recruiter")
 });
@@ -70,7 +71,14 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
   });
 
   const onSubmit = (values: FormValues) => {
-    createJob(values, {
+    // Sanitize description field to remove HTML tags
+    const sanitizedValues = {
+      ...values,
+      description: sanitizeHtml(values.description)
+      // No need to type cast status anymore since the schema ensures it's the correct type
+    };
+    
+    createJob(sanitizedValues, {
       onSuccess: () => {
         toast({
           title: "Job created",
