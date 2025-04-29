@@ -194,10 +194,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get submissions for this candidate
       const submissions = await storage.getSubmissions({ candidateId: candidate.id });
       
+      // Enhance submissions with job and recruiter details
+      const enhancedSubmissions = await Promise.all(submissions.map(async (submission) => {
+        // Get job details
+        let job = null;
+        if (submission.jobId) {
+          job = await storage.getJob(submission.jobId);
+        }
+        
+        // Get recruiter details
+        let recruiter = null;
+        if (submission.recruiterId) {
+          recruiter = await storage.getUser(submission.recruiterId);
+        }
+        
+        return {
+          ...submission,
+          job,
+          recruiter: recruiter ? {
+            id: recruiter.id,
+            name: recruiter.username,
+          } : null
+        };
+      }));
+      
       res.json({
         ...candidate,
         resumeData,
-        submissions
+        submissions: enhancedSubmissions
       });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
