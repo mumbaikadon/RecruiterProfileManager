@@ -228,7 +228,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         };
         
         // Use form fields to extract some basic information
-        const formSkills = [];
+        const formSkills: string[] = [];
         
         // Add skills from form fields if they exist
         if (form.getValues('linkedIn')) formSkills.push('linkedin');

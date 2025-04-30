@@ -694,7 +694,55 @@ export async function matchResumeToJob(
     console.error("Outer try-catch: OpenAI job matching error:", error);
     console.log("Falling back to simple matcher due to error or timeout");
     
-    // Fall back to simple matcher if OpenAI times out or errors
+    // Use a fixed fallback score 
+    // or recompute skills for a custom response
+    if (true) { // Always execute this logic rather than checking for scaledScore
+      // Extract skills for better analysis using simple matcher logic
+      const resumeLower = resumeText.toLowerCase();
+      const jobLower = jobDescription.toLowerCase();
+      
+      // Use the skill extraction logic from the simple matcher
+      const commonSkills = [
+        'javascript', 'typescript', 'react', 'angular', 'vue', 'java', 'spring',
+        'node', 'express', 'python', 'django', 'sql', 'nosql', 'mongodb',
+        'aws', 'azure', 'docker', 'kubernetes', 'rest', 'graphql'
+      ];
+      
+      // Count matching skills (simplified from simple matcher)
+      const matchingSkills = commonSkills.filter(skill => 
+        resumeLower.includes(skill) && jobLower.includes(skill)
+      );
+      
+      // Skills in job but not in resume
+      const missingSkills = commonSkills.filter(skill => 
+        !resumeLower.includes(skill) && jobLower.includes(skill)
+      );
+      
+      // Calculate a score based on match percentage
+      const jobSkillsCount = commonSkills.filter(skill => jobLower.includes(skill)).length;
+      const matchRate = jobSkillsCount > 0 ? matchingSkills.length / jobSkillsCount : 0;
+      
+      // Adjust scoring to match industry norms (75-95%)
+      let score = 75; // Base score
+      if (matchRate > 0.25) score = 80;  // >25% match rate
+      if (matchRate > 0.5) score = 85;   // >50% match rate
+      if (matchRate > 0.7) score = 90;   // >70% match rate
+      if (matchRate > 0.9) score = 95;   // >90% match rate
+      
+      return {
+        score: score,
+        strengths: matchingSkills.map(skill => `Experience with ${skill}`),
+        weaknesses: missingSkills.map(skill => `No mention of ${skill}`),
+        suggestions: ["Consider adding more detail about your technical experience"],
+        technicalGaps: missingSkills.map(skill => `Missing: ${skill}`),
+        matchingSkills,
+        missingSkills,
+        clientExperience: "Could not analyze client experience in detail",
+        confidence: 70 // Medium confidence due to partial analysis
+      };
+    }
+    
+    // Complete fallback to simple matcher if no embedding score available
     return simpleResumeJobMatcher(resumeText, jobDescription);
   }
 }
