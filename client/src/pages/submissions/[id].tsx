@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft, FileText, Briefcase, User, Calendar, DollarSign, BarChart2, Lock, Shield } from "lucide-react";
+import { ChevronLeft, FileText, Briefcase, User, Calendar, DollarSign, BarChart2, Lock, Shield, MessageSquare } from "lucide-react";
 import { formatDate, formatDateTime, formatRate } from "@/lib/date-utils";
 import StatusBadge from "@/components/submission/status-badge";
 import StatusSelect from "@/components/submission/status-select";
