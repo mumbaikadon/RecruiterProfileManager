@@ -72,6 +72,7 @@ export const resumeData = pgTable("resume_data", {
   skills: text("skills").array(),
   education: text("education").array(),
   extractedText: text("extracted_text"),
+  fileName: text("file_name"),  // Name of the original resume file
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 
@@ -100,7 +101,7 @@ export const submissions = pgTable("submissions", {
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
   type: text("type", { 
-    enum: ["job_created", "candidate_submitted", "status_changed", "duplicate_detected"] 
+    enum: ["job_created", "job_closed", "candidate_submitted", "status_changed", "duplicate_detected"] 
   }).notNull(),
   userId: integer("user_id").references(() => users.id),
   jobId: integer("job_id").references(() => jobs.id),
