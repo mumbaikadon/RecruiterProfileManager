@@ -852,7 +852,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         score: typeof matchResult.score === 'number' ? matchResult.score : 0,
         strengths: Array.isArray(matchResult.strengths) ? matchResult.strengths : [],
         weaknesses: Array.isArray(matchResult.weaknesses) ? matchResult.weaknesses : [],
-        suggestions: Array.isArray(matchResult.suggestions) ? matchResult.suggestions : []
+        suggestions: Array.isArray(matchResult.suggestions) ? matchResult.suggestions : [],
+        technicalGaps: Array.isArray(matchResult.technicalGaps) ? matchResult.technicalGaps : [],
+        matchingSkills: Array.isArray(matchResult.matchingSkills) ? matchResult.matchingSkills : [],
+        missingSkills: Array.isArray(matchResult.missingSkills) ? matchResult.missingSkills : [],
+        clientExperience: matchResult.clientExperience || "",
+        confidence: typeof matchResult.confidence === 'number' ? matchResult.confidence : 0
       };
       
       res.json(response);
@@ -864,7 +869,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         score: 0,
         strengths: [],
         weaknesses: ["Error occurred during matching"],
-        suggestions: ["Try a different resume format or contact support"]
+        suggestions: ["Try a different resume format or contact support"],
+        technicalGaps: [],
+        matchingSkills: [],
+        missingSkills: [],
+        clientExperience: "",
+        confidence: 0
       });
     }
   });
