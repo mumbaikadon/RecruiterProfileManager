@@ -93,7 +93,43 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
     }
 
     console.log("OpenAI analysis completed successfully");
-    const result = JSON.parse(content);
+    
+    // Try to parse the content as JSON, with error handling
+    let result;
+    try {
+      // Attempt to clean up the response if it's not properly formatted JSON
+      let cleanedContent = content;
+      
+      // If content has markdown code blocks, extract just the JSON part
+      if (content.includes("```json")) {
+        const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonBlockMatch && jsonBlockMatch[1]) {
+          cleanedContent = jsonBlockMatch[1].trim();
+        }
+      } else if (content.includes("```")) {
+        const codeBlockMatch = content.match(/```\s*([\s\S]*?)\s*```/);
+        if (codeBlockMatch && codeBlockMatch[1]) {
+          cleanedContent = codeBlockMatch[1].trim();
+        }
+      }
+      
+      // Remove any trailing commas that might cause JSON parse errors
+      cleanedContent = cleanedContent.replace(/,(\s*[}\]])/g, '$1');
+      
+      result = JSON.parse(cleanedContent);
+    } catch (parseError) {
+      console.error("Error parsing OpenAI response:", parseError);
+      console.log("Raw content:", content);
+      
+      // Provide fallback values if we can't parse the response
+      result = {
+        clientNames: [],
+        jobTitles: [],
+        relevantDates: [],
+        skills: [],
+        education: []
+      };
+    }
     
     // Convert any non-string array elements to strings
     const normalizeStringArray = (arr: any[]): string[] => {
@@ -357,7 +393,43 @@ export async function matchResumeToJob(
       }
 
       console.log("OpenAI job matching completed successfully");
-      const result = JSON.parse(content);
+      
+      // Try to parse the content as JSON, with error handling
+      let result;
+      try {
+        // Attempt to clean up the response if it's not properly formatted JSON
+        let cleanedContent = content;
+        
+        // If content has markdown code blocks, extract just the JSON part
+        if (content.includes("```json")) {
+          const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+          if (jsonBlockMatch && jsonBlockMatch[1]) {
+            cleanedContent = jsonBlockMatch[1].trim();
+          }
+        } else if (content.includes("```")) {
+          const codeBlockMatch = content.match(/```\s*([\s\S]*?)\s*```/);
+          if (codeBlockMatch && codeBlockMatch[1]) {
+            cleanedContent = codeBlockMatch[1].trim();
+          }
+        }
+        
+        // Remove any trailing commas that might cause JSON parse errors
+        cleanedContent = cleanedContent.replace(/,(\s*[}\]])/g, '$1');
+        
+        result = JSON.parse(cleanedContent);
+      } catch (parseError) {
+        console.error("Error parsing OpenAI response:", parseError);
+        console.log("Raw content:", content);
+        
+        // Provide fallback values if we can't parse the response
+        result = {
+          score: 0,
+          strengths: [],
+          weaknesses: ["Unable to process the match results"],
+          suggestions: ["Try with a different resume format"],
+          technicalGaps: []
+        };
+      }
       
       // Ensure we have the expected structure with new technicalGaps field
       const matchSchema = z.object({
