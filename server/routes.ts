@@ -361,7 +361,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/submissions", async (req: Request, res: Response) => {
     try {
-      const validatedData = insertSubmissionSchema.parse(req.body);
+      const submissionData = req.body;
+      let candidateId: number;
+      
+      // Handle case where this is a new candidate (has candidateData)
+      if (submissionData.candidateData) {
+        // First validate the candidate data
+        const validatedCandidateData = insertCandidateSchema.parse(submissionData.candidateData);
+        
+        // Check if candidate already exists
+        const existingCandidate = await storage.getCandidateByIdentity(
+          validatedCandidateData.dobMonth,
+          validatedCandidateData.dobDay,
+          validatedCandidateData.ssn4
+        );
+        
+        if (existingCandidate) {
+          // Use the existing candidate
+          candidateId = existingCandidate.id;
+        } else {
+          // Create a new candidate
+          const newCandidate = await storage.createCandidate(validatedCandidateData);
+          candidateId = newCandidate.id;
+          
+          // Create resume data if provided
+          if (submissionData.resumeData) {
+            const resumeDataPayload = {
+              candidateId: newCandidate.id,
+              clientNames: submissionData.resumeData.clientNames || [],
+              jobTitles: submissionData.resumeData.jobTitles || [],
+              relevantDates: submissionData.resumeData.relevantDates || [],
+              skills: submissionData.resumeData.skills || [],
+              education: submissionData.resumeData.education || [],
+              extractedText: submissionData.resumeData.extractedText
+            };
+            
+            await storage.createResumeData(resumeDataPayload);
+          }
+        }
+      } else {
+        // For existing candidate, just use the candidateId provided
+        candidateId = submissionData.candidateId;
+        if (!candidateId) {
+          return res.status(400).json({ message: "Either candidateData or candidateId must be provided" });
+        }
+      }
+      
+      // Now prepare the submission data
+      const submissionPayload = {
+        jobId: submissionData.jobId,
+        candidateId: candidateId,
+        recruiterId: submissionData.recruiterId,
+        status: submissionData.status || "submitted",
+        matchScore: submissionData.matchScore,
+        agreedRate: submissionData.agreedRate,
+        notes: submissionData.notes || ""
+      };
+      
+      const validatedData = insertSubmissionSchema.parse(submissionPayload);
       
       // Check if the candidate has already been submitted for this job
       const existingSubmission = await storage.getSubmissionByJobAndCandidate(
@@ -403,7 +460,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      res.status(201).json(submission);
+      res.status(201).json({
+        submission,
+        candidate
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors });
