@@ -392,11 +392,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get recruiter
       const recruiter = await storage.getUser(submission.recruiterId);
       
+      // Get resume data only if job is active, otherwise provide null
+      let resumeData = null;
+      if (job && job.status.toLowerCase() === 'active' && candidate) {
+        resumeData = await storage.getResumeData(candidate.id);
+      }
+      
       res.json({
         ...submission,
         job,
         candidate,
-        recruiter
+        recruiter,
+        // Include resume data in response if job is active
+        resumeData: job && job.status.toLowerCase() === 'active' ? resumeData : null
       });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });

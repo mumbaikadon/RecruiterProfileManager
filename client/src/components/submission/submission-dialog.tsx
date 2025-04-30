@@ -22,6 +22,7 @@ interface SubmissionDialogProps {
   recruiterId: number;
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 interface PreviousSubmissionInfo {
@@ -40,6 +41,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
   recruiterId,
   isOpen,
   onClose,
+  onSuccess,
 }) => {
   const { mutate: createSubmission, isPending } = useCreateSubmission();
   const { toast } = useToast();
@@ -204,6 +206,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
                 title: "Submission successful",
                 description: `${candidateName} has been submitted for ${jobTitle}`,
               });
+              if (onSuccess) onSuccess();
               onClose();
             },
             onError: (error) => {
@@ -261,6 +264,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             title: "Submission successful",
             description: "The candidate has been submitted for this job.",
           });
+          if (onSuccess) onSuccess();
           onClose();
         },
         onError: (error) => {
