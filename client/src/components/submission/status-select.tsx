@@ -150,6 +150,12 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
               placeholder="Add comments about this status change..."
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
               rows={4}
             />
           </div>
