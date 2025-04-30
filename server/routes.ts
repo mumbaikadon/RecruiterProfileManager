@@ -241,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (existingCandidate) {
         return res.status(409).json({ 
-          message: "Candidate already exists", 
+          message: "This candidate is already in our past submitted list", 
           candidateId: existingCandidate.id 
         });
       }
@@ -387,6 +387,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const submissionData = req.body;
       let candidateId: number;
+      const jobId = submissionData.jobId;
+      
+      if (!jobId) {
+        return res.status(400).json({ message: "Job ID is required" });
+      }
       
       // Handle case where this is a new candidate (has candidateData)
       if (submissionData.candidateData) {
@@ -400,8 +405,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           validatedCandidateData.ssn4
         );
         
+        // Check if this candidate has already been submitted for this specific job
         if (existingCandidate) {
-          // Use the existing candidate
+          // Check if this candidate is already submitted for this job
+          const existingSubmission = await storage.getSubmissionByJobAndCandidate(
+            jobId,
+            existingCandidate.id
+          );
+          
+          if (existingSubmission) {
+            return res.status(409).json({ 
+              message: "This candidate is already in our past submitted list for this job", 
+              candidateId: existingCandidate.id,
+              submissionId: existingSubmission.id
+            });
+          }
+          
+          // Use the existing candidate if they haven't been submitted for this job yet
           candidateId = existingCandidate.id;
         } else {
           // Create a new candidate
@@ -483,7 +503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         return res.status(409).json({ 
-          message: "Candidate has already been submitted for this job",
+          message: "This candidate is already in our past submitted list for this job",
           submissionId: existingSubmission.id
         });
       }
