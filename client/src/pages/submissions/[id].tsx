@@ -340,17 +340,24 @@ const SubmissionDetailPage: React.FC = () => {
                             <FileText className="h-5 w-5 mr-2 text-primary" />
                             <span className="text-sm">{resumeData.fileName}</span>
                           </div>
-                          <Button 
-                            size="sm" 
-                            onClick={() => {
-                              // Always use the candidate ID to fetch the resume
-                              const downloadUrl = `/api/candidates/${candidate?.id}/resume`;
-                              console.log("Downloading resume from:", downloadUrl);
-                              window.open(downloadUrl, '_blank');
-                            }}
-                          >
-                            Download
-                          </Button>
+                          {resumeData.fileAccessRestricted ? (
+                            <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center">
+                              <Lock className="h-4 w-4 mr-1" />
+                              <span>File restricted (Job closed)</span>
+                            </div>
+                          ) : (
+                            <Button 
+                              size="sm" 
+                              onClick={() => {
+                                // Always use the candidate ID to fetch the resume
+                                const downloadUrl = `/api/candidates/${candidate?.id}/resume`;
+                                console.log("Downloading resume from:", downloadUrl);
+                                window.open(downloadUrl, '_blank');
+                              }}
+                            >
+                              Download
+                            </Button>
+                          )}
                         </div>
                       </div>
                     )}
