@@ -666,8 +666,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Import the sanitization utility
-      const { sanitizeHtml } = await import('./utils');
+      const { sanitizeHtml, isValidJson } = await import('./utils');
       
+      // Check if text contains XML/HTML-like content that might cause issues
+      if (text.includes('<!DOCTYPE') || text.includes('<?xml') || text.includes('<html')) {
+        console.log("Detected potentially problematic document format with XML/HTML tags");
+        
+        // Special handling for Word documents or HTML content
+        // Remove all XML/HTML tags and normalize whitespace
+        let cleanedText = text.replace(/<[^>]*>?/g, ' ')
+                              .replace(/\s+/g, ' ')
+                              .trim();
+                              
+        // If text is still problematic, respond with a more specific error
+        if (cleanedText.length < 100) {
+          return res.status(200).json({
+            clientNames: [],
+            jobTitles: [],
+            relevantDates: [],
+            skills: [],
+            education: [],
+            extractedText: "",
+            message: "Unable to extract meaningful text from this document format. Please convert to plain text or a simpler format."
+          });
+        }
+        
+        // Use the cleaned text instead
+        console.log("Using cleaned text from structured document, length:", cleanedText.length);
+        
+        // Proceed with analyzing the cleaned text
+        try {
+          const analysis = await analyzeResumeText(cleanedText);
+          
+          // Additional safety sanitization for extracted values
+          const safeAnalysis = {
+            clientNames: analysis.clientNames.map(client => sanitizeHtml(client)),
+            jobTitles: analysis.jobTitles.map(title => sanitizeHtml(title)),
+            relevantDates: analysis.relevantDates.map(date => sanitizeHtml(date)),
+            skills: analysis.skills.map(skill => sanitizeHtml(skill)), 
+            education: analysis.education.map(edu => sanitizeHtml(edu)),
+            // Truncate extractedText to ensure it doesn't exceed DB limits
+            extractedText: cleanedText.substring(0, 4000)
+          };
+          
+          return res.json(safeAnalysis);
+        } catch (innerError) {
+          console.error("Failed to analyze cleaned document text:", innerError);
+          return res.status(200).json({
+            clientNames: [],
+            jobTitles: [],
+            relevantDates: [],
+            skills: [],
+            education: [],
+            extractedText: cleanedText.substring(0, 1000),
+            message: "Document was processed but couldn't be fully analyzed. Try a different format."
+          });
+        }
+      }
+      
+      // For regular text content, proceed as normal
       // Sanitize the text before passing to OpenAI
       const sanitizedText = sanitizeHtml(text);
       

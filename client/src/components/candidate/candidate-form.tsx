@@ -186,24 +186,56 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
     setIsAnalyzing(true);
     
     try {
-      // Process the resume
-      const result = await analyzeResume(file);
-      setResumeText(result.text);
-      setResumeData(result.analysis);
+      // Check if file type is actually supported
+      const fileName = file.name.toLowerCase();
+      if (!fileName.endsWith('.pdf') && !fileName.endsWith('.doc') && !fileName.endsWith('.docx')) {
+        throw new Error("File format not supported. Please use PDF or Word documents only.");
+      }
       
-      // Sanitize job description and resume text before matching
-      const sanitizedJobDescription = sanitizeHtml(jobDescription);
-      const sanitizedResumeText = sanitizeHtml(result.text);
-      
-      // Match against job description
-      const matchResult = await matchResumeToJob(sanitizedResumeText, sanitizedJobDescription);
-      setMatchResults(matchResult);
-      
-    } catch (error) {
+      // Process the resume - with extra error handling
+      try {
+        const result = await analyzeResume(file);
+        setResumeText(result.text);
+        setResumeData(result.analysis);
+        
+        // Sanitize job description and resume text before matching
+        const sanitizedJobDescription = sanitizeHtml(jobDescription);
+        const sanitizedResumeText = sanitizeHtml(result.text);
+        
+        // Match against job description
+        const matchResult = await matchResumeToJob(sanitizedResumeText, sanitizedJobDescription);
+        setMatchResults(matchResult);
+      } catch (processingError: any) {
+        console.error("Error in resume processing:", processingError);
+        
+        // Set fallback data for resume in case of error
+        setResumeData({
+          clientNames: [],
+          jobTitles: [],
+          relevantDates: [],
+          skills: [],
+          education: [],
+          extractedText: ""
+        });
+        setMatchResults({
+          score: 0,
+          strengths: [],
+          weaknesses: ["Unable to process the file format"],
+          suggestions: ["Try uploading a different file or format (plain text may work better)"]
+        });
+        
+        // Still show error to user
+        toast({
+          title: "Resume Analysis Issue",
+          description: processingError.message || "There was a problem analyzing this file format.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
       console.error("Error analyzing resume:", error);
       toast({
         title: "Resume Analysis Failed",
-        description: "Failed to analyze the resume. Please try again.",
+        description: error.message || "Failed to analyze the resume. Please try again with a different file.",
         variant: "destructive",
       });
     } finally {
