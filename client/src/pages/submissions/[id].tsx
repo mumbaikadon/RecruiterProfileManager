@@ -276,8 +276,7 @@ const SubmissionDetailPage: React.FC = () => {
                 )}
               </TabsContent>
               
-              {job?.status?.toLowerCase() === 'active' && resumeData && (
-                <TabsContent value="resume" className="space-y-5">
+              <TabsContent value="resume" className="space-y-5">
                   <div className="bg-muted p-4 rounded-md">
                     <div className="flex items-start space-x-3">
                       <FileText className="h-5 w-5 mt-0.5 text-muted-foreground" />
@@ -285,6 +284,11 @@ const SubmissionDetailPage: React.FC = () => {
                         <h3 className="font-medium">Resume Data</h3>
                         <div className="text-sm text-muted-foreground">
                           Extracted and analyzed from candidate's resume
+                          {job?.status?.toLowerCase() !== 'active' && (
+                            <span className="ml-2 text-amber-600 dark:text-amber-400">
+                               (Job is closed - file download restricted)
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -378,7 +382,6 @@ const SubmissionDetailPage: React.FC = () => {
                     )}
                   </div>
                 </TabsContent>
-              )}
             </Tabs>
           </CardContent>
         </Card>
