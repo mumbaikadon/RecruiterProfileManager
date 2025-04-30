@@ -35,15 +35,32 @@ export function useSubmission(id: number) {
 export function useCreateSubmission() {
   return useMutation({
     mutationFn: async (data: InsertSubmission) => {
-      const res = await apiRequest("POST", "/api/submissions", data);
-      
-      // Check if the response was successful (no 4xx/5xx)
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to create submission");
+      try {
+        const res = await apiRequest("POST", "/api/submissions", data);
+        
+        // Check if the response was successful (no 4xx/5xx)
+        if (!res.ok) {
+          // Try to parse error message if available
+          try {
+            const errorData = await res.json();
+            throw new Error(errorData.message || "Failed to create submission");
+          } catch (parseError) {
+            // If JSON parsing fails, use status text
+            throw new Error(`Submission failed: ${res.statusText || "Unknown error"}`);
+          }
+        }
+        
+        // Try to parse the response
+        try {
+          return await res.json();
+        } catch (parseError) {
+          console.error("Error parsing response:", parseError);
+          throw new Error("Failed to parse server response. The submission might have been created but couldn't be confirmed.");
+        }
+      } catch (error) {
+        console.error("Submission error:", error);
+        throw error instanceof Error ? error : new Error("An unknown error occurred");
       }
-      
-      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });

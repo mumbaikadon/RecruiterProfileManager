@@ -21,13 +21,15 @@ export interface ResumeAnalysisResult {
  */
 export async function analyzeResumeText(resumeText: string): Promise<ResumeAnalysisResult> {
   try {
-    const result = await apiRequest<ResumeAnalysisResult>({
-      method: "POST",
-      url: "/api/openai/analyze-resume",
-      data: { text: resumeText }
-    });
+    const res = await apiRequest("POST", "/api/openai/analyze-resume", { text: resumeText });
     
-    return result;
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: "Failed to analyze resume" }));
+      throw new Error(errorData.message || "Failed to analyze resume");
+    }
+    
+    const result = await res.json();
+    return result as ResumeAnalysisResult;
   } catch (error) {
     console.error("Error analyzing resume:", error);
     throw new Error("Failed to analyze resume text");
@@ -46,15 +48,17 @@ export async function matchResumeToJob(
     console.log("Resume text length:", resumeText.length);
     console.log("Job description length:", jobDescription.length);
     
-    const result = await apiRequest<MatchScoreResult>({
-      method: "POST",
-      url: "/api/openai/match-resume",
-      data: { 
-        resumeText, 
-        jobDescription 
-      }
+    const res = await apiRequest("POST", "/api/openai/match-resume", { 
+      resumeText, 
+      jobDescription 
     });
     
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: "Failed to match resume" }));
+      throw new Error(errorData.message || "Failed to match resume");
+    }
+    
+    const result = await res.json();
     console.log("Match result received:", result);
     
     // Ensure we always have valid data even if the API returns incomplete information
