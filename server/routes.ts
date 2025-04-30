@@ -9,7 +9,11 @@ import {
   insertActivitySchema
 } from "@shared/schema";
 import { z } from "zod";
-import { analyzeResumeText, matchResumeToJob } from "./openai";
+import { 
+  analyzeResumeText, 
+  analyzeResumeWithAI, 
+  matchResumeToJob 
+} from "./openai";
 import fs from "fs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -799,10 +803,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Sanitized text length:", sanitizedText.length);
       
-      const analysis = await analyzeResumeText(sanitizedText);
+      // Try to use AI-enhanced analysis first, fall back to basic NLP
+      let analysis;
+      try {
+        console.log("Trying AI-enhanced resume analysis...");
+        analysis = await analyzeResumeWithAI(sanitizedText);
+        console.log("AI-enhanced analysis successful");
+      } catch (aiError) {
+        console.warn("AI-enhanced analysis failed, falling back to basic NLP:", aiError);
+        analysis = await analyzeResumeText(sanitizedText);
+      }
       
       // Additional safety sanitization for extracted values
-      const safeAnalysis = {
+      const baseAnalysis = {
         clientNames: analysis.clientNames.map(client => sanitizeHtml(client)),
         jobTitles: analysis.jobTitles.map(title => sanitizeHtml(title)),
         relevantDates: analysis.relevantDates.map(date => sanitizeHtml(date)),
@@ -810,6 +823,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         education: analysis.education.map(edu => sanitizeHtml(edu)),
         // Truncate extractedText to ensure it doesn't exceed DB limits
         extractedText: sanitizeHtml(analysis.extractedText).substring(0, 4000)
+      };
+      
+      // Cast to access enhanced properties if they exist
+      const enhancedAnalysis = analysis as any;
+      
+      // Combine base analysis with any enhanced metrics that may be available
+      const safeAnalysis = {
+        ...baseAnalysis,
+        // Include enhanced quality metrics if available
+        qualityScore: enhancedAnalysis.qualityScore,
+        contentSuggestions: enhancedAnalysis.contentSuggestions,
+        formattingSuggestions: enhancedAnalysis.formattingSuggestions,
+        languageSuggestions: enhancedAnalysis.languageSuggestions,
+        keywordScore: enhancedAnalysis.keywordScore,
+        readabilityScore: enhancedAnalysis.readabilityScore,
+        aiEnhanced: enhancedAnalysis.aiEnhanced || false
       };
       
       res.json(safeAnalysis);
