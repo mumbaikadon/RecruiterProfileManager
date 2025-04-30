@@ -49,7 +49,7 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
       { 
         id: submissionId, 
         status: selectedStatus,
-        feedback: feedback.trim() || null
+        feedback: feedback.trim() || undefined
       },
       {
         onSuccess: () => {
