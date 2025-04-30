@@ -139,14 +139,14 @@ const SubmissionDetailPage: React.FC = () => {
                 <Separator />
                 
                 <div>
-                  <h3 className="text-md font-medium mb-2">Match Score</h3>
-                  <div className="flex items-center space-x-3">
-                    <div className="relative h-20 w-20 flex items-center justify-center rounded-full bg-muted">
-                      <div className="absolute text-lg font-bold">
+                  <h3 className="text-md font-medium mb-2">Match Score Analysis</h3>
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="relative h-24 w-24 flex-shrink-0 flex items-center justify-center rounded-full bg-muted">
+                      <div className="absolute text-xl font-bold">
                         {submission.matchScore || 0}%
                       </div>
                       {/* Circular progress indicator */}
-                      <svg className="absolute h-20 w-20 transform -rotate-90" viewBox="0 0 100 100">
+                      <svg className="absolute h-24 w-24 transform -rotate-90" viewBox="0 0 100 100">
                         <circle 
                           cx="50" 
                           cy="50" 
@@ -169,10 +169,49 @@ const SubmissionDetailPage: React.FC = () => {
                         />
                       </svg>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-muted-foreground mb-1">
-                        Match score indicates how well the candidate's skills align with job requirements
-                      </p>
+                    
+                    <div className="flex-1 space-y-3">
+                      {submission.strengths && submission.strengths.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-green-600 dark:text-green-400">Strengths</h4>
+                          <ul className="list-disc list-inside text-sm space-y-1 ml-1">
+                            {submission.strengths.map((strength: string, i: number) => (
+                              <li key={i} className="text-muted-foreground">{strength}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {submission.weaknesses && submission.weaknesses.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-red-600 dark:text-red-400">Areas for Improvement</h4>
+                          <ul className="list-disc list-inside text-sm space-y-1 ml-1">
+                            {submission.weaknesses.map((weakness: string, i: number) => (
+                              <li key={i} className="text-muted-foreground">{weakness}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {submission.suggestions && submission.suggestions.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-blue-600 dark:text-blue-400">Suggestions</h4>
+                          <ul className="list-disc list-inside text-sm space-y-1 ml-1">
+                            {submission.suggestions.map((suggestion: string, i: number) => (
+                              <li key={i} className="text-muted-foreground">{suggestion}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {(!submission.strengths || !submission.strengths.length) && 
+                       (!submission.weaknesses || !submission.weaknesses.length) && 
+                       (!submission.suggestions || !submission.suggestions.length) && (
+                        <p className="text-sm text-muted-foreground">
+                          Match score indicates how well the candidate's skills align with job requirements.
+                          More detailed analysis will be available when the resume is analyzed against the job description.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -289,6 +328,29 @@ const SubmissionDetailPage: React.FC = () => {
                             <li key={i}>{edu}</li>
                           ))}
                         </ul>
+                      </div>
+                    )}
+                    
+                    {/* Resume File Download */}
+                    {resumeData.fileName && (
+                      <div>
+                        <h3 className="text-md font-medium mb-2">Resume File</h3>
+                        <div className="bg-accent/20 p-4 rounded-md flex items-center justify-between">
+                          <div className="flex items-center">
+                            <FileText className="h-5 w-5 mr-2 text-primary" />
+                            <span className="text-sm">{resumeData.fileName}</span>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            onClick={() => {
+                              if (resumeData.fileUrl) {
+                                window.open(`/api/candidates/${candidate?.id}/resume`, '_blank');
+                              }
+                            }}
+                          >
+                            Download
+                          </Button>
+                        </div>
                       </div>
                     )}
                     

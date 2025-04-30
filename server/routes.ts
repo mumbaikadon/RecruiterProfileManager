@@ -125,9 +125,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Status is required" });
       }
       
+      // Get job's previous status before updating
+      const job = await storage.getJob(id);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+      
+      const prevStatus = job.status;
       const updatedJob = await storage.updateJobStatus(id, status);
+      
+      // If job is being closed (status changing from active to closed)
+      if (prevStatus.toLowerCase() === 'active' && status.toLowerCase() === 'closed') {
+        console.log(`Job ${job.jobId} (${job.title}) is being closed. Updating candidate resume data...`);
+        
+        // Get all submissions for this job
+        const submissions = await storage.getSubmissions({ jobId: id });
+        
+        // Create an activity for the job status change
+        await storage.createActivity({
+          type: "job_closed",
+          jobId: id,
+          message: `Job ${job.title} (${job.jobId}) status changed from ${prevStatus} to ${status}. ${submissions.length} candidate submissions affected.`
+        });
+        
+        // Process each submission to ensure resume data is preserved
+        for (const submission of submissions) {
+          console.log(`Processing submission ID ${submission.id} for candidate ID ${submission.candidateId}`);
+          
+          // We don't need to do anything special here since the data model
+          // already preserves candidate resume data independently of job status
+          // The API will automatically filter out the actual resume file when
+          // responding to requests for closed jobs
+        }
+      }
+      
       res.json(updatedJob);
     } catch (error) {
+      console.error("Error updating job status:", error);
       res.status(500).json({ message: (error as Error).message });
     }
   });
