@@ -105,61 +105,203 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   useEffect(() => {
     // Attempt to extract data from pasted text
     if (pastedData.length > 0) {
-      // First, check for structured data format with field labels
-      const firstNameMatch = pastedData.match(/Legal First Name:([^\n]+)/i);
-      if (firstNameMatch && firstNameMatch[1].trim()) {
-        form.setValue("firstName", firstNameMatch[1].trim());
+      console.log("Attempting to parse pasted data:", pastedData.length, "characters");
+      
+      // Check for multiple text formats and patterns
+      
+      // Format 1: Pattern with -Label: Value format (like the first example)
+      const firstNamePattern1 = pastedData.match(/[-]?Legal First Name:?\s*([^\n\r]*)/i) || 
+                                pastedData.match(/[-]?First Name:?\s*([^\n\r]*)/i);
+      const middleNamePattern1 = pastedData.match(/[-]?Legal Middle Name:?\s*([^\n\r]*)/i) || 
+                                 pastedData.match(/[-]?Middle Name:?\s*([^\n\r]*)/i);
+      const lastNamePattern1 = pastedData.match(/[-]?Legal Last Name:?\s*([^\n\r]*)/i) || 
+                              pastedData.match(/[-]?Last Name:?\s*([^\n\r]*)/i);
+      
+      // Format 2: Full legal name format (as per passport)
+      const fullNameMatch = pastedData.match(/(?:full legal name|your full legal name|as per passport):?\s*([^\n\r]*)/i);
+      
+      // Apply matches in priority order
+      if (firstNamePattern1 && firstNamePattern1[1].trim()) {
+        form.setValue("firstName", firstNamePattern1[1].trim());
+      }
+      
+      if (middleNamePattern1 && middleNamePattern1[1].trim()) {
+        form.setValue("middleName", middleNamePattern1[1].trim());
+      }
+      
+      if (lastNamePattern1 && lastNamePattern1[1].trim()) {
+        form.setValue("lastName", lastNamePattern1[1].trim());
+      }
+      
+      // If we have a full name match but not individual components, try to parse it
+      if (fullNameMatch && (!firstNamePattern1 || !lastNamePattern1)) {
+        const nameParts = fullNameMatch[1].trim().split(/\s+/);
+        if (nameParts.length >= 2) {
+          // First part is first name
+          form.setValue("firstName", nameParts[0]);
+          
+          // Last part is last name
+          form.setValue("lastName", nameParts[nameParts.length - 1]);
+          
+          // Middle parts (if any) are middle name
+          if (nameParts.length > 2) {
+            form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
+          }
+        }
       }
 
-      const middleNameMatch = pastedData.match(/Legal Middle Name:([^\n]+)/i);
-      if (middleNameMatch && middleNameMatch[1].trim()) {
-        form.setValue("middleName", middleNameMatch[1].trim());
+      // Extract DOB - multiple formats
+      // Format: "DOB: 11th December 1993" or similar variations
+      const dobFormatA = pastedData.match(/DOB:?\s*(\d{1,2})(?:st|nd|rd|th)?\s+([a-zA-Z]+)\s+(\d{4})/i);
+      // Format: MM/DD/YYYY
+      const dobFormatB = pastedData.match(/DOB:?\s*(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?/i);
+      // Month name format - e.g., "January 15"
+      const dobFormatC = pastedData.match(/Birth Month[^:]*:?\s*([a-zA-Z]+)/i);
+      const dobDayFormatC = pastedData.match(/Birth Day[^:]*:?\s*(\d{1,2})/i);
+      
+      const monthNameToNumber = (month: string): number => {
+        const months: {[key: string]: number} = {
+          'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
+          'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12,
+          'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'jun': 6, 'jul': 7, 'aug': 8, 
+          'sep': 9, 'sept': 9, 'oct': 10, 'nov': 11, 'dec': 12
+        };
+        return months[month.toLowerCase()] || 0;
+      };
+      
+      if (dobFormatA) {
+        // 11th December 1993 format
+        const day = parseInt(dobFormatA[1]);
+        const month = monthNameToNumber(dobFormatA[2]);
+        if (month > 0 && day > 0) {
+          form.setValue("dobMonth", month);
+          form.setValue("dobDay", day);
+        }
+      } else if (dobFormatB) {
+        // MM/DD format
+        const month = parseInt(dobFormatB[1]);
+        const day = parseInt(dobFormatB[2]);
+        if (month > 0 && day > 0) {
+          form.setValue("dobMonth", month);
+          form.setValue("dobDay", day);
+        }
+      } else if (dobFormatC && dobDayFormatC) {
+        // Separate month and day fields
+        const month = monthNameToNumber(dobFormatC[1]);
+        const day = parseInt(dobDayFormatC[1]);
+        if (month > 0 && day > 0) {
+          form.setValue("dobMonth", month);
+          form.setValue("dobDay", day);
+        }
       }
 
-      const lastNameMatch = pastedData.match(/Legal Last Name:([^\n]+)/i);
-      if (lastNameMatch && lastNameMatch[1].trim()) {
-        form.setValue("lastName", lastNameMatch[1].trim());
+      // Extract SSN last 4 digits - multiple formats
+      const ssnPattern1 = pastedData.match(/SSN:?\s*(?:.*?)(\d{4})(?:\D|$)/i); // Last 4 of 123-45-6789
+      const ssnPattern2 = pastedData.match(/Last 4 of SSN:?\s*(\d{4})/i); // Explicit "Last 4 of SSN"
+      const ssnPattern3 = pastedData.match(/Last 4 SSN:?\s*(\d{4})/i); // Explicit "Last 4 SSN"
+      
+      if (ssnPattern1) {
+        form.setValue("ssn4", ssnPattern1[1]);
+      } else if (ssnPattern2) {
+        form.setValue("ssn4", ssnPattern2[1]);
+      } else if (ssnPattern3) {
+        form.setValue("ssn4", ssnPattern3[1]);
       }
 
-      // Extract DOB in MM/DD format
-      const dobMatch = pastedData.match(/Month\/Day of Birth:?\s*(\d{1,2})\/(\d{1,2})/i);
-      if (dobMatch) {
-        form.setValue("dobMonth", parseInt(dobMatch[1]));
-        form.setValue("dobDay", parseInt(dobMatch[2]));
+      // Extract email - find any email pattern
+      const emailPattern = pastedData.match(/(?:email|e-mail)[^:]*:?\s*([a-zA-Z0-9._+-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/i) ||
+                           pastedData.match(/([a-zA-Z0-9._+-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/);
+      if (emailPattern) {
+        form.setValue("email", emailPattern[1]);
       }
 
-      // Extract SSN last 4
-      const ssnMatch = pastedData.match(/Social Security Text:?\s*(\d{4})/i);
-      if (ssnMatch) {
-        form.setValue("ssn4", ssnMatch[1]);
+      // Extract phone with international format recognition
+      const phonePatterns = [
+        // Format: "Phone number: +14697082162" or similar
+        pastedData.match(/(?:phone|mobile|cell)[^:]*:?\s*((?:\+\d{1,2}\s?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/i),
+        // Any 10-digit number with various separators
+        pastedData.match(/(\d{3}[-.\s]?\d{3}[-.\s]?\d{4})/),
+        // International format
+        pastedData.match(/(\+\d{1,2}\s?\d{10})/),
+      ];
+      
+      const validPhoneMatch = phonePatterns.find(match => match !== null);
+      if (validPhoneMatch) {
+        form.setValue("phone", validPhoneMatch[1]);
       }
 
-      // Extract email
-      const emailMatch = pastedData.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/);
-      if (emailMatch) {
-        form.setValue("email", emailMatch[1]);
+      // Extract LinkedIn - handle multiple formats
+      const linkedInPatterns = [
+        // Format: linkedin.com/in/username
+        pastedData.match(/linkedin\.com\/in\/([a-zA-Z0-9-]+)/i),
+        // Format: LinkedIn: https://www.linkedin.com/...
+        pastedData.match(/linkedin:?\s*(https?:\/\/(?:www\.)?linkedin\.com\/[^\s]+)/i),
+        // Full URL in text
+        pastedData.match(/(https?:\/\/(?:www\.)?linkedin\.com\/[^\s]+)/i)
+      ];
+      
+      const validLinkedInMatch = linkedInPatterns.find(match => match !== null);
+      if (validLinkedInMatch) {
+        if (validLinkedInMatch[1].startsWith('http')) {
+          form.setValue("linkedIn", validLinkedInMatch[1]);
+        } else if (validLinkedInMatch[0].includes('linkedin.com/')) {
+          form.setValue("linkedIn", `https://${validLinkedInMatch[0].trim()}`);
+        } else {
+          form.setValue("linkedIn", `https://linkedin.com/in/${validLinkedInMatch[1]}`);
+        }
       }
 
-      // Extract phone
-      const phoneMatch = pastedData.match(/(\+?1?\s*\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4})/);
-      if (phoneMatch) {
-        form.setValue("phone", phoneMatch[1]);
+      // Extract location - handle multiple formats
+      const locationPatterns = [
+        // Format: "Location: City, State" or "Location - City, State"
+        pastedData.match(/(?:location|current location|address)[^:]*:?\s*([^,\n\r]+,\s*[A-Z]{2}(?:\s+\d{5})?)/i),
+        // Format: "City, State ZIP"
+        pastedData.match(/([A-Za-z\s.-]+,\s*[A-Z]{2}\s*\d{5}(?:-\d{4})?)/i),
+        // Format: "City, State"
+        pastedData.match(/([A-Za-z\s.-]+,\s*[A-Z]{2})(?:\s|$)/i),
+        // Format with TX, FL, etc.
+        pastedData.match(/([A-Za-z\s.-]+,\s*(?:TX|FL|CA|NY|IL|PA|OH|GA|NC|MI|NJ|VA|WA|AZ|MA|TN|IN|MO|MD|WI|CO|MN|SC|AL|LA|KY|OR|OK|CT|UT|IA|NV|AR|MS|KS|NM|NE|ID|WV|HI|NH|ME|MT|RI|DE|SD|ND|AK|DC|VT|WY))/i)
+      ];
+      
+      const validLocationMatch = locationPatterns.find(match => match !== null);
+      if (validLocationMatch) {
+        form.setValue("location", validLocationMatch[1].trim());
+      }
+      
+      // Extract work authorization - multiple formats
+      const workAuthPatterns = [
+        // Format: "Work Authorization: GC EAD" or similar
+        pastedData.match(/work\s*authorization[^:]*:?\s*([^\n\r,;]+)/i),
+        // GC EAD, H1B, etc. specific formats
+        pastedData.match(/(?:GC\s*EAD|Green\s*Card|H1-?B|EAD|VISA|Citizen)/i),
+        // Key phrases
+        pastedData.match(/(?:authorized\s*to\s*work|visa\s*status|work\s*permit)[^:]*:?\s*([^\n\r,;]+)/i)
+      ];
+      
+      const validAuthMatch = workAuthPatterns.find(match => match !== null);
+      if (validAuthMatch) {
+        const authText = validAuthMatch[1] || validAuthMatch[0];
+        const authLower = authText.toLowerCase().trim();
+        
+        // Map common authorization texts to our dropdown values
+        if (authLower.includes('citizen')) {
+          form.setValue("workAuthorization", "citizen");
+        } else if (authLower.match(/green\s*card/i) || authLower.match(/permanent\s*resident/i)) {
+          form.setValue("workAuthorization", "green-card");
+        } else if (authLower.match(/h-?1-?b/i) || authLower.match(/h1-?b/i)) {
+          form.setValue("workAuthorization", "h1b");
+        } else if (authLower.match(/ead/) || authLower.match(/gc\s*ead/i)) {
+          form.setValue("workAuthorization", "ead");
+        } else {
+          form.setValue("workAuthorization", "other");
+          setShowOtherAuthorizationInput(true);
+          setOtherAuthorization(authText.trim());
+        }
       }
 
-      // Extract LinkedIn
-      const linkedInMatch = pastedData.match(/(linkedin\.com\/in\/[a-zA-Z0-9-]+)/);
-      if (linkedInMatch) {
-        form.setValue("linkedIn", `https://${linkedInMatch[1]}`);
-      }
-
-      // Extract location
-      const locationMatch = pastedData.match(/(?:located in|located at|location:|from)\s+([A-Za-z\s]+,\s+[A-Z]{2})/i);
-      if (locationMatch) {
-        form.setValue("location", locationMatch[1]);
-      }
-
-      // If no structured matches were found, try general pattern matching as fallback
-      if (!firstNameMatch && !lastNameMatch) {
+      // Fallback approach for name parsing if none of the above patterns matched
+      if (!form.getValues("firstName") && !form.getValues("lastName")) {
+        // Look for common name patterns
         const nameMatch = pastedData.match(/([A-Z][a-z]+)\s+(?:([A-Z][a-z]+)\s+)?([A-Z][a-z]+)/);
         if (nameMatch) {
           form.setValue("firstName", nameMatch[1]);
@@ -172,7 +314,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         }
       }
     }
-  }, [pastedData, form]);
+  }, [pastedData, form, setShowOtherAuthorizationInput, setOtherAuthorization]);
   
   const handlePasteDataChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setPastedData(e.target.value);
