@@ -14,6 +14,7 @@ import {
   analyzeResumeWithAI, 
   matchResumeToJob 
 } from "./openai";
+import { syncCandidateToTalentStreamline } from "./talentStreamline";
 import fs from "fs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -675,6 +676,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId: userId,
           message: `Submission status changed to ${status}${feedback ? " with feedback" : ""}`
         });
+        
+        // If status is "Offer Accepted", sync candidate data to TalentStreamline microservice
+        if (status === "Offer Accepted") {
+          console.log(`Offer accepted for submission #${id}. Syncing to TalentStreamline...`);
+          try {
+            const syncResult = await syncCandidateToTalentStreamline(id);
+            if (syncResult) {
+              console.log(`Successfully synced submission #${id} to TalentStreamline`);
+              // Create an activity to log the sync
+              await storage.createActivity({
+                type: "system_integration",
+                submissionId: id,
+                jobId: submission.jobId,
+                candidateId: submission.candidateId,
+                message: `Candidate information synced to TalentStreamline`
+              });
+            } else {
+              console.error(`Failed to sync submission #${id} to TalentStreamline`);
+            }
+          } catch (syncError) {
+            console.error(`Error syncing to TalentStreamline: ${syncError.message}`);
+            // We don't want to fail the status update if the sync fails,
+            // so we just log the error and continue
+          }
+        }
       }
       
       res.json(updatedSubmission);
