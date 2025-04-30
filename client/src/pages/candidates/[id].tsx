@@ -38,7 +38,7 @@ function CandidateDetailPage() {
   const hasResumeData = candidate.resumeData && Object.keys(candidate.resumeData).length > 0;
   
   // Calculate match rate statistics
-  const submissionRates = candidate.submissions?.map(sub => sub.rate || 0) || [];
+  const submissionRates = candidate.submissions?.map(sub => sub.agreedRate || 0) || [];
   const avgRate = submissionRates.length > 0 
     ? submissionRates.reduce((sum, rate) => sum + rate, 0) / submissionRates.length 
     : 0;
@@ -332,7 +332,7 @@ function CandidateDetailPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm font-medium">Submission Rate</p>
-                        <p className="text-lg font-bold text-primary">{formatRate(submission.rate)}</p>
+                        <p className="text-lg font-bold text-primary">{formatRate(submission.agreedRate)}</p>
                       </div>
                       
                       <div>
