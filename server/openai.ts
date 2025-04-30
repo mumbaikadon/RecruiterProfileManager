@@ -652,102 +652,219 @@ function extractEducation(text: string): string[] {
 }
 
 /**
- * Document parser with enhanced PDF and DOCX handling
+ * Document parser with robust PDF and DOCX handling
+ * Significantly improved to handle various document formats and extract maximum content
  */
 async function parseDocument(buffer: Buffer, fileType: string): Promise<string> {
   try {
     console.log(`Parsing document of type: ${fileType}, buffer size: ${buffer.length} bytes`);
     
     if (fileType === 'pdf') {
-      // Enhanced PDF parsing with error handling
+      // Enhanced PDF parsing with multiple fallback strategies
       try {
         const pdfParse = require('pdf-parse');
         
-        // Set options for better PDF parsing
-        const options = {
-          // Limit the number of pages to parse if PDF is very large
-          max: 50,
-          // Add some page preprocessing to handle difficult PDFs
-          pagerender: function(pageData: any) {
-            // Extract text from page
-            let renderOptions = {
-              normalizeWhitespace: true,
-              disableCombineTextItems: false
-            };
-            return pageData.getTextContent(renderOptions)
-              .then(function(textContent: any) {
-                let lastY, text = '';
-                // Process each text item
-                for (let item of textContent.items) {
-                  if (lastY == item.transform[5] || !lastY)
-                    text += item.str;
-                  else
-                    text += '\n' + item.str;
-                    
-                  lastY = item.transform[5];
-                }
-                return text;
-              });
-          }
-        };
-        
-        const data = await pdfParse(buffer, options);
-        
-        // Some basic checks on the extracted text
-        if (!data.text || data.text.trim().length < 10) {
-          console.warn("Extracted PDF text seems too short or empty");
-          
-          // Try alternate method without options if initial attempt yielded poor results
+        // Try standard parsing first
+        let pdfText = "";
+        try {
+          console.log("Attempting standard PDF parsing...");
           const basicData = await pdfParse(buffer);
-          if (basicData.text && basicData.text.length > data.text.length) {
-            console.log("Using basic PDF parsing which yielded better results");
-            return basicData.text;
+          pdfText = basicData.text || "";
+          console.log(`Standard PDF parsing extracted ${pdfText.length} characters`);
+        } catch (error) {
+          const basicError = error as Error;
+          console.warn("Standard PDF parsing failed:", basicError.message);
+        }
+        
+        // If standard parsing produced little text, try with custom options
+        if (!pdfText || pdfText.length < 500) {
+          try {
+            console.log("Standard parsing produced insufficient text, trying enhanced options...");
+            // Set options for better PDF parsing
+            const options = {
+              max: 100, // Process more pages
+              pagerender: function(pageData: any) {
+                return pageData.getTextContent({
+                  normalizeWhitespace: true,
+                  disableCombineTextItems: false
+                }).then(function(textContent: any) {
+                  let lastY, text = '';
+                  for (let item of textContent.items) {
+                    if (lastY == item.transform[5] || !lastY)
+                      text += item.str;
+                    else
+                      text += '\n' + item.str;
+                    lastY = item.transform[5];
+                  }
+                  return text;
+                });
+              }
+            };
+            
+            const enhancedData = await pdfParse(buffer, options);
+            
+            // Use the enhanced result if it's better than the standard one
+            if (enhancedData.text && enhancedData.text.length > pdfText.length) {
+              console.log(`Enhanced PDF parsing extracted ${enhancedData.text.length} characters (better than standard)`);
+              pdfText = enhancedData.text;
+            }
+          } catch (error) {
+            const enhancedError = error as Error;
+            console.warn("Enhanced PDF parsing failed:", enhancedError.message);
           }
         }
         
-        return data.text;
-      } catch (pdfError) {
-        console.error("Error in PDF parsing:", pdfError);
-        // Fallback to basic buffer conversion if PDF parsing fails
-        const textContent = buffer.toString('utf8', 0, Math.min(buffer.length, 8000))
-          .replace(/[^\x20-\x7E\r\n]/g, ' ') // Remove non-printable characters
-          .replace(/\x00/g, ' '); // Replace null bytes with spaces
+        // If we still have little text, try a different approach with PDF.js-like extraction
+        if (!pdfText || pdfText.length < 500) {
+          console.log("Still insufficient text, trying basic buffer extraction");
+          // Attempt to find text sections in the raw buffer
+          const rawContent = buffer.toString('utf8');
+          const textMatches = rawContent.match(/\(([^)]{3,1000})\)/g) || [];
           
-        // Check if the fallback produced anything useful
-        if (textContent.trim().length > 100 && !/^\%PDF/.test(textContent)) {
-          console.log("PDF parsing failed, falling back to basic text extraction");
-          return textContent;
-        } else {
-          return "This appears to be a PDF file in binary format that cannot be directly read. Please try uploading a text-based PDF or convert it using a PDF text extraction tool.";
+          if (textMatches.length > 0) {
+            const extractedTexts = textMatches
+              .map(match => match.substring(1, match.length - 1))
+              .filter(text => text.length > 5 && /[a-zA-Z]/.test(text))
+              .join(' ');
+              
+            if (extractedTexts.length > pdfText.length) {
+              console.log(`Raw buffer extraction found ${extractedTexts.length} characters of text`);
+              pdfText = extractedTexts;
+            }
+          }
         }
+        
+        // If we have text at this point, return it
+        if (pdfText && pdfText.length > 100) {
+          // Perform some extra cleaning on the extracted text
+          pdfText = pdfText
+            .replace(/\s+/g, ' ')            // Normalize whitespace
+            .replace(/[\r\n]+/g, '\n')       // Normalize line breaks
+            .replace(/\n\s*\n\s*\n/g, '\n\n') // Remove excessive line breaks
+            .trim();
+            
+          console.log(`Final PDF text length: ${pdfText.length} characters`);
+          return pdfText;
+        }
+        
+        // If we reach here, extraction was poor
+        return "This PDF could not be properly parsed. The file may be scanned, image-based, or protected.";
+      } catch (pdfError) {
+        console.error("All PDF parsing methods failed:", pdfError);
+        return "Unable to extract text from this PDF. The file may be corrupt, encrypted, or in an unsupported format.";
       }
     } else if (fileType === 'docx') {
-      // Enhanced DOCX parsing
+      // Significantly enhanced DOCX parsing with multiple approaches
+      let docxText = "";
+      
+      // Try mammoth.js extraction first - this is typically the best for DOCX
       try {
+        console.log("Attempting DOCX parsing with mammoth.js...");
         const mammoth = require('mammoth');
-        const result = await mammoth.extractRawText({ 
-          buffer,
-          // Add options to improve text extraction
-          preserveEmptyParagraphs: false,
-          includeEmbeddedStyleMap: true,
-        });
-        return result.value;
-      } catch (docxError) {
-        console.error("Error in DOCX parsing:", docxError);
-        return "Unable to parse this DOCX file. It may be corrupt or password protected.";
-      }
-    } else {
-      // Handle plain text files with encoding detection
-      try {
-        // First try UTF-8
-        const text = buffer.toString('utf8');
-        // Check if the text seems valid (contains printable ASCII characters)
-        if (/[\x20-\x7E]/.test(text)) {
-          return text;
-        } else {
-          // If UTF-8 looks wrong, try latin1 (a more permissive encoding)
-          return buffer.toString('latin1');
+        
+        // Try with default options first
+        const result = await mammoth.extractRawText({ buffer });
+        docxText = result.value || "";
+        console.log(`Mammoth.js extracted ${docxText.length} characters from DOCX`);
+        
+        // If we got little text, try with different options
+        if (docxText.length < 500) {
+          console.log("Initial DOCX extraction produced little text, trying with alternate options");
+          const alternateResult = await mammoth.extractRawText({
+            buffer,
+            preserveEmptyParagraphs: true,  // Changed to true to preserve structure
+            includeEmbeddedStyleMap: true,
+            convertImage: mammoth.images.imgElement // Try to extract image descriptions
+          });
+          
+          if (alternateResult.value && alternateResult.value.length > docxText.length) {
+            console.log(`Alternate DOCX options extracted ${alternateResult.value.length} characters (better than standard)`);
+            docxText = alternateResult.value;
+          }
         }
+        
+        // If we have good text at this point, return it
+        if (docxText && docxText.length > 200) {
+          // Clean up the text
+          docxText = docxText
+            .replace(/\s+/g, ' ')           // Normalize whitespace
+            .replace(/[\r\n]+/g, '\n')      // Normalize line breaks
+            .replace(/\n\s*\n\s*\n/g, '\n\n') // Remove excessive line breaks
+            .trim();
+            
+          console.log(`Final DOCX text length: ${docxText.length} characters`);
+          return docxText;
+        }
+      } catch (error) {
+        const mammothError = error as Error;
+        console.warn("Mammoth.js DOCX parsing failed:", mammothError.message);
+      }
+      
+      // If mammoth failed or produced little text, try a more basic approach
+      if (!docxText || docxText.length < 200) {
+        try {
+          console.log("Attempting basic DOCX extraction by searching for text in the buffer...");
+          
+          // DOCX files are ZIP files with XML content - try to find text content in the raw buffer
+          const content = buffer.toString('utf8');
+          
+          // Look for text between XML tags in the document
+          const textMatches = content.match(/>([^<]{3,1000})</g) || [];
+          
+          if (textMatches.length > 0) {
+            const extractedTexts = textMatches
+              .map(match => match.substring(1, match.length - 1))
+              .filter(text => text.length > 3 && /[a-zA-Z]/.test(text))
+              .join(' ');
+              
+            if (extractedTexts.length > docxText.length) {
+              console.log(`Raw XML extraction found ${extractedTexts.length} characters of text`);
+              docxText = extractedTexts;
+            }
+          }
+          
+          if (docxText && docxText.length > 100) {
+            return docxText;
+          }
+        } catch (error) {
+          const basicError = error as Error;
+          console.warn("Basic DOCX extraction failed:", basicError.message);
+        }
+      }
+      
+      // If we still don't have good text, return an error message
+      return "Unable to extract content from this Word document. The file may be corrupt or password protected.";
+    } else {
+      // Handle plain text files with smarter encoding detection
+      try {
+        // First try UTF-8, which is most common
+        const utf8Text = buffer.toString('utf8');
+        
+        // Check if the text seems valid (has a reasonable proportion of printable ASCII characters)
+        const printableChars = utf8Text.match(/[\x20-\x7E]/g) || [];
+        const printableRatio = printableChars.length / utf8Text.length;
+        
+        if (printableRatio > 0.7) {
+          console.log(`Text file parsed as UTF-8 with ${utf8Text.length} characters`);
+          return utf8Text;
+        } 
+        
+        // If UTF-8 looks wrong, try latin1 (a more permissive encoding)
+        const latin1Text = buffer.toString('latin1');
+        const latin1PrintableChars = latin1Text.match(/[\x20-\x7E]/g) || [];
+        const latin1PrintableRatio = latin1PrintableChars.length / latin1Text.length;
+        
+        if (latin1PrintableRatio > 0.7) {
+          console.log(`Text file parsed as Latin1 with ${latin1Text.length} characters`);
+          return latin1Text;
+        }
+        
+        // If both encodings look poor, use UTF-8 but clean it up
+        console.log("Text file has encoding issues, using UTF-8 with cleanup");
+        return utf8Text
+          .replace(/[^\x20-\x7E\r\n]/g, ' ') // Replace non-printable with spaces
+          .replace(/\s+/g, ' ')              // Normalize whitespace
+          .trim();
       } catch (textError) {
         console.error("Error processing text file:", textError);
         return buffer.toString('utf8').replace(/[^\x20-\x7E\r\n]/g, ' ');
