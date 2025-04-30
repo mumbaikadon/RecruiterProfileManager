@@ -1,19 +1,31 @@
-import OpenAI from "openai";
 import { z } from "zod";
+// Import natural modules directly
+import natural from 'natural';
+import * as nodeNlp from 'node-nlp';
+import * as fs from 'fs';
+import * as util from 'util';
+import * as path from 'path';
 
-// Create OpenAI client
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// NLP setup
+const nlpManager = new nodeNlp.NlpManager({ language: 'en' });
+const tokenizer = new natural.WordTokenizer();
+const stemmer = natural.PorterStemmer;
 
-// Model configuration
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const COMPLETION_MODEL = "gpt-4o";
-const EMBEDDING_MODEL = "text-embedding-ada-002";
+// Initialize basic NLP tools
+const sentimentAnalyzer = new nodeNlp.SentimentAnalyzer({ language: 'en' });
 
 /**
- * Calculate cosine similarity between two vectors
- * This measures how similar two embeddings are
+ * Calculate cosine similarity between two arrays of strings
+ * This measures how similar two texts are
  */
-function cosineSimilarity(vecA: number[], vecB: number[]): number {
+function cosineSimilarity(tokensA: string[], tokensB: string[]): number {
+  // Create a set of all unique tokens
+  const uniqueTokens = Array.from(new Set([...tokensA, ...tokensB]));
+  
+  // Create vectors for each set of tokens
+  const vecA = uniqueTokens.map(token => tokensA.filter(t => t === token).length);
+  const vecB = uniqueTokens.map(token => tokensB.filter(t => t === token).length);
+  
   // Calculate dot product
   const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
   
@@ -22,24 +34,25 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
   const magB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
   
   // Calculate cosine similarity
-  return dotProduct / (magA * magB);
+  return dotProduct / (magA * magB) || 0;
 }
 
 /**
- * Get embedding vector for text using OpenAI's embedding API
+ * Get tokenized terms from text with normalization
  */
-async function getEmbedding(text: string): Promise<number[]> {
-  try {
-    const response = await openai.embeddings.create({
-      model: EMBEDDING_MODEL,
-      input: text.slice(0, 8000), // Limit to 8000 chars to fit token limits
-    });
-    
-    return response.data[0].embedding;
-  } catch (error) {
-    console.error("Error getting embedding:", error);
-    throw error;
-  }
+function extractTerms(text: string): string[] {
+  // Clean and normalize text
+  const cleanText = text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  // Tokenize and stem words 
+  const tokens = tokenizer.tokenize(cleanText);
+  return tokens
+    .filter(token => token.length > 2) // Remove short words
+    .map(token => stemmer.stem(token));
 }
 
 // Interface for resume analysis result
@@ -66,7 +79,7 @@ export interface MatchScoreResult {
 }
 
 /**
- * Analyzes resume text using OpenAI to extract key information
+ * Analyzes resume text using NLP to extract key information
  */
 export async function analyzeResumeText(resumeText: string): Promise<ResumeAnalysisResult> {
   try {
@@ -86,7 +99,7 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
     // Import the sanitization utility
     const { sanitizeHtml } = await import('./utils');
     
-    // Check for common problematic patterns in file content that cause JSON parsing issues
+    // Check for common problematic patterns in file content that cause parsing issues
     if (resumeText.trim().startsWith('<!DOCTYPE') || resumeText.includes('<?xml')) {
       console.warn("Detected DOCTYPE/XML content in resume text - cleaning");
       resumeText = resumeText.replace(/<!DOCTYPE[^>]*>/gi, '')
@@ -112,131 +125,27 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
     resumeText = sanitizeHtml(resumeText);
     
     try {
-      console.log("Analyzing resume text with OpenAI...");
+      console.log("Analyzing resume text with NLP...");
       
-      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert at analyzing resumes for the IT staffing industry. 
-            
-            Extract the following information from the resume, paying special attention to formatting and consistency:
-            
-            1. CLIENT NAMES: List all companies the candidate worked for as a contractor or consultant (not direct employers).
-               - Look for patterns like "Client: [Company Name]" or similar indicators of contract work
-               - Identify companies following words like "Client" or that appear before date ranges
-               - Each client should be a separate entry with exact, full company name
-               - Do NOT include location information in the client name
-               - For example, if you see "Client: First Republic Bank", extract just "First Republic Bank"
-               
-            2. JOB TITLES: List the professional roles/titles held by the candidate.
-               - Extract exactly as written in the resume (e.g., "Senior Software Developer", "Software Developer")
-               - List titles in chronological order (most recent first)
-               - Do NOT include extraneous information, just the title itself
-               
-            3. RELEVANT DATES: Employment periods for each role.
-               - Extract date ranges exactly as written (e.g., "Dec 2022- Present", "March 2019 – July 2021")
-               - Preserve the original formatting of dates (don't standardize to MM/YYYY)
-               - Make sure each date corresponds to the correct client and job title
-               
-            4. SKILLS: Technical skills and technologies the candidate has experience with.
-               - Focus on technical skills, programming languages, frameworks, tools
-               - Include version numbers when mentioned (e.g., "Java 8", "Spring Boot 2.x")
-               - List skills as individual entries, not paragraphs
-               - Prioritize skills that appear most frequently or recently in the resume
-               
-            5. EDUCATION: Educational qualifications, degrees, certifications.
-               - Include university degrees, certifications, and specialized training
-               - Include graduation years when available
-            
-            Return the information in a structured JSON format with these exact keys: clientNames, jobTitles, relevantDates, skills, education.
-            
-            The response MUST be valid JSON with no trailing commas, properly escaped special characters, and all array entries must be strings.`
-          },
-          {
-            role: "user",
-            content: resumeText
-          }
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 1500,
-        temperature: 0.3 // Lower temperature for more focused extraction
-      });
-
-      const content = response.choices[0].message.content;
-      if (!content) {
-        console.warn("Empty response from OpenAI, returning minimal data");
-        return {
-          clientNames: [],
-          jobTitles: [],
-          relevantDates: [],
-          skills: [],
-          education: [],
-          extractedText: resumeText.substring(0, 5000)
-        };
-      }
-
-      console.log("OpenAI analysis completed successfully");
+      // Prepare text for analysis
+      const lines = resumeText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
       
-      // Try to parse the content as JSON, with error handling
-      let result;
-      try {
-        // Attempt to clean up the response if it's not properly formatted JSON
-        let cleanedContent = content;
-        
-        // If content has markdown code blocks, extract just the JSON part
-        if (content.includes("```json")) {
-          const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
-          if (jsonBlockMatch && jsonBlockMatch[1]) {
-            cleanedContent = jsonBlockMatch[1].trim();
-          }
-        } else if (content.includes("```")) {
-          const codeBlockMatch = content.match(/```\s*([\s\S]*?)\s*```/);
-          if (codeBlockMatch && codeBlockMatch[1]) {
-            cleanedContent = codeBlockMatch[1].trim();
-          }
-        }
-        
-        // Remove any trailing commas that might cause JSON parse errors
-        cleanedContent = cleanedContent.replace(/,(\s*[}\]])/g, '$1');
-        
-        result = JSON.parse(cleanedContent);
-      } catch (parseError) {
-        console.error("Error parsing OpenAI response:", parseError);
-        console.log("Raw content:", content);
-        
-        // Provide fallback values if we can't parse the response
-        result = {
-          clientNames: [],
-          jobTitles: [],
-          relevantDates: [],
-          skills: [],
-          education: []
-        };
-      }
+      // Extract client names
+      const clientNames = extractClientNames(resumeText);
       
-      // Convert any non-string array elements to strings
-      const normalizeStringArray = (arr: any[]): string[] => {
-        if (!Array.isArray(arr)) return [];
-        return arr.map(item => 
-          typeof item === 'string' 
-            ? item 
-            : typeof item === 'object' && item !== null
-              ? JSON.stringify(item)
-              : String(item)
-        );
-      };
-
-      // Normalize the result structure
-      const normalizedResult = {
-        clientNames: normalizeStringArray(result.clientNames || []),
-        jobTitles: normalizeStringArray(result.jobTitles || []),
-        relevantDates: normalizeStringArray(result.relevantDates || []),
-        skills: normalizeStringArray(result.skills || []),
-        education: normalizeStringArray(result.education || [])
-      };
+      // Extract job titles
+      const jobTitles = extractJobTitles(resumeText);
+      
+      // Extract dates
+      const relevantDates = extractDates(resumeText);
+      
+      // Extract skills
+      const skills = extractSkills(resumeText);
+      
+      // Extract education
+      const education = extractEducation(resumeText);
+      
+      console.log("NLP analysis completed successfully");
       
       // Ensure we have the expected structure
       const resumeSchema = z.object({
@@ -247,14 +156,22 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
         education: z.array(z.string()).default([])
       });
 
-      const validatedResult = resumeSchema.parse(normalizedResult);
+      const result = {
+        clientNames,
+        jobTitles,
+        relevantDates,
+        skills,
+        education
+      };
+
+      const validatedResult = resumeSchema.parse(result);
 
       return {
         ...validatedResult,
         extractedText: resumeText.substring(0, 5000) // Store first 5000 chars as a sample
       };
-    } catch (openaiError) {
-      console.error("OpenAI API error:", openaiError);
+    } catch (nlpError) {
+      console.error("NLP processing error:", nlpError);
       // Return minimal data instead of throwing error
       return {
         clientNames: [],
@@ -276,6 +193,323 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       education: [],
       extractedText: resumeText ? resumeText.substring(0, 5000) : "Error processing resume"
     };
+  }
+}
+
+/**
+ * Extract client names from resume text using NLP
+ */
+function extractClientNames(text: string): string[] {
+  const clientNames: string[] = [];
+  
+  // Look for common client indicators
+  const clientPatterns = [
+    /client\s*:\s*([^,.\n]+)/gi,
+    /(?:worked for|at)\s+([^,.\n]+?)\s+(?:as|from|through)/gi,
+    /(?:project|engagement|assignment)(?:\s+at|\s+with|\s+for)\s+([^,.\n]+)/gi
+  ];
+  
+  // Apply each pattern and collect results
+  clientPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (match[1] && match[1].trim().length > 1) {
+        // Clean up the company name
+        const company = match[1].trim()
+          .replace(/\s+/g, ' ')  // Normalize whitespace
+          .replace(/\([^)]*\)/g, '') // Remove parenthetical information
+          .trim();
+        
+        // Don't add if it's suspiciously short or has invalid characters
+        if (company.length > 2 && !company.match(/^[0-9.]+$/)) {
+          clientNames.push(company);
+        }
+      }
+    }
+  });
+  
+  // Look for company names with Inc., Corp., LLC, etc.
+  const companyFormPatterns = [
+    /([A-Z][A-Za-z0-9\s&]+)(?:\s+Inc\.|\s+Corp\.|\s+LLC|\s+Ltd\.)/g,
+    /([A-Z][A-Za-z0-9\s&]+)(?:\s+Corporation|\s+Company|\s+Technologies)/g
+  ];
+  
+  companyFormPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (match[1] && match[1].trim().length > 2) {
+        const company = match[1].trim();
+        clientNames.push(company);
+      }
+    }
+  });
+  
+  // Deduplicate and sort by length (longer names first which are usually more complete)
+  return Array.from(new Set(clientNames))
+    .filter(name => 
+      // Filter out obvious non-companies
+      !['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].includes(name) &&
+      !/^(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)/.test(name)
+    )
+    .sort((a, b) => b.length - a.length);
+}
+
+/**
+ * Extract job titles from resume text using NLP
+ */
+function extractJobTitles(text: string): string[] {
+  const titles: string[] = [];
+  
+  // Common job title patterns
+  const titlePatterns = [
+    /(?:^|\n)([A-Z][A-Za-z\s]+(?:Developer|Engineer|Architect|Designer|Consultant|Manager|Lead|Analyst|Specialist))(?:$|,|\n| -)/gm,
+    /(?:Title|Position|Role):\s*([^\n,.]+)/gi,
+    /(?:as\s+a|as\s+an)\s+([^,.\n]{3,50}?)(?:\s+at|\s+for|\s+with|,|\.|$)/gi
+  ];
+  
+  // Apply each pattern and collect results
+  titlePatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (match[1] && match[1].trim().length > 3) {
+        // Clean up the title
+        const title = match[1].trim()
+          .replace(/\s+/g, ' ') // Normalize whitespace
+          .trim();
+        
+        // Don't add if it's suspiciously generic or has invalid patterns
+        if (title.length > 3 && 
+            !title.match(/^(From|To|About|Contact|Summary|Resume)$/i)) {
+          titles.push(title);
+        }
+      }
+    }
+  });
+  
+  // Common IT job titles
+  const commonTitles = [
+    'Software Engineer', 'Software Developer', 'Frontend Developer', 'Backend Developer',
+    'Full Stack Developer', 'DevOps Engineer', 'Site Reliability Engineer', 'Data Scientist',
+    'Machine Learning Engineer', 'Cloud Architect', 'Solutions Architect', 'Technical Lead',
+    'Engineering Manager', 'Project Manager', 'Product Manager', 'Scrum Master',
+    'QA Engineer', 'Test Engineer', 'UX Designer', 'UI Developer', 'System Administrator'
+  ];
+  
+  // Check for these common titles
+  commonTitles.forEach(title => {
+    if (text.includes(title)) {
+      titles.push(title);
+    }
+  });
+  
+  // Deduplicate and return
+  return Array.from(new Set(titles));
+}
+
+/**
+ * Extract dates from resume text
+ */
+function extractDates(text: string): string[] {
+  const dates: string[] = [];
+  
+  // Date patterns (with various formats)
+  const datePatterns = [
+    // MM/YYYY - MM/YYYY
+    /(\d{1,2}\/\d{4})\s*[-–—]\s*(\d{1,2}\/\d{4}|Present|Current|Now)/gi,
+    
+    // Month YYYY - Month YYYY
+    /([A-Z][a-z]{2,8}\.?\s+\d{4})\s*[-–—]\s*([A-Z][a-z]{2,8}\.?\s+\d{4}|Present|Current|Now)/gi,
+    
+    // YYYY - YYYY
+    /(\d{4})\s*[-–—]\s*(\d{4}|Present|Current|Now)/gi,
+    
+    // MM/YYYY - Present
+    /(\d{1,2}\/\d{4})\s*[-–—]\s*(Present|Current|Now)/gi,
+    
+    // Abbreviated month formats
+    /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{4}\s*[-–—]\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{4}/gi,
+    
+    // Abbreviated to present
+    /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{4}\s*[-–—]\s*(Present|Current|Now)/gi
+  ];
+  
+  // Apply each pattern and collect results
+  datePatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      // Get the full date range
+      const dateRange = match[0].trim();
+      if (dateRange.length > 5) {
+        dates.push(dateRange);
+      }
+    }
+  });
+  
+  // Deduplicate and return
+  return Array.from(new Set(dates));
+}
+
+/**
+ * Extract skills from resume text
+ */
+function extractSkills(text: string): string[] {
+  // Pre-defined list of technical skills to look for
+  const technicalSkills = [
+    // Programming Languages
+    'Java', 'Python', 'JavaScript', 'TypeScript', 'C#', 'C++', 'C', 'PHP', 'Ruby', 'Go', 
+    'Golang', 'Swift', 'Kotlin', 'Scala', 'Rust', 'Perl', 'Shell', 'Bash', 'PowerShell',
+    'Groovy', 'R', 'Dart', 'Clojure', 'Elixir', 'Erlang', 'F#', 'Haskell', 'Julia',
+    
+    // Web/Frontend
+    'HTML', 'CSS', 'SCSS', 'SASS', 'LESS', 'Angular', 'React', 'Vue', 'Svelte', 'jQuery', 
+    'Bootstrap', 'Tailwind', 'Material UI', 'Chakra UI', 'Redux', 'NextJS', 'NuxtJS', 
+    'Gatsby', 'WebAssembly', 'Web Components', 'Shadow DOM',
+    
+    // Backend
+    'Node.js', 'Express', 'NestJS', 'Spring', 'Spring Boot', 'Django', 'Flask', 'Laravel',
+    'Rails', 'ASP.NET', '.NET Core', '.NET', 'FastAPI', 'Symfony', 'CodeIgniter', 'Play',
+    'Ktor', 'Echo', 'Gin', 'Rocket', 'Actix',
+    
+    // Databases
+    'SQL', 'MySQL', 'PostgreSQL', 'Oracle', 'SQLite', 'MongoDB', 'DynamoDB', 'Cassandra',
+    'Redis', 'ElasticSearch', 'Neo4j', 'CosmosDB', 'Firebase', 'Firestore', 'CouchDB',
+    'MariaDB', 'Snowflake', 'BigQuery', 'Redshift', 'SQL Server', 'Supabase',
+    
+    // Cloud
+    'AWS', 'Azure', 'GCP', 'Google Cloud', 'Heroku', 'DigitalOcean', 'Linode', 'Netlify',
+    'Vercel', 'Firebase', 'CloudFlare', 'S3', 'EC2', 'Lambda', 'ECS', 'EKS', 'Route 53',
+    'CloudFront', 'IAM', 'VPC', 'RDS', 'DynamoDB', 'SNS', 'SQS', 'Step Functions',
+    
+    // DevOps
+    'Docker', 'Kubernetes', 'Jenkins', 'GitHub Actions', 'CircleCI', 'TravisCI', 'ArgoCD',
+    'Terraform', 'Ansible', 'Puppet', 'Chef', 'Prometheus', 'Grafana', 'ELK Stack', 
+    'Nginx', 'Apache', 'CI/CD', 'Git', 'GitHub', 'GitLab', 'Bitbucket',
+    
+    // Testing
+    'Jest', 'Mocha', 'Chai', 'Cypress', 'Selenium', 'JUnit', 'TestNG', 'PyTest', 'RSpec',
+    'PHPUnit', 'XUnit', 'NUnit', 'Jasmine', 'Karma', 'WebdriverIO', 'Postman',
+    
+    // Mobile
+    'Android', 'iOS', 'React Native', 'Flutter', 'Xamarin', 'Ionic', 'Cordova', 
+    'SwiftUI', 'UIKit', 'Kotlin Multiplatform', 'NativeScript', 'PhoneGap',
+    
+    // AI/ML/Data
+    'Machine Learning', 'Deep Learning', 'TensorFlow', 'PyTorch', 'Keras', 'scikit-learn',
+    'Pandas', 'NumPy', 'Jupyter', 'NLTK', 'spaCy', 'OpenCV', 'Hadoop', 'Spark', 'Kafka',
+    'Airflow', 'Databricks', 'Tableau', 'Power BI', 'Looker',
+    
+    // Other
+    'GraphQL', 'REST API', 'SOAP', 'gRPC', 'WebSockets', 'Microservices', 'Serverless',
+    'Blockchain', 'Ethereum', 'Solidity', 'WebRTC', 'PWA'
+  ];
+  
+  // Feature version specific skills (Add version numbers if found)
+  const versionedSkills: string[] = [];
+  
+  // Convert text to lowercase for case-insensitive matching
+  const lowerText = text.toLowerCase();
+  
+  // Find skills mentioned in the resume
+  const foundSkills = technicalSkills.filter(skill => {
+    // Check for standalone mentions of the skill (word boundaries)
+    const regex = new RegExp(`\\b${skill.toLowerCase()}\\b`, 'i');
+    return regex.test(lowerText);
+  });
+  
+  // Also check for versioned mentions (e.g., "Java 8" or "Angular 10")
+  technicalSkills.forEach(skill => {
+    // Look for skill followed by version number
+    const versionRegex = new RegExp(`\\b${skill}\\s+([0-9](?:\\.[0-9x]+)?)\\b`, 'i');
+    const match = text.match(versionRegex);
+    if (match) {
+      versionedSkills.push(`${skill} ${match[1]}`);
+    }
+  });
+  
+  // Additional pattern-based skill extraction (e.g., AWS services)
+  const awsServicePattern = /\b(S3|EC2|Lambda|ECS|EKS|Route 53|CloudFront|IAM|VPC|RDS|DynamoDB|SNS|SQS|Step Functions)\b/g;
+  let match;
+  const awsServices: string[] = [];
+  while ((match = awsServicePattern.exec(text)) !== null) {
+    if (match[1]) {
+      awsServices.push(`AWS ${match[1]}`);
+    }
+  }
+  
+  // Combine all skills and deduplicate
+  const allSkills = [...foundSkills, ...versionedSkills, ...awsServices];
+  return Array.from(new Set(allSkills)).sort();
+}
+
+/**
+ * Extract education information from resume text
+ */
+function extractEducation(text: string): string[] {
+  const education: string[] = [];
+  
+  // Pattern for common degrees
+  const degreePatterns = [
+    /(?:Bachelor|Master|PhD|Doctorate|B\.S\.|M\.S\.|M\.A\.|B\.A\.|MBA|Ph\.D\.|B\.E\.|M\.E\.)(?:\s+(?:of|in|degree))?\s+([^,.\n]+)/gi,
+    /(?:^|\n)([A-Z][A-Za-z\s]+(?:University|College|Institute|School))(?:$|,|\n| -)/gm
+  ];
+  
+  // Apply each pattern and collect results
+  degreePatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const fullMatch = match[0].trim();
+      if (fullMatch.length > 5) {
+        education.push(fullMatch);
+      }
+    }
+  });
+  
+  // Look for certification patterns
+  const certPatterns = [
+    /\b(?:Certified|Certificate|Certification)\s+([^,.\n]{5,100})/gi,
+    /\b([A-Z]{2,}(?:-[A-Z]+)*)(?:\s+certification)?\b/g // Acronym-based certifications like AWS-SAA, MCSD
+  ];
+  
+  certPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const fullMatch = match[0].trim();
+      if (fullMatch.length > 5) {
+        education.push(fullMatch);
+      }
+    }
+  });
+  
+  // Deduplicate and return
+  return Array.from(new Set(education));
+}
+
+/**
+ * Document parser - simple version
+ * This would be expanded with actual pdf-parse and mammoth integration
+ */
+async function parseDocument(buffer: Buffer, fileType: string): Promise<string> {
+  // This is a simplified implementation
+  // In a real implementation, we would use pdf-parse for PDFs and mammoth for DOCX
+  
+  try {
+    if (fileType === 'pdf') {
+      // Use pdf-parse to extract text from PDF
+      const pdfParse = require('pdf-parse');
+      const data = await pdfParse(buffer);
+      return data.text;
+    } else if (fileType === 'docx') {
+      // Use mammoth to extract text from DOCX
+      const mammoth = require('mammoth');
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value;
+    } else {
+      // Assume it's plain text
+      return buffer.toString('utf8');
+    }
+  } catch (error) {
+    console.error(`Error parsing document of type ${fileType}:`, error);
+    return '';
   }
 }
 
@@ -455,8 +689,7 @@ function simpleResumeJobMatcher(resumeText: string, jobDescription: string): Mat
 }
 
 /**
- * Matches resume to job description using OpenAI with embeddings-based similarity analysis
- * Falls back to simple matcher if API times out
+ * Matches resume to job description using NLP techniques
  */
 export async function matchResumeToJob(
   resumeText: string,
@@ -472,7 +705,7 @@ export async function matchResumeToJob(
     // Import the sanitization utility
     const { sanitizeHtml } = await import('./utils');
     
-    // Check for problematic patterns in file content that cause JSON parsing issues
+    // Check for problematic patterns in file content that cause parsing issues
     if (resumeText.trim().startsWith('<!DOCTYPE') || resumeText.includes('<?xml')) {
       console.warn("Detected DOCTYPE/XML content in resume text - cleaning");
       resumeText = resumeText.replace(/<!DOCTYPE[^>]*>/gi, '')
@@ -485,264 +718,155 @@ export async function matchResumeToJob(
     resumeText = sanitizeHtml(resumeText);
     jobDescription = sanitizeHtml(jobDescription);
     
-    // Get embeddings for both texts
-    let scaledScore = 75; // Default score
+    console.log("Analyzing resume match using NLP techniques...");
     
-    try {
-      console.log("Using embedding-based similarity for resume matching...");
-      
-      const resumeEmbedding = await getEmbedding(resumeText);
-      const jobEmbedding = await getEmbedding(jobDescription);
-      
-      // Calculate similarity score (0 to 1)
-      const similarity = cosineSimilarity(resumeEmbedding, jobEmbedding);
-      console.log(`Semantic similarity between resume and job: ${similarity.toFixed(4)}`);
-      
-      // Convert to a percentage (0 to 100) and scale to recruiting industry expectations
-      // In practice, similarity scores above 0.7 indicate strong matches
-      
-      // Adjust the scale to fit recruiting industry norms (75-95% for qualified candidates)
-      // Map 0.5-0.9 similarity to 75-95% score range
-      if (similarity >= 0.5) {
-        scaledScore = Math.round(75 + ((similarity - 0.5) * (95 - 75) / 0.4));
-        // Cap at 95% to leave room for "perfect" matches
-        scaledScore = Math.min(95, scaledScore);
-      } else {
-        // For lower similarities, use a more generous scale that bottoms out at 60%
-        scaledScore = Math.max(60, Math.round(60 + (similarity * 30)));
+    // Extract skill lists from both resume and job description using our NLP-based function
+    const resumeSkills = extractSkills(resumeText);
+    const jobSkills = extractSkills(jobDescription);
+    
+    // Extract resume tokens and job tokens for analysis
+    const resumeTokens = extractTerms(resumeText);
+    const jobTokens = extractTerms(jobDescription);
+    
+    // Calculate similarity using cosine similarity on tokenized texts
+    const similarity = cosineSimilarity(resumeTokens, jobTokens);
+    console.log(`Text similarity between resume and job: ${similarity.toFixed(4)}`);
+    
+    // Calculate skills match rate
+    const jobSkillsSet = new Set(jobSkills.map(s => s.toLowerCase()));
+    const resumeSkillsSet = new Set(resumeSkills.map(s => s.toLowerCase()));
+    
+    // Find matching skills (intersection)
+    const matchingSkills: string[] = [];
+    resumeSkills.forEach(skill => {
+      if (jobSkillsSet.has(skill.toLowerCase())) {
+        matchingSkills.push(skill);
       }
-      
-      console.log(`Adjusted match score based on embeddings: ${scaledScore}%`);
-    } catch (embeddingError) {
-      console.error("Error using embeddings for matching, falling back to qualitative analysis only:", embeddingError);
-      // Continue with qualitative analysis below
-    }
+    });
     
-    // Now proceed with qualitative analysis regardless of embedding success
-    const TIMEOUT_MS = 20000; // Increased timeout for more detailed analysis
+    // Find missing skills (in job but not in resume)
+    const missingSkills: string[] = [];
+    jobSkills.forEach(skill => {
+      if (!resumeSkillsSet.has(skill.toLowerCase())) {
+        missingSkills.push(skill);
+      }
+    });
     
-    try {
-      console.log("Matching resume to job description with OpenAI...");
-      
-      // Create promise with timeout
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("OpenAI request timed out")), TIMEOUT_MS);
-      });
-      
-      // Create the OpenAI request promise
-      const openAiPromise = (async () => {
-        // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        const response = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
-            {
-              role: "system",
-              content: `You are an elite technical staffing AI that specializes in analyzing IT resumes against job descriptions with extremely high precision, always giving candidates a fair evaluation that matches industry standards. Your analysis is ALWAYS thorough, detailed, and generous when skills align.
-
-              IMPORTANT: Your score should follow industry standards where most qualified candidates receive scores between 75-95%. Candidates who meet all core requirements should always score at least 75-85%, even if they're missing some preferred qualifications. Only candidates who are missing several required skills should score below 60%.
-
-              Analyze the resume and job description to determine:
-
-              1. A match score from 0-100 that accurately reflects how well the candidate's skills align with the job requirements
-                 - Scores for qualified candidates with most required skills should be 75-95%
-                 - Candidates with all core skills but missing some preferred qualifications should score 75-85%
-                 - Only truly underqualified candidates should score below 60%
-                 - When in doubt, favor a higher score if the candidate has relevant experience
-              
-              2. MATCHING SKILLS: Identify all technical skills from the resume that match skills mentioned in the job description
-                 - Be specific (e.g., "Spring Boot" instead of just "Java")
-                 - Include frameworks, languages, methodologies, and tools
-                 - Only include skills that appear in BOTH the resume and job description
-              
-              3. MISSING SKILLS: Identify key technical skills from the job description that are missing from the resume
-                 - Focus on technical requirements specifically mentioned as "required" or "must-have"
-                 - Only include skills clearly missing from the resume
-              
-              4. STRENGTHS: The candidate's 3-5 most impressive strengths for this specific role
-                 - Focus on experience durations, leadership roles, project scale/complexity
-                 - Include relevant industry experience specific to the role
-                 - Highlight skills that directly satisfy key job requirements
-              
-              5. WEAKNESSES: The candidate's 3-5 most significant gaps compared to the job requirements
-                 - Focus on missing technical expertise or experience
-                 - Note any mismatches in industry experience or project scale
-              
-              6. SUGGESTIONS: Provide 2-3 clear recommendations for how the candidate could improve their match for this role
-              
-              7. CLIENT EXPERIENCE: Analyze how the candidate's client experience relates to the job requirements
-                 - Compare industry sectors, company sizes, and types of projects
-                 - Look for client work that demonstrates relevant domain expertise
-              
-              8. TECHNICAL GAPS: Provide specific evaluation of technical skill gaps
-                 - Focus on technology stacks, frameworks, and tools specifically required in the job
-
-              9. CONFIDENCE: Provide a confidence level (0-100) in your assessment
-                 - Higher confidence (85-100) when resume contains detailed, clear information
-                 - Lower confidence (below 70) when resume lacks details or has ambiguous experience descriptions
-
-              Return as a JSON object with these exact keys: score, matchingSkills, missingSkills, strengths, weaknesses, suggestions, technicalGaps, clientExperience, confidence.
-              
-              Your analysis must be extremely accurate and detailed. This matching data is being used for critical hiring decisions, so ensure score is fair and appropriately high for qualified candidates.`
-            },
-            {
-              role: "user",
-              content: `RESUME:\n${resumeText}\n\nJOB DESCRIPTION:\n${jobDescription}`
-            }
-          ],
-          response_format: { type: "json_object" },
-          max_tokens: 1500
-        });
-
-        const content = response.choices[0].message.content;
-        if (!content) {
-          throw new Error("Empty response from OpenAI");
-        }
-
-        console.log("OpenAI job matching completed successfully");
-        
-        // Try to parse the content as JSON, with error handling
-        let result;
-        try {
-          // Attempt to clean up the response if it's not properly formatted JSON
-          let cleanedContent = content;
-          
-          // If content has markdown code blocks, extract just the JSON part
-          if (content.includes("```json")) {
-            const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
-            if (jsonBlockMatch && jsonBlockMatch[1]) {
-              cleanedContent = jsonBlockMatch[1].trim();
-            }
-          } else if (content.includes("```")) {
-            const codeBlockMatch = content.match(/```\s*([\s\S]*?)\s*```/);
-            if (codeBlockMatch && codeBlockMatch[1]) {
-              cleanedContent = codeBlockMatch[1].trim();
-            }
-          }
-          
-          // Remove any trailing commas that might cause JSON parse errors
-          cleanedContent = cleanedContent.replace(/,(\s*[}\]])/g, '$1');
-          
-          result = JSON.parse(cleanedContent);
-        } catch (parseError) {
-          console.error("Error parsing OpenAI response:", parseError);
-          console.log("Raw content:", content);
-          
-          // Provide fallback values if we can't parse the response
-          result = {
-            score: 0,
-            strengths: [],
-            weaknesses: ["Unable to process the match results"],
-            suggestions: ["Try with a different resume format"],
-            technicalGaps: []
-          };
-        }
-        
-        // Ensure we have the expected structure with new fields
-        const matchSchema = z.object({
-          score: z.number().min(0).max(100),
-          matchingSkills: z.array(z.string()).optional(),
-          missingSkills: z.array(z.string()).optional(),
-          strengths: z.array(z.string()).optional(),
-          weaknesses: z.array(z.string()).optional(),
-          suggestions: z.array(z.string()).optional(),
-          clientExperience: z.string().optional(),
-          confidence: z.number().min(0).max(100).optional(),
-          technicalGaps: z.array(z.string()).optional()
-        });
-
-        try {
-          const validatedResult = matchSchema.parse(result);
-          
-          // Convert the new format to match our existing interface
-          return {
-            score: validatedResult.score,
-            strengths: validatedResult.strengths || validatedResult.matchingSkills || [],
-            weaknesses: validatedResult.weaknesses || validatedResult.missingSkills || [],
-            suggestions: validatedResult.suggestions || [],
-            technicalGaps: validatedResult.technicalGaps || validatedResult.missingSkills || [],
-            matchingSkills: validatedResult.matchingSkills || [],
-            missingSkills: validatedResult.missingSkills || [],
-            clientExperience: validatedResult.clientExperience || "",
-            confidence: validatedResult.confidence || 0
-          };
-        } catch (validationError) {
-          console.warn("Schema validation failed, using raw result:", validationError);
-          
-          // Handle legacy format or unexpected structure
-          return {
-            score: result.score || 0,
-            strengths: result.strengths || result.matchingSkills || [],
-            weaknesses: result.weaknesses || result.missingSkills || [],
-            suggestions: result.suggestions || [],
-            technicalGaps: result.technicalGaps || result.missingSkills || [],
-            matchingSkills: result.matchingSkills || [],
-            missingSkills: result.missingSkills || [],
-            clientExperience: result.clientExperience || "",
-            confidence: result.confidence || 0
-          };
-        }
-      })();
-      
-      // Race between timeout and OpenAI request
-      return await Promise.race([openAiPromise, timeoutPromise]);
-      
-    } catch (innerError) {
-      console.error("Inner try-catch: OpenAI job matching error:", innerError);
-      throw innerError; // Re-throw for outer catch block
-    }
+    // Calculate match score based on skill matching and text similarity
+    // Weight: 70% skills matching, 30% overall text similarity
+    const skillMatchRate = jobSkillsSet.size > 0 
+      ? matchingSkills.length / jobSkillsSet.size 
+      : 0;
+    
+    // Start with a base score in the 75-95% range for fair evaluation
+    let score = 75; // Minimum score for qualified candidates
+    
+    // Adjust score based on skill match rate
+    if (skillMatchRate > 0.3) score = 80;  // >30% skill match
+    if (skillMatchRate > 0.5) score = 85;  // >50% skill match
+    if (skillMatchRate > 0.7) score = 90;  // >70% skill match
+    if (skillMatchRate > 0.9) score = 95;  // >90% skill match
+    
+    // Apply text similarity as an adjustment factor (±5 points)
+    const similarityAdjustment = Math.round((similarity - 0.5) * 10);
+    score = Math.max(60, Math.min(95, score + similarityAdjustment));
+    
+    console.log(`Match score: ${score}% (Skill match rate: ${(skillMatchRate * 100).toFixed(1)}%, Similarity adjustment: ${similarityAdjustment})`);
+    
+    // Extract potential candidate strengths based on matching skills and experience
+    const strengths = extractCandidateStrengths(resumeText, matchingSkills);
+    
+    // Generate weaknesses based on missing skills
+    const weaknesses = missingSkills.slice(0, 5).map(skill => {
+      return `No mention of ${skill}`;
+    });
+    
+    // Generate improvement suggestions
+    const suggestions = missingSkills.slice(0, 3).map(skill => {
+      return `Consider highlighting any experience with ${skill}`;
+    });
+    
+    // Analyze client experience
+    const clientNames = extractClientNames(resumeText);
+    const clientExperience = clientNames.length > 0
+      ? `Candidate has experience with ${clientNames.length} client(s): ${clientNames.join(', ')}`
+      : "No specific client experience detected";
+    
+    // Calculate confidence level
+    const confidence = Math.min(100, Math.round(70 + (resumeText.length / 1000) + (matchingSkills.length * 2)));
+    
+    return {
+      score,
+      strengths: strengths.length > 0 ? strengths : [`Experience with ${matchingSkills.slice(0, 3).join(', ')}`],
+      weaknesses: weaknesses.length > 0 ? weaknesses : ["Missing some technology experience"],
+      suggestions: suggestions.length > 0 ? suggestions : ["Add more specific technical details to resume"],
+      technicalGaps: missingSkills.slice(0, 5),
+      matchingSkills,
+      missingSkills,
+      clientExperience,
+      confidence
+    };
   } catch (error) {
-    console.error("Outer try-catch: OpenAI job matching error:", error);
-    console.log("Falling back to simple matcher due to error or timeout");
-    
-    // Use a fixed fallback score 
-    // or recompute skills for a custom response
-    if (true) { // Always execute this logic rather than checking for scaledScore
-      // Extract skills for better analysis using simple matcher logic
-      const resumeLower = resumeText.toLowerCase();
-      const jobLower = jobDescription.toLowerCase();
-      
-      // Use the skill extraction logic from the simple matcher
-      const commonSkills = [
-        'javascript', 'typescript', 'react', 'angular', 'vue', 'java', 'spring',
-        'node', 'express', 'python', 'django', 'sql', 'nosql', 'mongodb',
-        'aws', 'azure', 'docker', 'kubernetes', 'rest', 'graphql'
-      ];
-      
-      // Count matching skills (simplified from simple matcher)
-      const matchingSkills = commonSkills.filter(skill => 
-        resumeLower.includes(skill) && jobLower.includes(skill)
-      );
-      
-      // Skills in job but not in resume
-      const missingSkills = commonSkills.filter(skill => 
-        !resumeLower.includes(skill) && jobLower.includes(skill)
-      );
-      
-      // Calculate a score based on match percentage
-      const jobSkillsCount = commonSkills.filter(skill => jobLower.includes(skill)).length;
-      const matchRate = jobSkillsCount > 0 ? matchingSkills.length / jobSkillsCount : 0;
-      
-      // Adjust scoring to match industry norms (75-95%)
-      let score = 75; // Base score
-      if (matchRate > 0.25) score = 80;  // >25% match rate
-      if (matchRate > 0.5) score = 85;   // >50% match rate
-      if (matchRate > 0.7) score = 90;   // >70% match rate
-      if (matchRate > 0.9) score = 95;   // >90% match rate
-      
-      return {
-        score: score,
-        strengths: matchingSkills.map(skill => `Experience with ${skill}`),
-        weaknesses: missingSkills.map(skill => `No mention of ${skill}`),
-        suggestions: ["Consider adding more detail about your technical experience"],
-        technicalGaps: missingSkills.map(skill => `Missing: ${skill}`),
-        matchingSkills,
-        missingSkills,
-        clientExperience: "Could not analyze client experience in detail",
-        confidence: 70 // Medium confidence due to partial analysis
-      };
-    }
-    
-    // Complete fallback to simple matcher if no embedding score available
+    console.error("Error in resume matching:", error);
+    console.log("Falling back to simple matcher due to error");
     return simpleResumeJobMatcher(resumeText, jobDescription);
   }
+}
+
+/**
+ * Extract candidate strengths based on matching skills and experience
+ */
+function extractCandidateStrengths(text: string, matchingSkills: string[]): string[] {
+  const strengths: string[] = [];
+  
+  // Check for years of experience mentions
+  const experiencePatterns = [
+    /(\d+)\+?\s+years?\s+(?:of\s+)?experience/gi,
+    /experience\s+(?:of|with)\s+(\d+)\+?\s+years?/gi
+  ];
+  
+  experiencePatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (match[1] && parseInt(match[1]) > 2) {
+        strengths.push(`${match[1]}+ years of experience`);
+        break; // Only get one experience strength
+      }
+    }
+  });
+  
+  // Check for leadership/senior role mentions
+  const leadershipPatterns = [
+    /\b(?:lead|senior|principal|architect|manager|supervisor|head)\b/gi
+  ];
+  
+  leadershipPatterns.forEach(pattern => {
+    if (pattern.test(text)) {
+      strengths.push("Leadership or senior-level experience");
+      return; // Only add this once
+    }
+  });
+  
+  // Add top matching skills as strengths
+  const topSkills = matchingSkills.slice(0, 3);
+  topSkills.forEach(skill => {
+    strengths.push(`Proficiency with ${skill}`);
+  });
+  
+  // Look for education/certification strengths
+  const educationPatterns = [
+    /\b(?:Master|PhD|MBA|Doctorate)\b/gi,
+    /\bcertified\b/gi
+  ];
+  
+  educationPatterns.forEach((pattern, index) => {
+    if (pattern.test(text)) {
+      strengths.push(index === 0 
+        ? "Advanced educational qualifications" 
+        : "Relevant professional certifications");
+    }
+  });
+  
+  // Deduplicate and limit to 5 strengths
+  return Array.from(new Set(strengths)).slice(0, 5);
 }
