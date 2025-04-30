@@ -211,10 +211,10 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         setResumeText(formBasedData.extractedText);
         setResumeData(formBasedData);
         
-        // Set a simplified match result
+        // Set a simplified match result with improved scoring range
         setMatchResults({
-          score: 50, // Default middle score
-          strengths: ["Resume contains DOCX format"],
+          score: 80, // Default score in the improved 75-95% range
+          strengths: ["Resume contains DOCX format", "Candidate details have been manually entered"],
           weaknesses: ["Unable to automatically extract specific skills from DOCX format"],
           suggestions: ["Consider uploading a plain text version for better analysis"]
         });
