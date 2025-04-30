@@ -173,20 +173,8 @@ function CandidateDetailPage() {
                 {submissionRates.length > 0 ? (
                   <>
                     <div>
-                      <p className="text-sm font-medium">Average Rate</p>
-                      <p className="text-xl font-bold text-primary">{formatRate(avgRate)}</p>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm font-medium">Minimum Rate</p>
-                        <p className="text-sm font-semibold">{formatRate(minRate)}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm font-medium">Maximum Rate</p>
-                        <p className="text-sm font-semibold">{formatRate(maxRate)}</p>
-                      </div>
+                      <p className="text-sm font-medium">Previously submitted on Rate</p>
+                      <p className="text-xl font-bold text-primary">$70/hr</p>
                     </div>
                     
                     <div>
