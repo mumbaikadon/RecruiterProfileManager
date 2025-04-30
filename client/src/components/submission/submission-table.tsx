@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/submission/status-badge";
+import StatusSelect from "@/components/submission/status-select";
 import { Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 
