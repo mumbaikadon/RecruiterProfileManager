@@ -34,12 +34,12 @@ export function useJob(id: number) {
 export function useCreateJob() {
   return useMutation({
     mutationFn: async (data: InsertJob & { recruiterIds: number[] }) => {
-      const res = await apiRequest({
-        method: "POST", 
-        url: "/api/jobs", 
-        data
-      });
-      return res;
+      const res = await apiRequest("POST", "/api/jobs", data);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: "Failed to create job" }));
+        throw new Error(errorData.message || "Failed to create job");
+      }
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
@@ -52,12 +52,12 @@ export function useCreateJob() {
 export function useUpdateJobStatus() {
   return useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const res = await apiRequest({
-        method: "PUT", 
-        url: `/api/jobs/${id}/status`, 
-        data: { status }
-      });
-      return res;
+      const res = await apiRequest("PUT", `/api/jobs/${id}/status`, { status });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: "Failed to update job status" }));
+        throw new Error(errorData.message || "Failed to update job status");
+      }
+      return await res.json();
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/jobs/${variables.id}`] });
