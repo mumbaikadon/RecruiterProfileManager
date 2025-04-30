@@ -403,8 +403,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: recruiter.id,
             name: recruiter.name
           } : undefined,
-          // Include resume data in response if job is active
-          resumeData: job && job.status.toLowerCase() === 'active' ? resumeData : null
+          // Always include resume data, but add a flag to indicate if file access is restricted
+          resumeData: resumeData ? {
+            ...resumeData,
+            fileAccessRestricted: !(job && job.status.toLowerCase() === 'active')
+          } : null
         };
       }));
       
@@ -435,19 +438,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get recruiter
       const recruiter = await storage.getUser(submission.recruiterId);
       
-      // Get resume data only if job is active, otherwise provide null
+      // Always get resume data for display, but mark it as readonly if job is closed
       let resumeData = null;
-      if (job && job.status.toLowerCase() === 'active' && candidate) {
+      if (candidate) {
         resumeData = await storage.getResumeData(candidate.id);
       }
+      
+      // Determine if the file should be accessible based on job status
+      const isJobActive = job && job.status.toLowerCase() === 'active';
       
       res.json({
         ...submission,
         job,
         candidate,
         recruiter,
-        // Include resume data in response if job is active
-        resumeData: job && job.status.toLowerCase() === 'active' ? resumeData : null
+        // Always include resume data, but add a flag to indicate if file access is restricted
+        resumeData: resumeData ? {
+          ...resumeData,
+          fileAccessRestricted: !isJobActive
+        } : null
       });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
