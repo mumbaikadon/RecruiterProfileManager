@@ -561,7 +561,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: submissionData.status || "submitted",
         matchScore: submissionData.matchScore,
         agreedRate: submissionData.agreedRate,
-        notes: submissionData.notes || ""
+        notes: submissionData.notes || "",
+        // Additional analysis fields needed for detailed view
+        strengths: submissionData.strengths || [],
+        weaknesses: submissionData.weaknesses || [],
+        suggestions: submissionData.suggestions || [],
+        technicalGaps: submissionData.technicalGaps || [],
+        matchingSkills: submissionData.matchingSkills || [],
+        missingSkills: submissionData.missingSkills || [],
+        clientExperience: submissionData.clientExperience || "",
+        confidence: submissionData.confidence || 0
       };
       
       const validatedData = insertSubmissionSchema.parse(submissionPayload);
