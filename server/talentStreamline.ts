@@ -87,7 +87,7 @@ export async function syncCandidateToTalentStreamline(submissionId: number): Pro
       return false;
     }
 
-    logger.info(`Successfully synced candidate #${submission.candidate.id} to TalentStreamline`);
+    logger.info(`Successfully synced candidate #${candidate.id} to TalentStreamline`);
     return true;
   } catch (error: any) {
     const errorMessage = error?.message || 'Unknown error';
