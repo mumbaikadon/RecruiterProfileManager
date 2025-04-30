@@ -55,7 +55,7 @@ const JobDetailPage: React.FC = () => {
   const { data: recruiters } = useRecruiters();
   
   // Fetch submissions for this job
-  const { data: submissions, isLoading: isSubmissionsLoading } = useSubmissions({ 
+  const { data: submissions, isLoading: isSubmissionsLoading, refetch: refetchSubmissions } = useSubmissions({ 
     jobId: numericId 
   });
   
@@ -343,6 +343,10 @@ const JobDetailPage: React.FC = () => {
           recruiterId={1} // This would be the current user's ID in a real app
           isOpen={isSubmissionDialogOpen}
           onClose={handleCloseSubmissionDialog}
+          onSuccess={() => {
+            // Refetch the submissions when a new submission is created
+            refetchSubmissions();
+          }}
         />
       )}
     </div>
