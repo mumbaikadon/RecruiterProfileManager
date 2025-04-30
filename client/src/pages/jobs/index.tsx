@@ -20,14 +20,47 @@ const JobsPage: React.FC = () => {
   
   // Calculate submission counts per job
   const submissionCounts: Record<number, number> = {};
-  submissions?.forEach((submission) => {
+  submissions?.forEach((submission: { jobId: number }) => {
     submissionCounts[submission.jobId] = (submissionCounts[submission.jobId] || 0) + 1;
   });
   
-  // Process assigned recruiters from job assignments
-  // This would need an additional API call in a real implementation
-  // For now we'll use an empty object
-  const assignedRecruiters: Record<number, { id: number; name: string }[]> = {};
+  // Get assigned recruiters for each job
+  const [assignedRecruiters, setAssignedRecruiters] = React.useState<Record<number, { id: number; name: string }[]>>({});
+  
+  // Process job assignments when data is available
+  React.useEffect(() => {
+    if (jobs) {
+      const fetchAssignedRecruiters = async () => {
+        const recruitersMap: Record<number, { id: number; name: string }[]> = {};
+        
+        // Process each job to get assigned recruiters
+        for (const job of jobs) {
+          if (job.id) {
+            try {
+              // Fetch the complete job data including assignments
+              const jobResponse = await fetch(`/api/jobs/${job.id}`);
+              if (jobResponse.ok) {
+                const jobData = await jobResponse.json();
+                if (jobData.assignedRecruiters && jobData.assignedRecruiters.length > 0) {
+                  recruitersMap[job.id] = jobData.assignedRecruiters.map((r: any) => ({
+                    id: r.id,
+                    name: r.name || r.username
+                  }));
+                }
+              }
+            } catch (error) {
+              console.error(`Error fetching job details for ${job.id}:`, error);
+            }
+          }
+        }
+        
+        // Update state with all fetched recruiters
+        setAssignedRecruiters(recruitersMap);
+      };
+      
+      fetchAssignedRecruiters();
+    }
+  }, [jobs]);
   
   const handleFilterChange = (newFilters: {
     status?: string;
