@@ -121,7 +121,13 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                 )}
               </TableCell>
               <TableCell>
-                <StatusBadge status={submission.status} />
+                <div onClick={(e) => e.stopPropagation()}>
+                  <StatusSelect 
+                    submissionId={submission.id} 
+                    currentStatus={submission.status} 
+                    compact={true}
+                  />
+                </div>
               </TableCell>
               <TableCell className="text-right">
                 <Button

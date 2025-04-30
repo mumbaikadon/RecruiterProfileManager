@@ -113,10 +113,14 @@ const SubmissionsPage: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="reviewing">Reviewing</SelectItem>
-                  <SelectItem value="interview">Interview</SelectItem>
-                  <SelectItem value="offer">Offer</SelectItem>
-                  <SelectItem value="hired">Hired</SelectItem>
+                  <SelectItem value="submitted_to_vendor">Submitted To Vendor</SelectItem>
+                  <SelectItem value="rejected_by_vendor">Rejected By Vendor</SelectItem>
+                  <SelectItem value="submitted_to_client">Submitted To Client</SelectItem>
+                  <SelectItem value="interview_scheduled">Interview Scheduled</SelectItem>
+                  <SelectItem value="interview_completed">Interview Completed</SelectItem>
+                  <SelectItem value="offer_extended">Offer Extended</SelectItem>
+                  <SelectItem value="offer_accepted">Offer Accepted</SelectItem>
+                  <SelectItem value="offer_declined">Offer Declined</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
