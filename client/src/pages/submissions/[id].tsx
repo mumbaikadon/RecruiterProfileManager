@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft, FileText, Briefcase, User, Calendar, DollarSign, BarChart2 } from "lucide-react";
+import { ChevronLeft, FileText, Briefcase, User, Calendar, DollarSign, BarChart2, Lock, Shield } from "lucide-react";
 import { formatDate, formatDateTime, formatRate } from "@/lib/date-utils";
 import StatusBadge from "@/components/submission/status-badge";
 
@@ -207,6 +207,40 @@ const SubmissionDetailPage: React.FC = () => {
                               <li key={i} className="text-muted-foreground">{suggestion}</li>
                             ))}
                           </ul>
+                        </div>
+                      )}
+                      
+                      {submission.missingSkills && submission.missingSkills.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-amber-600 dark:text-amber-400">Missing Skills</h4>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {submission.missingSkills.map((skill: string, i: number) => (
+                              <Badge key={i} variant="outline" className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {submission.technicalGaps && submission.technicalGaps.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-purple-600 dark:text-purple-400">Technical Gaps</h4>
+                          <ul className="list-disc list-inside text-sm space-y-1 ml-1">
+                            {submission.technicalGaps.map((gap: string, i: number) => (
+                              <li key={i} className="text-muted-foreground">{gap}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {submission.confidence && (
+                        <div className="mt-3">
+                          <h4 className="text-sm font-semibold text-slate-600 dark:text-slate-400">Analysis Confidence</h4>
+                          <div className="flex items-center mt-1">
+                            <Shield className="h-4 w-4 text-slate-500 mr-1" />
+                            <span className="text-sm text-muted-foreground">{submission.confidence}%</span>
+                          </div>
                         </div>
                       )}
                       
