@@ -343,6 +343,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const candidate = await storage.getCandidate(submission.candidateId);
         const recruiter = await storage.getUser(submission.recruiterId);
         
+        // Get resume data only if job is active
+        let resumeData = null;
+        if (job && job.status.toLowerCase() === 'active' && candidate) {
+          resumeData = await storage.getResumeData(candidate.id);
+        }
+        
         return {
           ...submission,
           job: job ? {
@@ -361,7 +367,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recruiter: recruiter ? {
             id: recruiter.id,
             name: recruiter.name
-          } : undefined
+          } : undefined,
+          // Include resume data in response if job is active
+          resumeData: job && job.status.toLowerCase() === 'active' ? resumeData : null
         };
       }));
       
