@@ -43,30 +43,40 @@ const Dashboard: React.FC = () => {
   
   // Get assigned recruiters for each job
   const { data: allJobs } = useJobs();
-  const assignedRecruiters: Record<number, { id: number; name: string }[]> = {};
+  const [assignedRecruiters, setAssignedRecruiters] = React.useState<Record<number, { id: number; name: string }[]>>({});
   
   // Process job assignments when data is available
   React.useEffect(() => {
     if (allJobs) {
-      allJobs.forEach(async (job) => {
-        if (job.id) {
-          try {
-            // Fetch the complete job data including assignments
-            const jobResponse = await fetch(`/api/jobs/${job.id}`);
-            if (jobResponse.ok) {
-              const jobData = await jobResponse.json();
-              if (jobData.assignedRecruiters && jobData.assignedRecruiters.length > 0) {
-                assignedRecruiters[job.id] = jobData.assignedRecruiters.map((r: any) => ({
-                  id: r.id,
-                  name: r.name || r.username
-                }));
+      const fetchAssignedRecruiters = async () => {
+        const recruitersMap: Record<number, { id: number; name: string }[]> = {};
+        
+        // Process each job to get assigned recruiters
+        for (const job of allJobs) {
+          if (job.id) {
+            try {
+              // Fetch the complete job data including assignments
+              const jobResponse = await fetch(`/api/jobs/${job.id}`);
+              if (jobResponse.ok) {
+                const jobData = await jobResponse.json();
+                if (jobData.assignedRecruiters && jobData.assignedRecruiters.length > 0) {
+                  recruitersMap[job.id] = jobData.assignedRecruiters.map((r: any) => ({
+                    id: r.id,
+                    name: r.name || r.username
+                  }));
+                }
               }
+            } catch (error) {
+              console.error(`Error fetching job details for ${job.id}:`, error);
             }
-          } catch (error) {
-            console.error(`Error fetching job details for ${job.id}:`, error);
           }
         }
-      });
+        
+        // Update state with all fetched recruiters
+        setAssignedRecruiters(recruitersMap);
+      };
+      
+      fetchAssignedRecruiters();
     }
   }, [allJobs]);
   
