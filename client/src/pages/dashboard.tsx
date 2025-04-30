@@ -8,9 +8,8 @@ import {
   ArrowRight,
   Search
 } from "lucide-react";
-import { useDashboardStats } from "@/hooks/use-submissions";
+import { useDashboardStats, useSubmissions, useActivities } from "@/hooks/use-submissions";
 import { useJobs } from "@/hooks/use-jobs";
-import { useActivities } from "@/hooks/use-submissions";
 import StatCard from "@/components/stats/stat-card";
 import JobTable from "@/components/job/job-table";
 import ActivityFeed from "@/components/activity/activity-feed";
@@ -32,6 +31,44 @@ const Dashboard: React.FC = () => {
     date: filterDate?.toISOString().split('T')[0],
     search: searchTerm
   });
+  
+  // Fetch all submissions to count per job
+  const { data: submissions } = useSubmissions();
+  
+  // Calculate submission counts per job
+  const submissionCounts: Record<number, number> = {};
+  submissions?.forEach((submission: { jobId: number }) => {
+    submissionCounts[submission.jobId] = (submissionCounts[submission.jobId] || 0) + 1;
+  });
+  
+  // Get assigned recruiters for each job
+  const { data: allJobs } = useJobs();
+  const assignedRecruiters: Record<number, { id: number; name: string }[]> = {};
+  
+  // Process job assignments when data is available
+  React.useEffect(() => {
+    if (allJobs) {
+      allJobs.forEach(async (job) => {
+        if (job.id) {
+          try {
+            // Fetch the complete job data including assignments
+            const jobResponse = await fetch(`/api/jobs/${job.id}`);
+            if (jobResponse.ok) {
+              const jobData = await jobResponse.json();
+              if (jobData.assignedRecruiters && jobData.assignedRecruiters.length > 0) {
+                assignedRecruiters[job.id] = jobData.assignedRecruiters.map((r: any) => ({
+                  id: r.id,
+                  name: r.name || r.username
+                }));
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching job details for ${job.id}:`, error);
+          }
+        }
+      });
+    }
+  }, [allJobs]);
   
   // Fetch recent activities
   const { data: activitiesData, isLoading: isLoadingActivities } = useActivities(10);
@@ -124,6 +161,8 @@ const Dashboard: React.FC = () => {
         
         <JobTable 
           jobs={jobsData?.slice(0, 5) || []} 
+          submissionCounts={submissionCounts}
+          assignedRecruiters={assignedRecruiters}
           isLoading={isLoadingJobs} 
         />
         
