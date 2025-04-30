@@ -451,9 +451,17 @@ export async function matchResumeToJob(
           messages: [
             {
               role: "system",
-              content: `You are an expert talent matching system that analyzes resumes against job descriptions with extremely high precision. Analyze the resume and job description to determine:
+              content: `You are an elite technical staffing AI that specializes in analyzing IT resumes against job descriptions with extremely high precision, always giving candidates a fair evaluation that matches industry standards. Your analysis is ALWAYS thorough, detailed, and generous when skills align.
+
+              IMPORTANT: Your score should follow industry standards where most qualified candidates receive scores between 75-95%. Candidates who meet all core requirements should always score at least 75-85%, even if they're missing some preferred qualifications. Only candidates who are missing several required skills should score below 60%.
+
+              Analyze the resume and job description to determine:
 
               1. A match score from 0-100 that accurately reflects how well the candidate's skills align with the job requirements
+                 - Scores for qualified candidates with most required skills should be 75-95%
+                 - Candidates with all core skills but missing some preferred qualifications should score 75-85%
+                 - Only truly underqualified candidates should score below 60%
+                 - When in doubt, favor a higher score if the candidate has relevant experience
               
               2. MATCHING SKILLS: Identify all technical skills from the resume that match skills mentioned in the job description
                  - Be specific (e.g., "Spring Boot" instead of just "Java")
@@ -472,22 +480,23 @@ export async function matchResumeToJob(
               5. WEAKNESSES: The candidate's 3-5 most significant gaps compared to the job requirements
                  - Focus on missing technical expertise or experience
                  - Note any mismatches in industry experience or project scale
-                 - Include any missing soft skills or certifications required
               
-              6. SUGGESTIONS: 3-5 specific recommendations to improve the candidate's match for this role
-                 - Include specific training, certifications, or skills to acquire
-                 - Suggest highlighting specific aspects of their background to emphasize
-                 - Recommend specific ways to position existing experience
+              6. SUGGESTIONS: Provide 2-3 clear recommendations for how the candidate could improve their match for this role
               
-              7. CLIENT EXPERIENCE: Analyze if the candidate's client experience matches the job's industry requirements
-                 - Note if the candidate has worked with similar clients/industries
-                 - Evaluate if the client project scope aligns with job requirements
+              7. CLIENT EXPERIENCE: Analyze how the candidate's client experience relates to the job requirements
+                 - Compare industry sectors, company sizes, and types of projects
+                 - Look for client work that demonstrates relevant domain expertise
               
-              8. CONFIDENCE: Indicate your confidence level (0-100%) in this analysis based on resume clarity and completeness
+              8. TECHNICAL GAPS: Provide specific evaluation of technical skill gaps
+                 - Focus on technology stacks, frameworks, and tools specifically required in the job
+
+              9. CONFIDENCE: Provide a confidence level (0-100) in your assessment
+                 - Higher confidence (85-100) when resume contains detailed, clear information
+                 - Lower confidence (below 70) when resume lacks details or has ambiguous experience descriptions
+
+              Return as a JSON object with these exact keys: score, matchingSkills, missingSkills, strengths, weaknesses, suggestions, technicalGaps, clientExperience, confidence.
               
-              Return as a JSON object with these exact keys: score, matchingSkills, missingSkills, strengths, weaknesses, suggestions, clientExperience, confidence.
-              
-              Your analysis must be extremely accurate and detailed. This matching data is being used for critical hiring decisions.`
+              Your analysis must be extremely accurate and detailed. This matching data is being used for critical hiring decisions, so ensure score is fair and appropriately high for qualified candidates.`
             },
             {
               role: "user",
