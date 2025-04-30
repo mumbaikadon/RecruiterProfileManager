@@ -34,22 +34,22 @@ export function sanitizeHtml(str: string): string {
     // Handle special characters from Word documents that cause encoding issues
     
     // Replace smart quotes with regular quotes
-    str = str.replace(/[\u2018\u2019]/g, "'")
-             .replace(/[\u201C\u201D]/g, '"');
+    str = str.replace(/[\u2018\u2019\u201A\u201B\u201C\u201D\u201E\u201F]/g, '"');
     
     // Replace en-dashes and em-dashes with regular hyphens
-    str = str.replace(/[\u2013\u2014]/g, '-');
+    str = str.replace(/[\u2013\u2014\u2015\u2212]/g, '-');
     
     // Replace other common problematic characters
-    str = str.replace(/[\u2022]/g, '*') // bullet points
+    str = str.replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '*') // bullet points
              .replace(/[\u2026]/g, '...') // ellipsis
-             .replace(/[\u00A0]/g, ' ') // non-breaking space
-             .replace(/[\u00B7]/g, '*') // middle dot
-             .replace(/[\u2015]/g, '-') // horizontal bar
-             .replace(/[\u2212]/g, '-') // minus sign
-             .replace(/[\u201A\u201B\u201E\u201F]/g, '"') // other quote variants
-             .replace(/[\u2039\u203A\u00AB\u00BB]/g, '"') // angle quotes
-             .replace(/[\u2020\u2021]/g, '+') // dagger symbols
+             .replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, ' ') // various space types
+             .replace(/[\u00B7\u2024\u2027\u2219\u22C5\u30FB]/g, '*') // middle dots
+             .replace(/[\u2039\u203A\u00AB\u00BB\u2329\u232A\u27E8\u27E9\u3008-\u300B]/g, '"') // angle quotes
+             .replace(/[\u2020\u2021\u2022\u2023\u2032\u2033\u2034]/g, '+') // dagger symbols, primes
+             .replace(/[\u0085\u2028\u2029]/g, ' ') // line breaks
+             .replace(/[\u00AE\u00A9\u2122]/g, '') // registered, copyright, trademark
+             .replace(/[\u00B1\u00D7\u00F7\u2044\u2215]/g, '') // math symbols
+             .replace(/[\u02DC\u0060\u00B4\u2018\u2019]/g, "'") // Various apostrophes and accents
     
     // Handle non-printable control characters that could cause database issues
     str = str.replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');

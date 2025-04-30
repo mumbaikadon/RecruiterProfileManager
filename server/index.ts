@@ -39,12 +39,27 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Global error handler for all errors including PayloadTooLargeError
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
+    let message = err.message || "Internal Server Error";
+    
+    // Handle specific error types
+    if (err.type === 'entity.too.large' || err.name === 'PayloadTooLargeError') {
+      message = "Request payload is too large. Please reduce the size of your upload.";
+    }
+    
+    // Always return JSON, never HTML for errors
+    res.status(status).json({ 
+      message,
+      error: err.name || "ServerError", 
+      isError: true 
+    });
+    
+    // Only throw in development to see stack trace in console
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Server error:", err);
+    }
   });
 
   // importantly only setup vite in development and after
