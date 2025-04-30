@@ -565,17 +565,31 @@ function extractSkills(text: string): string[] {
   // Find skills mentioned in the resume
   const foundSkills = technicalSkills.filter(skill => {
     // Check for standalone mentions of the skill (word boundaries)
-    const regex = new RegExp(`\\b${skill.toLowerCase()}\\b`, 'i');
-    return regex.test(lowerText);
+    try {
+      // Escape special regex characters in skill names
+      const escapedSkill = skill.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escapedSkill}\\b`, 'i');
+      return regex.test(lowerText);
+    } catch (error) {
+      // Fallback for skills with problematic regex patterns
+      console.log(`Regex error for skill "${skill}", using simple text search`);
+      return lowerText.includes(skill.toLowerCase());
+    }
   });
   
   // Also check for versioned mentions (e.g., "Java 8" or "Angular 10")
   technicalSkills.forEach(skill => {
-    // Look for skill followed by version number
-    const versionRegex = new RegExp(`\\b${skill}\\s+([0-9](?:\\.[0-9x]+)?)\\b`, 'i');
-    const match = text.match(versionRegex);
-    if (match) {
-      versionedSkills.push(`${skill} ${match[1]}`);
+    try {
+      // Look for skill followed by version number
+      // Escape special regex characters in skill names
+      const escapedSkill = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const versionRegex = new RegExp(`\\b${escapedSkill}\\s+([0-9](?:\\.[0-9x]+)?)\\b`, 'i');
+      const match = text.match(versionRegex);
+      if (match) {
+        versionedSkills.push(`${skill} ${match[1]}`);
+      }
+    } catch (error) {
+      console.log(`Regex error for versioned skill "${skill}", skipping version detection`);
     }
   });
   
