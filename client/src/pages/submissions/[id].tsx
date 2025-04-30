@@ -158,6 +158,41 @@ const SubmissionDetailPage: React.FC = () => {
                 
                 <Separator />
                 
+                {/* Feedback History */}
+                <div>
+                  <h3 className="text-md font-medium mb-2">Status Updates & Feedback</h3>
+                  <div className="rounded-md border border-border">
+                    <div className="p-4 flex items-center space-x-3">
+                      <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <div className="font-medium">Current Status:</div>
+                          <StatusBadge status={submission.status} />
+                        </div>
+                        
+                        {submission.feedback && (
+                          <div className="mt-2">
+                            <div className="text-sm font-medium">Latest Feedback:</div>
+                            <div className="mt-1 text-sm bg-muted/50 p-2 rounded-md">
+                              {submission.feedback}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {submission.lastUpdatedBy && (
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            Last updated by: {submission.lastUpdatedBy === recruiter?.id 
+                              ? recruiter?.name 
+                              : "Admin"}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <Separator />
+                
                 <div>
                   <h3 className="text-md font-medium mb-2">Match Score Analysis</h3>
                   <div className="flex flex-col md:flex-row gap-4">
@@ -270,23 +305,7 @@ const SubmissionDetailPage: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Feedback Section */}
-                {submission.feedback && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h3 className="text-md font-medium mb-2">Status Feedback</h3>
-                      <div className="bg-muted p-3 rounded-md">
-                        <p className="text-sm whitespace-pre-wrap">{submission.feedback}</p>
-                        {submission.lastUpdatedBy && (
-                          <div className="text-xs text-muted-foreground mt-2">
-                            Last updated by: {submission.lastUpdatedBy === 1 ? "Admin" : "Recruiter"}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
+
                 
                 {/* Notes Section */}
                 {submission.notes && (
