@@ -239,9 +239,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validatedData.ssn4
       );
       
-      if (existingCandidate) {
+      // Only count as duplicate if already submitted to the same job
+      if (existingCandidate && req.body.jobId) {
+        try {
+          // Check if candidate is already submitted to this job
+          const existingSubmission = await storage.getSubmissionByJobAndCandidate(
+            parseInt(req.body.jobId),
+            existingCandidate.id
+          );
+          
+          if (existingSubmission) {
+            return res.status(409).json({ 
+              message: "This candidate is already in our past submitted list for this job", 
+              candidateId: existingCandidate.id,
+              submissionId: existingSubmission.id
+            });
+          }
+        } catch (error) {
+          console.error("Error checking for duplicate submission:", error);
+        }
+        
+        // Candidate exists but has not been submitted to this job
         return res.status(409).json({ 
-          message: "This candidate is already in our past submitted list", 
+          message: "Existing candidate found, proceed with submission to this job", 
           candidateId: existingCandidate.id 
         });
       }

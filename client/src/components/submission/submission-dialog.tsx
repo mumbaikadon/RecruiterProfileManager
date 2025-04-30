@@ -102,6 +102,18 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
       setSubmissionError(null);
       
       // First create candidate with resumeData
+      // Check if resume data is too large (greater than 40MB)
+      const resumeDataSize = JSON.stringify(values.resumeData || {}).length;
+      if (resumeDataSize > 40 * 1024 * 1024) {
+        setSubmissionError("Resume file is too large. Please use a smaller file (under 40MB).");
+        toast({
+          title: "File too large",
+          description: "Your resume file exceeds the maximum size limit. Please use a smaller file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const candidateResponse = await fetch("/api/candidates", {
         method: "POST",
         headers: {
@@ -110,13 +122,33 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         body: JSON.stringify({
           ...values,
           createdBy: recruiterId,
+          jobId: jobId, // Pass jobId to check for candidate duplication within the same job
           resumeData: values.resumeData,
         }),
       });
       
+      // Check if response is JSON or HTML (error page)
+      const contentType = candidateResponse.headers.get("content-type");
+      if (contentType && !contentType.includes("application/json")) {
+        setSubmissionError("Server error: The resume file may be too large. Please try with a smaller file.");
+        toast({
+          title: "Upload failed",
+          description: "The server returned an error. The resume file may be too large.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Handle candidate already exists case
       if (candidateResponse.status === 409) {
-        const data = await candidateResponse.json();
+        let data;
+        try {
+          data = await candidateResponse.json();
+        } catch (error) {
+          console.error("Error parsing response:", error);
+          setSubmissionError("Failed to parse server response. Please try again.");
+          return;
+        }
         
         if (data.candidateId) {
           // Get candidate details
@@ -124,8 +156,12 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           let candidateName = "Existing Candidate";
           
           if (candidateDetailsResponse.ok) {
-            const candidateDetails = await candidateDetailsResponse.json();
-            candidateName = `${candidateDetails.firstName} ${candidateDetails.lastName}`;
+            try {
+              const candidateDetails = await candidateDetailsResponse.json();
+              candidateName = `${candidateDetails.firstName} ${candidateDetails.lastName}`;
+            } catch (error) {
+              console.error("Error parsing candidate details:", error);
+            }
           }
           
           // Get previous submissions for this candidate
