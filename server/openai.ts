@@ -93,7 +93,18 @@ export interface MatchScoreResult {
 }
 
 /**
- * Enhanced resume analysis interface with quality metrics
+ * Work Experience interface for structured resume data
+ */
+export interface WorkExperience {
+  company: string;
+  title: string;
+  startDate?: string;
+  endDate?: string;
+  responsibilities?: string[];
+}
+
+/**
+ * Enhanced resume analysis interface with quality metrics and structured work experience
  */
 export interface EnhancedResumeAnalysis extends ResumeAnalysisResult {
   qualityScore?: number;         // Overall quality score (0-100)
@@ -103,6 +114,7 @@ export interface EnhancedResumeAnalysis extends ResumeAnalysisResult {
   keywordScore?: number;         // How well the resume matches industry keywords (0-100)
   readabilityScore?: number;     // Readability score (0-100)
   aiEnhanced: boolean;           // Whether AI was used for enhanced analysis
+  workExperience?: WorkExperience[]; // Structured work experience data
 }
 
 /**
@@ -224,11 +236,11 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
 }
 
 /**
- * AI-enhanced resume analysis that adds quality metrics and improvement suggestions
- * Uses OpenAI if available, falls back to NLP methods if not
+ * Advanced AI-enhanced resume analysis that extracts structured information and adds quality metrics
+ * Uses OpenAI for comprehensive parsing and structured extraction, falls back to NLP if not available
  */
 export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedResumeAnalysis> {
-  // First get the basic NLP analysis
+  // First get the basic NLP analysis as fallback
   const basicAnalysis = await analyzeResumeText(resumeText);
   
   // If OpenAI is not available, return basic analysis with dummy quality metrics
@@ -244,12 +256,13 @@ export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedR
       languageSuggestions: [],
       readabilityScore,
       keywordScore: 65, // Default score
-      aiEnhanced: false
+      aiEnhanced: false,
+      workExperience: [] // Empty array as fallback
     };
   }
   
   try {
-    // Perform enhanced analysis with OpenAI
+    // Perform enhanced structured analysis with OpenAI
     console.log("Performing enhanced resume analysis with OpenAI...");
     
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -258,9 +271,26 @@ export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedR
       messages: [
         {
           role: "system",
-          content: `You are an expert resume analyzer for IT staffing industry. Analyze this resume and provide quality metrics and improvement suggestions.
+          content: `You are an expert resume analyzer for IT staffing industry. Extract structured information from resumes with 100% accuracy.
+
+          First, extract ALL structured resume information:
           
-          Return your analysis in a structured JSON format with these exact keys:
+          1. clientNames: Array of all companies/clients the candidate worked for. Each entry should include ONLY the company name (e.g., "Acme Inc.", "Google", "Microsoft")
+          
+          2. jobTitles: Array of all job titles held (e.g., "Senior Java Developer", "DevOps Engineer", "Software Architect")
+          
+          3. workExperience: Array of detailed work experiences, each containing:
+             - company: The company/client name
+             - title: Job title at this company
+             - startDate: Start date (MM/YYYY format if available)
+             - endDate: End date (MM/YYYY format, or "Present" if current)
+             - responsibilities: Array of key responsibilities/achievements (3-8 bullet points)
+          
+          4. skills: Array of ALL technical skills mentioned (programming languages, frameworks, tools, etc.), be comprehensive
+          
+          5. education: Array of all education entries, properly formatted
+
+          Then include quality assessment metrics:
           
           1. qualityScore: A number between 0 and 100 indicating overall resume quality
           2. contentSuggestions: Array of 3-5 specific suggestions for improving content
@@ -269,7 +299,9 @@ export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedR
           5. keywordScore: A number between 0 and 100 indicating how well the resume contains relevant IT industry keywords
           6. readabilityScore: A number between 0 and 100 indicating how readable the resume is
           
-          Ensure your assessment is fair and constructive, offering actionable advice that would help the candidate improve their resume for IT positions.`
+          Ensure you extract EVERY client name, job title, date, responsibility and skill mentioned in the resume.
+          If certain information is not present, use empty arrays rather than making up information.
+          Output structured JSON exactly matching the fields above.`
         },
         {
           role: "user",
@@ -277,7 +309,8 @@ export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedR
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1500
+      max_tokens: 3000,
+      temperature: 0.3 // Lower temperature for more accurate extraction
     });
     
     const content = response.choices[0].message.content;
@@ -290,16 +323,34 @@ export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedR
     // Parse the response
     const enhancedAnalysis = JSON.parse(content);
     
-    // Merge the basic NLP analysis with the enhanced AI analysis
+    // Extract structured data from the enhanced analysis
+    const structuredClientNames = enhancedAnalysis.clientNames || [];
+    const structuredJobTitles = enhancedAnalysis.jobTitles || [];
+    const workExperience = enhancedAnalysis.workExperience || [] as WorkExperience[];
+    
+    // Extract relevant dates from work experience
+    const structuredDates: string[] = [];
+    workExperience.forEach((exp: WorkExperience) => {
+      if (exp.startDate) structuredDates.push(`${exp.startDate} - ${exp.endDate || 'Present'}`);
+    });
+    
+    // Merge the structured data with the basic NLP analysis
     return {
-      ...basicAnalysis,
+      clientNames: structuredClientNames.length > 0 ? structuredClientNames : basicAnalysis.clientNames,
+      jobTitles: structuredJobTitles.length > 0 ? structuredJobTitles : basicAnalysis.jobTitles,
+      relevantDates: structuredDates.length > 0 ? structuredDates : basicAnalysis.relevantDates,
+      skills: enhancedAnalysis.skills || basicAnalysis.skills,
+      education: enhancedAnalysis.education || basicAnalysis.education,
+      extractedText: basicAnalysis.extractedText,
       qualityScore: enhancedAnalysis.qualityScore || 75,
       contentSuggestions: enhancedAnalysis.contentSuggestions || [],
       formattingSuggestions: enhancedAnalysis.formattingSuggestions || [],
       languageSuggestions: enhancedAnalysis.languageSuggestions || [],
       keywordScore: enhancedAnalysis.keywordScore || 70,
       readabilityScore: enhancedAnalysis.readabilityScore || calculateReadabilityScore(resumeText),
-      aiEnhanced: true
+      aiEnhanced: true,
+      // Store the structured work experience for potential future use
+      workExperience: workExperience || []
     };
   } catch (error) {
     console.error("Error in AI-enhanced resume analysis:", error);
@@ -315,7 +366,8 @@ export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedR
       languageSuggestions: [],
       readabilityScore,
       keywordScore: 65, // Default fallback score
-      aiEnhanced: false
+      aiEnhanced: false,
+      workExperience: [] // Empty array as fallback
     };
   }
 }
