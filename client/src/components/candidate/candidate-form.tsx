@@ -121,11 +121,15 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       // Format 2: Full legal name format (as per passport)
       const fullNameMatch = pastedData.match(/(?:full legal name|your full legal name|as per passport|legal name):?\s*([^\n\r]*)/i);
       
+      // Format 3: Direct extraction of "Your full legal name (As per passport): Name"
+      const fullNameAsPerPassportMatch = pastedData.match(/your full legal name\s*\(as per passport\):?\s*([^\n\r]*)/i);
+      
       console.log("DEBUG - Extracted patterns:", {
         firstNamePattern1,
         middleNamePattern1,
         lastNamePattern1,
-        fullNameMatch
+        fullNameMatch,
+        fullNameAsPerPassportMatch
       });
       
       // Apply matches in priority order
@@ -141,8 +145,26 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         form.setValue("lastName", lastNamePattern1[1].trim());
       }
       
+      // Handle the specific format from the example: "Your full legal name (As per passport): Swornim Malla"
+      if (fullNameAsPerPassportMatch && fullNameAsPerPassportMatch[1].trim()) {
+        console.log("DEBUG - Found full name format with 'As per passport':", fullNameAsPerPassportMatch[1]);
+        
+        const nameParts = fullNameAsPerPassportMatch[1].trim().split(/\s+/);
+        if (nameParts.length >= 2) {
+          // First part is first name
+          form.setValue("firstName", nameParts[0]);
+          
+          // Last part is last name
+          form.setValue("lastName", nameParts[nameParts.length - 1]);
+          
+          // Middle parts (if any) are middle name
+          if (nameParts.length > 2) {
+            form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
+          }
+        }
+      }
       // If we have a full name match but not individual components, try to parse it
-      if (fullNameMatch && (!firstNamePattern1 || !lastNamePattern1)) {
+      else if (fullNameMatch && (!firstNamePattern1 || !lastNamePattern1)) {
         const nameParts = fullNameMatch[1].trim().split(/\s+/);
         if (nameParts.length >= 2) {
           // First part is first name
@@ -161,11 +183,15 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       // Extract DOB - multiple formats
       // Format: "DOB: 11th December 1993" or similar variations
       const dobFormatA = pastedData.match(/DOB:?\s*(\d{1,2})(?:st|nd|rd|th)?\s+([a-zA-Z]+)\s+(\d{4})/i);
-      // Format: MM/DD/YYYY
-      const dobFormatB = pastedData.match(/DOB:?\s*(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?/i);
+      // Format: MM/DD/YYYY or MM/DD with variations including "DOB : 06/25"
+      const dobFormatB = pastedData.match(/DOB\s*:?\s*(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?/i);
+      
       // Month name format - e.g., "January 15"
       const dobFormatC = pastedData.match(/Birth Month[^:]*:?\s*([a-zA-Z]+)/i);
       const dobDayFormatC = pastedData.match(/Birth Day[^:]*:?\s*(\d{1,2})/i);
+      
+      // Debug logging for DOB formats
+      console.log("DEBUG - DOB patterns:", { dobFormatA, dobFormatB });
       
       const monthNameToNumber = (month: string): number => {
         const months: {[key: string]: number} = {
@@ -281,10 +307,12 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         // Format: "Work Authorization: GC EAD" or similar
         pastedData.match(/work\s*authorization[^:]*:?\s*([^\n\r,;]+)/i),
         // GC EAD, H1B, etc. specific formats
-        pastedData.match(/(?:GC\s*EAD|Green\s*Card|H1-?B|EAD|VISA|Citizen)/i),
+        pastedData.match(/(?:GC\s*EAD|Green\s*Card|H1-?B|EAD|VISA|Citizen|STEM\s*OPT)/i),
         // Key phrases
         pastedData.match(/(?:authorized\s*to\s*work|visa\s*status|work\s*permit)[^:]*:?\s*([^\n\r,;]+)/i)
       ];
+      
+      console.log("DEBUG - Work authorization patterns:", workAuthPatterns);
       
       const validAuthMatch = workAuthPatterns.find(match => match !== null);
       if (validAuthMatch) {
@@ -300,6 +328,11 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           form.setValue("workAuthorization", "h1b");
         } else if (authLower.match(/ead/) || authLower.match(/gc\s*ead/i)) {
           form.setValue("workAuthorization", "ead");
+        } else if (authLower.match(/stem\s*opt/i) || authLower.match(/opt/i)) {
+          // Handle STEM OPT and OPT as a special case
+          form.setValue("workAuthorization", "other");
+          setShowOtherAuthorizationInput(true);
+          setOtherAuthorization(authText.trim());
         } else {
           form.setValue("workAuthorization", "other");
           setShowOtherAuthorizationInput(true);
