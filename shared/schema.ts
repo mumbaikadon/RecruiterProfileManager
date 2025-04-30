@@ -85,8 +85,8 @@ export const submissions = pgTable("submissions", {
   status: text("status", { 
     enum: ["new", "reviewing", "interview", "offer", "hired", "rejected"] 
   }).notNull().default("new"),
-  matchScore: integer("match_score"),
-  agreedRate: integer("agreed_rate"),
+  matchScore: integer("match_score").default(65),  // Default match score of 65%
+  agreedRate: integer("agreed_rate").default(0),  // Default to 0 for better handling
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   notes: text("notes"),
