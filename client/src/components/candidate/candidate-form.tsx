@@ -106,6 +106,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
     // Attempt to extract data from pasted text
     if (pastedData.length > 0) {
       console.log("Attempting to parse pasted data:", pastedData.length, "characters");
+      console.log("DEBUG - Pasted data:", pastedData);
       
       // Check for multiple text formats and patterns
       
@@ -118,7 +119,14 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                               pastedData.match(/[-]?Last Name:?\s*([^\n\r]*)/i);
       
       // Format 2: Full legal name format (as per passport)
-      const fullNameMatch = pastedData.match(/(?:full legal name|your full legal name|as per passport):?\s*([^\n\r]*)/i);
+      const fullNameMatch = pastedData.match(/(?:full legal name|your full legal name|as per passport|legal name):?\s*([^\n\r]*)/i);
+      
+      console.log("DEBUG - Extracted patterns:", {
+        firstNamePattern1,
+        middleNamePattern1,
+        lastNamePattern1,
+        fullNameMatch
+      });
       
       // Apply matches in priority order
       if (firstNamePattern1 && firstNamePattern1[1].trim()) {
