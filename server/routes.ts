@@ -911,8 +911,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If so, we shouldn't provide access to the actual file
       const submissions = await storage.getSubmissions({ candidateId });
       if (submissions.length > 0) {
-        // Get all jobs for these submissions
-        const jobIds = [...new Set(submissions.map(s => s.jobId))];
+        // Get unique job IDs without using Set
+        const jobIds: number[] = [];
+        submissions.forEach(s => {
+          if (!jobIds.includes(s.jobId)) {
+            jobIds.push(s.jobId);
+          }
+        });
         
         // Check if all jobs are closed
         let allJobsClosed = true;
