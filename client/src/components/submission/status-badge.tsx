@@ -19,22 +19,30 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
     
     // Submission statuses
     new: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-    interview: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-    offer: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400",
-    hired: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+    submitted_to_vendor: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400",
+    rejected_by_vendor: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    submitted_to_client: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400",
+    interview_scheduled: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+    interview_completed: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400",
+    offer_extended: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400",
+    offer_accepted: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+    offer_declined: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
     rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
   };
   
   // Determine text size based on size prop
   const textSize = size === "sm" ? "text-xs" : "text-sm";
   
-  // Format status text (capitalize first letter)
-  const formattedStatus = status.charAt(0).toUpperCase() + status.slice(1);
+  // Format status text (convert underscores to spaces and capitalize each word)
+  const formattedStatus = status
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
   
   return (
     <span 
       className={cn(
-        "px-2 inline-flex leading-5 font-semibold rounded-full",
+        "px-2 py-1 inline-flex items-center justify-center font-semibold rounded-full",
         textSize,
         statusColors[status] || "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
       )}

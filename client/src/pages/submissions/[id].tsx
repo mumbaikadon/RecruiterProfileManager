@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { ChevronLeft, FileText, Briefcase, User, Calendar, DollarSign, BarChart2, Lock, Shield } from "lucide-react";
 import { formatDate, formatDateTime, formatRate } from "@/lib/date-utils";
 import StatusBadge from "@/components/submission/status-badge";
+import StatusSelect from "@/components/submission/status-select";
 import WorkExperienceCard from "@/components/candidate/work-experience-card";
 
 const SubmissionDetailPage: React.FC = () => {
@@ -269,6 +270,25 @@ const SubmissionDetailPage: React.FC = () => {
                   </div>
                 </div>
                 
+                {/* Feedback Section */}
+                {submission.feedback && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-md font-medium mb-2">Status Feedback</h3>
+                      <div className="bg-muted p-3 rounded-md">
+                        <p className="text-sm whitespace-pre-wrap">{submission.feedback}</p>
+                        {submission.lastUpdatedBy && (
+                          <div className="text-xs text-muted-foreground mt-2">
+                            Last updated by: {submission.lastUpdatedBy === 1 ? "Admin" : "Recruiter"}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {/* Notes Section */}
                 {submission.notes && (
                   <>
                     <Separator />
