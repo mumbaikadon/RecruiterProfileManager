@@ -68,7 +68,15 @@ const SubmissionDetailPage: React.FC = () => {
   const job = fullJobData || submission.job;
   const candidate = submission.candidate;
   const recruiter = submission.recruiter;
-  const resumeData = submission.resumeData;
+  const resumeData = submission.resumeData || {
+    clientNames: [],
+    jobTitles: [],
+    relevantDates: [],
+    skills: [],
+    education: [],
+    extractedText: "",
+    fileName: ""
+  };
   
   return (
     <div className="max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -99,9 +107,7 @@ const SubmissionDetailPage: React.FC = () => {
               <TabsList className="mb-4">
                 <TabsTrigger value="details">Submission Details</TabsTrigger>
                 <TabsTrigger value="job">Job Information</TabsTrigger>
-                {job?.status?.toLowerCase() === 'active' && resumeData && (
-                  <TabsTrigger value="resume">Resume Data</TabsTrigger>
-                )}
+                <TabsTrigger value="resume">Resume Data</TabsTrigger>
               </TabsList>
               
               <TabsContent value="details" className="space-y-5">
