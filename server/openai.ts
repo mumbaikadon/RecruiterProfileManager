@@ -21,6 +21,10 @@ export interface MatchScoreResult {
   weaknesses: string[];
   suggestions: string[];
   technicalGaps?: string[]; // Added for more specific technology gap analysis
+  matchingSkills?: string[]; // Skills matching the job description
+  missingSkills?: string[]; // Skills required by job but missing from resume
+  clientExperience?: string; // Analysis of how client experience relates to job
+  confidence?: number; // Confidence level in the analysis (0-100)
 }
 
 /**
@@ -447,16 +451,43 @@ export async function matchResumeToJob(
           messages: [
             {
               role: "system",
-              content: `You are an expert at matching candidates to job descriptions with emphasis on technical skills. Analyze the resume and job description to determine:
-              1. A match score from 0-100
-              2. The candidate's key strengths for this role (limit to 5)
-              3. Specific technologies and skills mentioned in the job description that are missing from the resume (limit to 5)
-              4. Specific client projects and date ranges from the resume, and whether they provide relevant experience
-              5. Suggestions for how the candidate could be positioned for this role (limit to 3)
+              content: `You are an expert talent matching system that analyzes resumes against job descriptions with extremely high precision. Analyze the resume and job description to determine:
+
+              1. A match score from 0-100 that accurately reflects how well the candidate's skills align with the job requirements
               
-              Be very specific about technologies and skills that are missing. For example, instead of saying "Missing Java experience", say "Missing experience with Java Spring Boot" or "Missing experience with Java 11 features".
+              2. MATCHING SKILLS: Identify all technical skills from the resume that match skills mentioned in the job description
+                 - Be specific (e.g., "Spring Boot" instead of just "Java")
+                 - Include frameworks, languages, methodologies, and tools
+                 - Only include skills that appear in BOTH the resume and job description
               
-              Return as a JSON object with the keys: score, strengths, weaknesses, suggestions, and a new key called "technicalGaps" which contains an array of specific technologies missing.`
+              3. MISSING SKILLS: Identify key technical skills from the job description that are missing from the resume
+                 - Focus on technical requirements specifically mentioned as "required" or "must-have"
+                 - Only include skills clearly missing from the resume
+              
+              4. STRENGTHS: The candidate's 3-5 most impressive strengths for this specific role
+                 - Focus on experience durations, leadership roles, project scale/complexity
+                 - Include relevant industry experience specific to the role
+                 - Highlight skills that directly satisfy key job requirements
+              
+              5. WEAKNESSES: The candidate's 3-5 most significant gaps compared to the job requirements
+                 - Focus on missing technical expertise or experience
+                 - Note any mismatches in industry experience or project scale
+                 - Include any missing soft skills or certifications required
+              
+              6. SUGGESTIONS: 3-5 specific recommendations to improve the candidate's match for this role
+                 - Include specific training, certifications, or skills to acquire
+                 - Suggest highlighting specific aspects of their background to emphasize
+                 - Recommend specific ways to position existing experience
+              
+              7. CLIENT EXPERIENCE: Analyze if the candidate's client experience matches the job's industry requirements
+                 - Note if the candidate has worked with similar clients/industries
+                 - Evaluate if the client project scope aligns with job requirements
+              
+              8. CONFIDENCE: Indicate your confidence level (0-100%) in this analysis based on resume clarity and completeness
+              
+              Return as a JSON object with these exact keys: score, matchingSkills, missingSkills, strengths, weaknesses, suggestions, clientExperience, confidence.
+              
+              Your analysis must be extremely accurate and detailed. This matching data is being used for critical hiring decisions.`
             },
             {
               role: "user",
@@ -511,26 +542,50 @@ export async function matchResumeToJob(
           };
         }
         
-        // Ensure we have the expected structure with new technicalGaps field
+        // Ensure we have the expected structure with new fields
         const matchSchema = z.object({
           score: z.number().min(0).max(100),
-          strengths: z.array(z.string()),
-          weaknesses: z.array(z.string()),
-          suggestions: z.array(z.string()),
+          matchingSkills: z.array(z.string()).optional(),
+          missingSkills: z.array(z.string()).optional(),
+          strengths: z.array(z.string()).optional(),
+          weaknesses: z.array(z.string()).optional(),
+          suggestions: z.array(z.string()).optional(),
+          clientExperience: z.string().optional(),
+          confidence: z.number().min(0).max(100).optional(),
           technicalGaps: z.array(z.string()).optional()
         });
 
-        const validatedResult = matchSchema.parse(result);
-        
-        // If technicalGaps exists, add them to weaknesses with "Missing skill: " prefix
-        if (validatedResult.technicalGaps && validatedResult.technicalGaps.length > 0) {
-          validatedResult.weaknesses = [
-            ...validatedResult.weaknesses,
-            ...validatedResult.technicalGaps.map(gap => `Missing technology: ${gap}`)
-          ].slice(0, 10); // Limit to 10 total weaknesses
+        try {
+          const validatedResult = matchSchema.parse(result);
+          
+          // Convert the new format to match our existing interface
+          return {
+            score: validatedResult.score,
+            strengths: validatedResult.strengths || validatedResult.matchingSkills || [],
+            weaknesses: validatedResult.weaknesses || validatedResult.missingSkills || [],
+            suggestions: validatedResult.suggestions || [],
+            technicalGaps: validatedResult.technicalGaps || validatedResult.missingSkills || [],
+            matchingSkills: validatedResult.matchingSkills || [],
+            missingSkills: validatedResult.missingSkills || [],
+            clientExperience: validatedResult.clientExperience || "",
+            confidence: validatedResult.confidence || 0
+          };
+        } catch (validationError) {
+          console.warn("Schema validation failed, using raw result:", validationError);
+          
+          // Handle legacy format or unexpected structure
+          return {
+            score: result.score || 0,
+            strengths: result.strengths || result.matchingSkills || [],
+            weaknesses: result.weaknesses || result.missingSkills || [],
+            suggestions: result.suggestions || [],
+            technicalGaps: result.technicalGaps || result.missingSkills || [],
+            matchingSkills: result.matchingSkills || [],
+            missingSkills: result.missingSkills || [],
+            clientExperience: result.clientExperience || "",
+            confidence: result.confidence || 0
+          };
         }
-
-        return validatedResult;
       })();
       
       // Race between timeout and OpenAI request
