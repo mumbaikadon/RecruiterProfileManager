@@ -638,31 +638,110 @@ function extractEducation(text: string): string[] {
 }
 
 /**
- * Document parser - simple version
- * This would be expanded with actual pdf-parse and mammoth integration
+ * Document parser with enhanced PDF and DOCX handling
  */
 async function parseDocument(buffer: Buffer, fileType: string): Promise<string> {
-  // This is a simplified implementation
-  // In a real implementation, we would use pdf-parse for PDFs and mammoth for DOCX
-  
   try {
+    console.log(`Parsing document of type: ${fileType}, buffer size: ${buffer.length} bytes`);
+    
     if (fileType === 'pdf') {
-      // Use pdf-parse to extract text from PDF
-      const pdfParse = require('pdf-parse');
-      const data = await pdfParse(buffer);
-      return data.text;
+      // Enhanced PDF parsing with error handling
+      try {
+        const pdfParse = require('pdf-parse');
+        
+        // Set options for better PDF parsing
+        const options = {
+          // Limit the number of pages to parse if PDF is very large
+          max: 50,
+          // Add some page preprocessing to handle difficult PDFs
+          pagerender: function(pageData: any) {
+            // Extract text from page
+            let renderOptions = {
+              normalizeWhitespace: true,
+              disableCombineTextItems: false
+            };
+            return pageData.getTextContent(renderOptions)
+              .then(function(textContent: any) {
+                let lastY, text = '';
+                // Process each text item
+                for (let item of textContent.items) {
+                  if (lastY == item.transform[5] || !lastY)
+                    text += item.str;
+                  else
+                    text += '\n' + item.str;
+                    
+                  lastY = item.transform[5];
+                }
+                return text;
+              });
+          }
+        };
+        
+        const data = await pdfParse(buffer, options);
+        
+        // Some basic checks on the extracted text
+        if (!data.text || data.text.trim().length < 10) {
+          console.warn("Extracted PDF text seems too short or empty");
+          
+          // Try alternate method without options if initial attempt yielded poor results
+          const basicData = await pdfParse(buffer);
+          if (basicData.text && basicData.text.length > data.text.length) {
+            console.log("Using basic PDF parsing which yielded better results");
+            return basicData.text;
+          }
+        }
+        
+        return data.text;
+      } catch (pdfError) {
+        console.error("Error in PDF parsing:", pdfError);
+        // Fallback to basic buffer conversion if PDF parsing fails
+        const textContent = buffer.toString('utf8', 0, Math.min(buffer.length, 8000))
+          .replace(/[^\x20-\x7E\r\n]/g, ' ') // Remove non-printable characters
+          .replace(/\x00/g, ' '); // Replace null bytes with spaces
+          
+        // Check if the fallback produced anything useful
+        if (textContent.trim().length > 100 && !/^\%PDF/.test(textContent)) {
+          console.log("PDF parsing failed, falling back to basic text extraction");
+          return textContent;
+        } else {
+          return "This appears to be a PDF file in binary format that cannot be directly read. Please try uploading a text-based PDF or convert it using a PDF text extraction tool.";
+        }
+      }
     } else if (fileType === 'docx') {
-      // Use mammoth to extract text from DOCX
-      const mammoth = require('mammoth');
-      const result = await mammoth.extractRawText({ buffer });
-      return result.value;
+      // Enhanced DOCX parsing
+      try {
+        const mammoth = require('mammoth');
+        const result = await mammoth.extractRawText({ 
+          buffer,
+          // Add options to improve text extraction
+          preserveEmptyParagraphs: false,
+          includeEmbeddedStyleMap: true,
+        });
+        return result.value;
+      } catch (docxError) {
+        console.error("Error in DOCX parsing:", docxError);
+        return "Unable to parse this DOCX file. It may be corrupt or password protected.";
+      }
     } else {
-      // Assume it's plain text
-      return buffer.toString('utf8');
+      // Handle plain text files with encoding detection
+      try {
+        // First try UTF-8
+        const text = buffer.toString('utf8');
+        // Check if the text seems valid (contains printable ASCII characters)
+        if (/[\x20-\x7E]/.test(text)) {
+          return text;
+        } else {
+          // If UTF-8 looks wrong, try latin1 (a more permissive encoding)
+          return buffer.toString('latin1');
+        }
+      } catch (textError) {
+        console.error("Error processing text file:", textError);
+        return buffer.toString('utf8').replace(/[^\x20-\x7E\r\n]/g, ' ');
+      }
     }
   } catch (error) {
     console.error(`Error parsing document of type ${fileType}:`, error);
-    return '';
+    return `Error processing file: ${(error as Error).message}`;
   }
 }
 
