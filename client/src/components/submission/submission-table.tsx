@@ -48,7 +48,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="table-container overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className="border-border hover:bg-transparent">
