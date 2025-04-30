@@ -8,6 +8,7 @@ import { formatDate, formatDateTime, formatRate } from "@/lib/date-utils";
 import { Separator } from "@/components/ui/separator";
 import { Calendar, DollarSign, Mail, MapPin, Phone, User } from "lucide-react";
 import { CircularProgress } from "@/components/ui/progress";
+import WorkExperienceCard from "@/components/candidate/work-experience-card";
 
 function CandidateDetailPage() {
   const { id } = useParams();
@@ -271,6 +272,10 @@ function CandidateDetailPage() {
                   )}
                 </CardContent>
               </Card>
+              
+              <div className="md:col-span-2">
+                <WorkExperienceCard workExperience={candidate.resumeData.workExperience} />
+              </div>
               
               <Card className="md:col-span-2">
                 <CardHeader>
