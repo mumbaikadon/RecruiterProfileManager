@@ -25,7 +25,16 @@ export function useSubmission(id: number) {
   return useQuery<Submission & { 
     job: any; 
     candidate: any; 
-    recruiter: any 
+    recruiter: any;
+    resumeData?: any;
+    strengths?: string[];
+    weaknesses?: string[];
+    suggestions?: string[];
+    technicalGaps?: string[];
+    matchingSkills?: string[];
+    missingSkills?: string[];
+    clientExperience?: string;
+    confidence?: number;
   }>({
     queryKey: [`/api/submissions/${id}`],
     enabled: !!id,
