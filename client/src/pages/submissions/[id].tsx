@@ -328,10 +328,62 @@ const SubmissionDetailPage: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="space-y-4">
+                  {/* AI Resume Analysis Section */}
+                  {(resumeData.qualityScore || resumeData.keywordScore || resumeData.readabilityScore) && (
+                    <div className="bg-background border border-border p-4 rounded-md">
+                      <h3 className="text-md font-medium mb-3">AI Resume Analysis</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        {resumeData.qualityScore && (
+                          <div className="flex flex-col items-center p-3 bg-primary/5 rounded-md">
+                            <span className="text-xs text-muted-foreground mb-1">Overall Quality</span>
+                            <div className="text-lg font-semibold text-primary">{resumeData.qualityScore}/100</div>
+                          </div>
+                        )}
+                        
+                        {resumeData.keywordScore && (
+                          <div className="flex flex-col items-center p-3 bg-primary/5 rounded-md">
+                            <span className="text-xs text-muted-foreground mb-1">Keywords</span>
+                            <div className="text-lg font-semibold text-primary">{resumeData.keywordScore}/100</div>
+                          </div>
+                        )}
+                        
+                        {resumeData.readabilityScore && (
+                          <div className="flex flex-col items-center p-3 bg-primary/5 rounded-md">
+                            <span className="text-xs text-muted-foreground mb-1">Readability</span>
+                            <div className="text-lg font-semibold text-primary">{resumeData.readabilityScore}/100</div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {resumeData.contentSuggestions && resumeData.contentSuggestions.length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Content Suggestions:</h4>
+                          <ul className="pl-5 text-sm text-gray-600 dark:text-gray-400 list-disc">
+                            {resumeData.contentSuggestions.map((suggestion: string, index: number) => (
+                              <li key={index} className="mb-1">{suggestion}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {resumeData.formattingSuggestions && resumeData.formattingSuggestions.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Formatting Suggestions:</h4>
+                          <ul className="pl-5 text-sm text-gray-600 dark:text-gray-400 list-disc">
+                            {resumeData.formattingSuggestions.map((suggestion: string, index: number) => (
+                              <li key={index} className="mb-1">{suggestion}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Skills Section with Visual Enhancement */}
                     {resumeData.skills && resumeData.skills.length > 0 && (
-                      <div>
-                        <h3 className="text-md font-medium mb-2">Skills</h3>
+                      <div className="bg-background border border-border p-4 rounded-md">
+                        <h3 className="text-md font-medium mb-3">Skills</h3>
                         <div className="flex flex-wrap gap-2">
                           {resumeData.skills.map((skill: string, i: number) => (
                             <Badge key={i} variant="outline" className="bg-accent/30">
@@ -342,9 +394,24 @@ const SubmissionDetailPage: React.FC = () => {
                       </div>
                     )}
                     
+                    {/* Education Section */}
+                    {resumeData.education && resumeData.education.length > 0 && (
+                      <div className="bg-background border border-border p-4 rounded-md">
+                        <h3 className="text-md font-medium mb-3">Education</h3>
+                        <ul className="list-disc list-inside text-sm space-y-1">
+                          {resumeData.education.map((edu: string, i: number) => (
+                            <li key={i}>{edu}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Job Titles */}
                     {resumeData.jobTitles && resumeData.jobTitles.length > 0 && (
-                      <div>
-                        <h3 className="text-md font-medium mb-2">Previous Job Titles</h3>
+                      <div className="bg-background border border-border p-4 rounded-md">
+                        <h3 className="text-md font-medium mb-3">Previous Job Titles</h3>
                         <ul className="list-disc list-inside text-sm space-y-1">
                           {resumeData.jobTitles.map((title: string, i: number) => (
                             <li key={i}>{title}</li>
@@ -353,9 +420,10 @@ const SubmissionDetailPage: React.FC = () => {
                       </div>
                     )}
                     
+                    {/* Client Experience */}
                     {resumeData.clientNames && resumeData.clientNames.length > 0 && (
-                      <div>
-                        <h3 className="text-md font-medium mb-2">Previous Clients</h3>
+                      <div className="bg-background border border-border p-4 rounded-md">
+                        <h3 className="text-md font-medium mb-3">Previous Clients</h3>
                         <ul className="list-disc list-inside text-sm space-y-1">
                           {resumeData.clientNames.map((client: string, i: number) => (
                             <li key={i}>{client}</li>
@@ -363,58 +431,56 @@ const SubmissionDetailPage: React.FC = () => {
                         </ul>
                       </div>
                     )}
-                    
-                    {resumeData.education && resumeData.education.length > 0 && (
-                      <div>
-                        <h3 className="text-md font-medium mb-2">Education</h3>
-                        <ul className="list-disc list-inside text-sm space-y-1">
-                          {resumeData.education.map((edu: string, i: number) => (
-                            <li key={i}>{edu}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {/* Resume File Download */}
-                    {resumeData.fileName && (
-                      <div>
-                        <h3 className="text-md font-medium mb-2">Resume File</h3>
-                        <div className="bg-accent/20 p-4 rounded-md flex items-center justify-between">
-                          <div className="flex items-center">
-                            <FileText className="h-5 w-5 mr-2 text-primary" />
-                            <span className="text-sm">{resumeData.fileName}</span>
-                          </div>
-                          {resumeData.fileAccessRestricted ? (
-                            <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center">
-                              <Lock className="h-4 w-4 mr-1" />
-                              <span>File restricted (Job closed)</span>
-                            </div>
-                          ) : (
-                            <Button 
-                              size="sm" 
-                              onClick={() => {
-                                // Always use the candidate ID to fetch the resume
-                                const downloadUrl = `/api/candidates/${candidate?.id}/resume`;
-                                console.log("Downloading resume from:", downloadUrl);
-                                window.open(downloadUrl, '_blank');
-                              }}
-                            >
-                              Download
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {resumeData.extractedText && (
-                      <div>
-                        <h3 className="text-md font-medium mb-2">Full Resume Text</h3>
-                        <div className="bg-muted rounded-md p-4 max-h-80 overflow-y-auto">
-                          <p className="text-sm whitespace-pre-wrap">{resumeData.extractedText}</p>
-                        </div>
-                      </div>
-                    )}
                   </div>
+                  
+                  {/* Resume File Download */}
+                  {resumeData.fileName && (
+                    <div className="bg-background border border-border p-4 rounded-md">
+                      <h3 className="text-md font-medium mb-3">Resume File</h3>
+                      <div className="bg-accent/20 p-4 rounded-md flex items-center justify-between">
+                        <div className="flex items-center">
+                          <FileText className="h-5 w-5 mr-2 text-primary" />
+                          <span className="text-sm">{resumeData.fileName}</span>
+                        </div>
+                        {job?.status?.toLowerCase() !== 'active' ? (
+                          <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center">
+                            <Lock className="h-4 w-4 mr-1" />
+                            <span>File restricted (Job closed)</span>
+                          </div>
+                        ) : (
+                          <Button 
+                            size="sm" 
+                            onClick={() => {
+                              // Always use the candidate ID to fetch the resume
+                              const downloadUrl = `/api/candidates/${candidate?.id}/resume`;
+                              console.log("Downloading resume from:", downloadUrl);
+                              window.open(downloadUrl, '_blank');
+                            }}
+                          >
+                            Download
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Full Resume Text with Better Formatting */}
+                  {resumeData.extractedText && (
+                    <div className="bg-background border border-border p-4 rounded-md">
+                      <h3 className="text-md font-medium mb-3">Full Resume Text</h3>
+                      <div className="bg-muted rounded-md p-4 max-h-96 overflow-y-auto">
+                        <p className="text-sm font-mono whitespace-pre-wrap leading-relaxed">
+                          {resumeData.extractedText.startsWith("This appears to be a PDF file") ? (
+                            <span className="text-amber-600 dark:text-amber-400">
+                              {resumeData.extractedText}
+                            </span>
+                          ) : (
+                            resumeData.extractedText
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
             </Tabs>
           </CardContent>
