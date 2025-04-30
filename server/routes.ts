@@ -652,22 +652,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid submission ID" });
       }
       
-      const { status } = req.body;
+      const { status, feedback } = req.body;
       if (!status || typeof status !== "string") {
         return res.status(400).json({ message: "Status is required" });
       }
       
-      const updatedSubmission = await storage.updateSubmissionStatus(id, status);
+      // For now, we don't have authentication implemented, so use a default value
+      // Later this can be updated when auth is implemented
+      const userId = 1; // Default to admin user
+      
+      // Update submission with status, feedback, and last updated by
+      const updatedSubmission = await storage.updateSubmissionStatus(id, status, feedback, userId);
       
       // Create an activity for the status change
       const submission = await storage.getSubmission(id);
       if (submission) {
         await storage.createActivity({
-          type: "status_changed",
+          type: "submission_status_changed",
           submissionId: id,
           jobId: submission.jobId,
           candidateId: submission.candidateId,
-          message: `Submission status changed to ${status}`
+          userId: userId,
+          message: `Submission status changed to ${status}${feedback ? " with feedback" : ""}`
         });
       }
       

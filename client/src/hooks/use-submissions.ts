@@ -81,14 +81,27 @@ export function useCreateSubmission() {
 
 export function useUpdateSubmissionStatus() {
   return useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const res = await apiRequest("PUT", `/api/submissions/${id}/status`, { status });
+    mutationFn: async ({ 
+      id, 
+      status, 
+      feedback 
+    }: { 
+      id: number; 
+      status: string; 
+      feedback?: string 
+    }) => {
+      const res = await apiRequest(
+        "PUT", 
+        `/api/submissions/${id}/status`, 
+        { status, feedback }
+      );
       return await res.json();
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/submissions/${variables.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
     }
   });
 }
