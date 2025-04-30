@@ -38,7 +38,12 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function formatRate(rate: number): string {
+export function formatRate(rate: number | null | undefined): string {
+  // If rate is null, undefined, or 0, return "N/A" instead of formatting it
+  if (rate === null || rate === undefined || rate === 0) {
+    return "N/A";
+  }
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
