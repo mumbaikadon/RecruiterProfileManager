@@ -39,8 +39,9 @@ export function formatCurrency(amount: number): string {
 }
 
 export function formatRate(rate: number | null | undefined): string {
-  // If rate is null, undefined, or 0, return "N/A" instead of formatting it
-  if (rate === null || rate === undefined || rate === 0) {
+  // If rate is null or undefined, return "N/A" instead of formatting it
+  // Note: We now format 0 values properly instead of showing "N/A"
+  if (rate === null || rate === undefined || isNaN(rate)) {
     return "N/A";
   }
   
