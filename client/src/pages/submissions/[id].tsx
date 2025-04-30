@@ -104,7 +104,12 @@ const SubmissionDetailPage: React.FC = () => {
               <CardTitle className="text-xl md:text-2xl">
                 {candidate?.firstName} {candidate?.lastName} - {job?.title}
               </CardTitle>
-              <StatusBadge status={submission.status} className="mt-2 md:mt-0" />
+              <div className="mt-2 md:mt-0 w-full md:w-64">
+                <StatusSelect 
+                  submissionId={submission.id} 
+                  currentStatus={submission.status}
+                />
+              </div>
             </div>
             <CardDescription>
               Submitted by {recruiter?.name} on {formatDateTime(submission.submittedAt)}
