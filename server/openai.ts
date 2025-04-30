@@ -44,33 +44,38 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
           role: "system",
           content: `You are an expert at analyzing resumes for the IT staffing industry. 
           
-          Extract the following information from the resume:
+          Extract the following information from the resume, paying special attention to formatting and consistency:
           
           1. CLIENT NAMES: List all companies the candidate worked for as a contractor or consultant (not direct employers).
-             - Focus on identifying client companies where the person was placed through staffing firms
-             - Each client should be a separate entry
-             - Be precise and list the full client name
+             - Look for patterns like "Client: [Company Name]" or similar indicators of contract work
+             - Identify companies following words like "Client" or that appear before date ranges
+             - Each client should be a separate entry with exact, full company name
+             - Do NOT include location information in the client name
+             - For example, if you see "Client: First Republic Bank", extract just "First Republic Bank"
              
           2. JOB TITLES: List the professional roles/titles held by the candidate.
-             - List all job titles in chronological order (most recent first)
-             - Include both official titles and functional roles
+             - Extract exactly as written in the resume (e.g., "Senior Software Developer", "Software Developer")
+             - List titles in chronological order (most recent first)
+             - Do NOT include extraneous information, just the title itself
              
           3. RELEVANT DATES: Employment periods for each role.
-             - Try to match dates with clients and job titles
-             - Use format "MM/YYYY - MM/YYYY" when possible
-             - Include present/current for ongoing roles
+             - Extract date ranges exactly as written (e.g., "Dec 2022- Present", "March 2019 – July 2021")
+             - Preserve the original formatting of dates (don't standardize to MM/YYYY)
+             - Make sure each date corresponds to the correct client and job title
              
           4. SKILLS: Technical skills and technologies the candidate has experience with.
              - Focus on technical skills, programming languages, frameworks, tools
-             - Be specific about versions and specializations when mentioned
-             - Include both hard and soft skills
-             - Prioritize recent and emphasized skills
+             - Include version numbers when mentioned (e.g., "Java 8", "Spring Boot 2.x")
+             - List skills as individual entries, not paragraphs
+             - Prioritize skills that appear most frequently or recently in the resume
              
           5. EDUCATION: Educational qualifications, degrees, certifications.
              - Include university degrees, certifications, and specialized training
              - Include graduation years when available
           
-          Return the information in a structured JSON format with these keys: clientNames, jobTitles, relevantDates, skills, education.`
+          Return the information in a structured JSON format with these exact keys: clientNames, jobTitles, relevantDates, skills, education.
+          
+          The response MUST be valid JSON with no trailing commas, properly escaped special characters, and all array entries must be strings.`
         },
         {
           role: "user",
