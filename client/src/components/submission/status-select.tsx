@@ -45,6 +45,11 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
   };
   
   const handleSubmit = () => {
+    // Additional error prevention
+    if (!selectedStatus || isPending) {
+      return;
+    }
+
     updateStatus(
       { 
         id: submissionId, 
@@ -143,17 +148,25 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
           </DialogHeader>
           
           <div className="py-4">
-            <label className="text-sm font-medium mb-2 block">
-              Feedback (optional)
-            </label>
+            <div className="flex justify-between mb-2">
+              <label className="text-sm font-medium">
+                Feedback (optional)
+              </label>
+              <span className="text-xs text-muted-foreground">
+                Press Enter to submit, Shift+Enter for new line
+              </span>
+            </div>
             <Textarea
               placeholder="Add comments about this status change..."
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit();
+                // Only handle Enter key if it's not shift+enter and the form isn't already submitting
+                if (e.key === 'Enter' && !e.shiftKey && !isPending) {
+                  e.preventDefault(); // Prevent new line
+                  if (selectedStatus) {
+                    handleSubmit();
+                  }
                 }
               }}
               rows={4}
