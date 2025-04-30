@@ -1,15 +1,18 @@
+/* Import responsive improvements */
+@import "./responsive.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-      --background: 0 0% 100%;
+      --background: 36 100% 95%; /* Creamy background color */
 --foreground: 20 14.3% 4.1%;
 --muted: 60 4.8% 95.9%;
 --muted-foreground: 25 5.3% 44.7%;
---popover: 0 0% 100%;
+--popover: 36 100% 95%; /* Match the creamy background */
 --popover-foreground: 20 14.3% 4.1%;
---card: 0 0% 100%;
+--card: 36 100% 97%; /* Slightly lighter cream for cards */
 --card-foreground: 20 14.3% 4.1%;
 --border: 20 5.9% 90%;
 --input: 20 5.9% 90%;
@@ -25,25 +28,25 @@
 --radius: 0.5rem;
   }
   .dark {
-      --background: 240 10% 3.9%;
---foreground: 0 0% 98%;
---muted: 240 3.7% 15.9%;
---muted-foreground: 240 5% 64.9%;
---popover: 240 10% 3.9%;
---popover-foreground: 0 0% 98%;
---card: 240 10% 3.9%;
---card-foreground: 0 0% 98%;
---border: 240 3.7% 15.9%;
---input: 240 3.7% 15.9%;
+      --background: 36 30% 15%; /* Dark creamy background */
+--foreground: 36 100% 90%;
+--muted: 36 30% 25%;
+--muted-foreground: 36 30% 70%;
+--popover: 36 30% 15%; /* Match the creamy background */
+--popover-foreground: 36 100% 90%;
+--card: 36 30% 18%; /* Slightly lighter cream for cards */
+--card-foreground: 36 100% 90%;
+--border: 36 30% 25%;
+--input: 36 30% 25%;
 --primary: 207 90% 54%;
 --primary-foreground: 211 100% 99%;
---secondary: 240 3.7% 15.9%;
---secondary-foreground: 0 0% 98%;
---accent: 240 3.7% 15.9%;
---accent-foreground: 0 0% 98%;
+--secondary: 36 30% 25%;
+--secondary-foreground: 36 100% 90%;
+--accent: 36 30% 25%;
+--accent-foreground: 36 100% 90%;
 --destructive: 0 62.8% 30.6%;
 --destructive-foreground: 0 0% 98%;
---ring: 240 4.9% 83.9%;
+--ring: 36 30% 70%;
 --radius: 0.5rem;
   }
 

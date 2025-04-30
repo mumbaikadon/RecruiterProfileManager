@@ -1,0 +1,87 @@
+/* Responsive improvements for TalentPipeline application */
+
+/* Faster transitions for better perceived performance */
+* {
+  transition-duration: 150ms !important; /* Faster transitions */
+}
+
+/* Improve table responsiveness */
+@media (max-width: 768px) {
+  /* Make tables scroll horizontally on small screens */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  }
+  
+  /* Optimize font sizes for mobile */
+  body {
+    font-size: 14px;
+  }
+  
+  /* Ensure buttons have proper touch targets */
+  button, 
+  [role="button"],
+  a {
+    min-height: 44px; /* Apple's recommended minimum touch target size */
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Make form elements more mobile-friendly */
+  input, 
+  select, 
+  textarea {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+}
+
+/* Improve loading performance */
+img, video {
+  content-visibility: auto; /* Modern browsers will lazy-load these */
+}
+
+/* Apply hardware acceleration for smoother animations */
+.animate-transition,
+.hover\:scale,
+.hover\:transform,
+.card,
+.dialog,
+.modal,
+[data-state="open"],
+[data-state="closed"] {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimize for dark mode transitions */
+@media (prefers-color-scheme: dark) {
+  * {
+    transition-duration: 100ms !important; /* Even faster in dark mode to reduce flash */
+  }
+}
+
+/* Apply responsive padding to container elements */
+.container, 
+.content-container,
+main,
+section,
+.card,
+.dialog {
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+/* Add print styles for better printing */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  button, 
+  .no-print {
+    display: none !important;
+  }
+}
