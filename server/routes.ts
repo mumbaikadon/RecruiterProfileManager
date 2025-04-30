@@ -248,23 +248,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const candidate = await storage.createCandidate(validatedData);
       
+      // Import the sanitization utility
+      const { sanitizeHtml } = await import('./utils');
+      
       // Create resume data if provided
       if (req.body.resumeData) {
-        const resumeDataPayload = {
-          candidateId: candidate.id,
-          clientNames: req.body.resumeData.clientNames || [],
-          jobTitles: req.body.resumeData.jobTitles || [],
-          relevantDates: req.body.resumeData.relevantDates || [],
-          skills: req.body.resumeData.skills || [],
-          education: req.body.resumeData.education || [],
-          extractedText: req.body.resumeData.extractedText
-        };
-        
-        await storage.createResumeData(resumeDataPayload);
+        try {
+          // Sanitize all resume data to prevent encoding issues
+          const resumeDataPayload = {
+            candidateId: candidate.id,
+            clientNames: Array.isArray(req.body.resumeData.clientNames) 
+              ? req.body.resumeData.clientNames.map((name: string) => sanitizeHtml(name)) 
+              : [],
+            jobTitles: Array.isArray(req.body.resumeData.jobTitles) 
+              ? req.body.resumeData.jobTitles.map((title: string) => sanitizeHtml(title)) 
+              : [],
+            relevantDates: Array.isArray(req.body.resumeData.relevantDates) 
+              ? req.body.resumeData.relevantDates.map((date: string) => sanitizeHtml(date)) 
+              : [],
+            skills: Array.isArray(req.body.resumeData.skills) 
+              ? req.body.resumeData.skills.map((skill: string) => sanitizeHtml(skill)) 
+              : [],
+            education: Array.isArray(req.body.resumeData.education) 
+              ? req.body.resumeData.education.map((edu: string) => sanitizeHtml(edu)) 
+              : [],
+            extractedText: req.body.resumeData.extractedText 
+              ? sanitizeHtml(req.body.resumeData.extractedText).substring(0, 4000) 
+              : ""
+          };
+          
+          await storage.createResumeData(resumeDataPayload);
+          console.log("Resume data successfully saved");
+        } catch (resumeError) {
+          console.error("Failed to save resume data:", resumeError);
+          // Continue with candidate creation even if resume data fails
+          // This ensures the candidate is created even if there's an issue with resume data
+        }
       }
       
       res.status(201).json(candidate);
     } catch (error) {
+      console.error("Candidate creation error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors });
       }
@@ -386,17 +410,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Create resume data if provided
           if (submissionData.resumeData) {
-            const resumeDataPayload = {
-              candidateId: newCandidate.id,
-              clientNames: submissionData.resumeData.clientNames || [],
-              jobTitles: submissionData.resumeData.jobTitles || [],
-              relevantDates: submissionData.resumeData.relevantDates || [],
-              skills: submissionData.resumeData.skills || [],
-              education: submissionData.resumeData.education || [],
-              extractedText: submissionData.resumeData.extractedText
-            };
-            
-            await storage.createResumeData(resumeDataPayload);
+            try {
+              // Import the sanitization utility
+              const { sanitizeHtml } = await import('./utils');
+              
+              // Sanitize all resume data to prevent encoding issues
+              const resumeDataPayload = {
+                candidateId: newCandidate.id,
+                clientNames: Array.isArray(submissionData.resumeData.clientNames) 
+                  ? submissionData.resumeData.clientNames.map((name: string) => sanitizeHtml(name)) 
+                  : [],
+                jobTitles: Array.isArray(submissionData.resumeData.jobTitles) 
+                  ? submissionData.resumeData.jobTitles.map((title: string) => sanitizeHtml(title)) 
+                  : [],
+                relevantDates: Array.isArray(submissionData.resumeData.relevantDates) 
+                  ? submissionData.resumeData.relevantDates.map((date: string) => sanitizeHtml(date)) 
+                  : [],
+                skills: Array.isArray(submissionData.resumeData.skills) 
+                  ? submissionData.resumeData.skills.map((skill: string) => sanitizeHtml(skill)) 
+                  : [],
+                education: Array.isArray(submissionData.resumeData.education) 
+                  ? submissionData.resumeData.education.map((edu: string) => sanitizeHtml(edu)) 
+                  : [],
+                extractedText: submissionData.resumeData.extractedText 
+                  ? sanitizeHtml(submissionData.resumeData.extractedText).substring(0, 4000) 
+                  : ""
+              };
+              
+              await storage.createResumeData(resumeDataPayload);
+              console.log("Resume data successfully saved during submission");
+            } catch (resumeError) {
+              console.error("Failed to save resume data during submission:", resumeError);
+              // Continue with candidate creation even if resume data fails
+            }
           }
         }
       } else {
@@ -585,11 +631,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sanitize the text before passing to OpenAI
       const sanitizedText = sanitizeHtml(text);
       
+      console.log("Sanitized text length:", sanitizedText.length);
+      
       const analysis = await analyzeResumeText(sanitizedText);
-      res.json(analysis);
+      
+      // Additional safety sanitization for extracted values
+      const safeAnalysis = {
+        clientNames: analysis.clientNames.map(client => sanitizeHtml(client)),
+        jobTitles: analysis.jobTitles.map(title => sanitizeHtml(title)),
+        relevantDates: analysis.relevantDates.map(date => sanitizeHtml(date)),
+        skills: analysis.skills.map(skill => sanitizeHtml(skill)), 
+        education: analysis.education.map(edu => sanitizeHtml(edu)),
+        // Truncate extractedText to ensure it doesn't exceed DB limits
+        extractedText: sanitizeHtml(analysis.extractedText).substring(0, 4000)
+      };
+      
+      res.json(safeAnalysis);
     } catch (error) {
       console.error("Resume analysis error:", error);
-      res.status(500).json({ message: (error as Error).message });
+      // Return a safe fallback response
+      res.status(200).json({ 
+        clientNames: [],
+        jobTitles: [],
+        relevantDates: [],
+        skills: [],
+        education: [],
+        extractedText: "",
+        message: "Failed to analyze resume due to encoding issues. Please try a different file format."
+      });
     }
   });
   
