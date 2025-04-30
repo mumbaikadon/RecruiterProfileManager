@@ -4,6 +4,44 @@ import { z } from "zod";
 // Create OpenAI client
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Model configuration
+// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+const COMPLETION_MODEL = "gpt-4o";
+const EMBEDDING_MODEL = "text-embedding-ada-002";
+
+/**
+ * Calculate cosine similarity between two vectors
+ * This measures how similar two embeddings are
+ */
+function cosineSimilarity(vecA: number[], vecB: number[]): number {
+  // Calculate dot product
+  const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+  
+  // Calculate magnitudes
+  const magA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+  const magB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+  
+  // Calculate cosine similarity
+  return dotProduct / (magA * magB);
+}
+
+/**
+ * Get embedding vector for text using OpenAI's embedding API
+ */
+async function getEmbedding(text: string): Promise<number[]> {
+  try {
+    const response = await openai.embeddings.create({
+      model: EMBEDDING_MODEL,
+      input: text.slice(0, 8000), // Limit to 8000 chars to fit token limits
+    });
+    
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error("Error getting embedding:", error);
+    throw error;
+  }
+}
+
 // Interface for resume analysis result
 export interface ResumeAnalysisResult {
   clientNames: string[];
@@ -244,6 +282,7 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
 /**
  * A simplified matcher for job and resume to avoid timeouts
  * This can be used as a fallback if the OpenAI API times out
+ * This implementation properly compares skills instead of using fixed score ranges
  */
 function simpleResumeJobMatcher(resumeText: string, jobDescription: string): MatchScoreResult {
   // Convert texts to lowercase for better matching
@@ -416,7 +455,7 @@ function simpleResumeJobMatcher(resumeText: string, jobDescription: string): Mat
 }
 
 /**
- * Matches resume to job description using OpenAI
+ * Matches resume to job description using OpenAI with embeddings-based similarity analysis
  * Falls back to simple matcher if API times out
  */
 export async function matchResumeToJob(
@@ -446,7 +485,40 @@ export async function matchResumeToJob(
     resumeText = sanitizeHtml(resumeText);
     jobDescription = sanitizeHtml(jobDescription);
     
-    // Set timeout for OpenAI call
+    // Get embeddings for both texts
+    let scaledScore = 75; // Default score
+    
+    try {
+      console.log("Using embedding-based similarity for resume matching...");
+      
+      const resumeEmbedding = await getEmbedding(resumeText);
+      const jobEmbedding = await getEmbedding(jobDescription);
+      
+      // Calculate similarity score (0 to 1)
+      const similarity = cosineSimilarity(resumeEmbedding, jobEmbedding);
+      console.log(`Semantic similarity between resume and job: ${similarity.toFixed(4)}`);
+      
+      // Convert to a percentage (0 to 100) and scale to recruiting industry expectations
+      // In practice, similarity scores above 0.7 indicate strong matches
+      
+      // Adjust the scale to fit recruiting industry norms (75-95% for qualified candidates)
+      // Map 0.5-0.9 similarity to 75-95% score range
+      if (similarity >= 0.5) {
+        scaledScore = Math.round(75 + ((similarity - 0.5) * (95 - 75) / 0.4));
+        // Cap at 95% to leave room for "perfect" matches
+        scaledScore = Math.min(95, scaledScore);
+      } else {
+        // For lower similarities, use a more generous scale that bottoms out at 60%
+        scaledScore = Math.max(60, Math.round(60 + (similarity * 30)));
+      }
+      
+      console.log(`Adjusted match score based on embeddings: ${scaledScore}%`);
+    } catch (embeddingError) {
+      console.error("Error using embeddings for matching, falling back to qualitative analysis only:", embeddingError);
+      // Continue with qualitative analysis below
+    }
+    
+    // Now proceed with qualitative analysis regardless of embedding success
     const TIMEOUT_MS = 20000; // Increased timeout for more detailed analysis
     
     try {
