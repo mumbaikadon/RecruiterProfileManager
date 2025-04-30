@@ -538,7 +538,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   : [],
                 extractedText: submissionData.resumeData.extractedText 
                   ? sanitizeHtml(submissionData.resumeData.extractedText).substring(0, 4000) 
-                  : ""
+                  : "",
+                fileName: submissionData.resumeData.fileName || "",
+                // Store any quality metrics from AI analysis if they exist
+                qualityScore: submissionData.resumeData.qualityScore,
+                contentSuggestions: Array.isArray(submissionData.resumeData.contentSuggestions)
+                  ? submissionData.resumeData.contentSuggestions.map((suggestion: string) => sanitizeHtml(suggestion))
+                  : [],
+                formattingSuggestions: Array.isArray(submissionData.resumeData.formattingSuggestions)
+                  ? submissionData.resumeData.formattingSuggestions.map((suggestion: string) => sanitizeHtml(suggestion))
+                  : [],
+                languageSuggestions: Array.isArray(submissionData.resumeData.languageSuggestions)
+                  ? submissionData.resumeData.languageSuggestions.map((suggestion: string) => sanitizeHtml(suggestion))
+                  : [],
+                keywordScore: submissionData.resumeData.keywordScore,
+                readabilityScore: submissionData.resumeData.readabilityScore
               };
               
               await storage.createResumeData(resumeDataPayload);
