@@ -27,149 +27,213 @@ export interface MatchScoreResult {
  * Analyzes resume text using OpenAI to extract key information
  */
 export async function analyzeResumeText(resumeText: string): Promise<ResumeAnalysisResult> {
-  // Import the sanitization utility
-  const { sanitizeHtml } = await import('./utils');
-  
-  // Sanitize the resume text to remove any HTML tags
-  // (Double sanitization for safety)
-  resumeText = sanitizeHtml(resumeText);
   try {
-    console.log("Analyzing resume text with OpenAI...");
-    
-    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert at analyzing resumes for the IT staffing industry. 
-          
-          Extract the following information from the resume, paying special attention to formatting and consistency:
-          
-          1. CLIENT NAMES: List all companies the candidate worked for as a contractor or consultant (not direct employers).
-             - Look for patterns like "Client: [Company Name]" or similar indicators of contract work
-             - Identify companies following words like "Client" or that appear before date ranges
-             - Each client should be a separate entry with exact, full company name
-             - Do NOT include location information in the client name
-             - For example, if you see "Client: First Republic Bank", extract just "First Republic Bank"
-             
-          2. JOB TITLES: List the professional roles/titles held by the candidate.
-             - Extract exactly as written in the resume (e.g., "Senior Software Developer", "Software Developer")
-             - List titles in chronological order (most recent first)
-             - Do NOT include extraneous information, just the title itself
-             
-          3. RELEVANT DATES: Employment periods for each role.
-             - Extract date ranges exactly as written (e.g., "Dec 2022- Present", "March 2019 – July 2021")
-             - Preserve the original formatting of dates (don't standardize to MM/YYYY)
-             - Make sure each date corresponds to the correct client and job title
-             
-          4. SKILLS: Technical skills and technologies the candidate has experience with.
-             - Focus on technical skills, programming languages, frameworks, tools
-             - Include version numbers when mentioned (e.g., "Java 8", "Spring Boot 2.x")
-             - List skills as individual entries, not paragraphs
-             - Prioritize skills that appear most frequently or recently in the resume
-             
-          5. EDUCATION: Educational qualifications, degrees, certifications.
-             - Include university degrees, certifications, and specialized training
-             - Include graduation years when available
-          
-          Return the information in a structured JSON format with these exact keys: clientNames, jobTitles, relevantDates, skills, education.
-          
-          The response MUST be valid JSON with no trailing commas, properly escaped special characters, and all array entries must be strings.`
-        },
-        {
-          role: "user",
-          content: resumeText
-        }
-      ],
-      response_format: { type: "json_object" },
-      max_tokens: 1500,
-      temperature: 0.3 // Lower temperature for more focused extraction
-    });
-
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error("Empty response from OpenAI");
-    }
-
-    console.log("OpenAI analysis completed successfully");
-    
-    // Try to parse the content as JSON, with error handling
-    let result;
-    try {
-      // Attempt to clean up the response if it's not properly formatted JSON
-      let cleanedContent = content;
-      
-      // If content has markdown code blocks, extract just the JSON part
-      if (content.includes("```json")) {
-        const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonBlockMatch && jsonBlockMatch[1]) {
-          cleanedContent = jsonBlockMatch[1].trim();
-        }
-      } else if (content.includes("```")) {
-        const codeBlockMatch = content.match(/```\s*([\s\S]*?)\s*```/);
-        if (codeBlockMatch && codeBlockMatch[1]) {
-          cleanedContent = codeBlockMatch[1].trim();
-        }
-      }
-      
-      // Remove any trailing commas that might cause JSON parse errors
-      cleanedContent = cleanedContent.replace(/,(\s*[}\]])/g, '$1');
-      
-      result = JSON.parse(cleanedContent);
-    } catch (parseError) {
-      console.error("Error parsing OpenAI response:", parseError);
-      console.log("Raw content:", content);
-      
-      // Provide fallback values if we can't parse the response
-      result = {
+    // Handle empty resume text
+    if (!resumeText || resumeText.trim().length === 0) {
+      console.warn("Empty resume text received, returning minimal data");
+      return {
         clientNames: [],
         jobTitles: [],
         relevantDates: [],
         skills: [],
-        education: []
+        education: [],
+        extractedText: "No resume text provided"
       };
     }
     
-    // Convert any non-string array elements to strings
-    const normalizeStringArray = (arr: any[]): string[] => {
-      if (!Array.isArray(arr)) return [];
-      return arr.map(item => 
-        typeof item === 'string' 
-          ? item 
-          : typeof item === 'object' && item !== null
-            ? JSON.stringify(item)
-            : String(item)
-      );
-    };
-
-    // Normalize the result structure
-    const normalizedResult = {
-      clientNames: normalizeStringArray(result.clientNames || []),
-      jobTitles: normalizeStringArray(result.jobTitles || []),
-      relevantDates: normalizeStringArray(result.relevantDates || []),
-      skills: normalizeStringArray(result.skills || []),
-      education: normalizeStringArray(result.education || [])
-    };
+    // Import the sanitization utility
+    const { sanitizeHtml } = await import('./utils');
     
-    // Ensure we have the expected structure
-    const resumeSchema = z.object({
-      clientNames: z.array(z.string()).default([]),
-      jobTitles: z.array(z.string()).default([]),
-      relevantDates: z.array(z.string()).default([]),
-      skills: z.array(z.string()).default([]),
-      education: z.array(z.string()).default([])
-    });
+    // Check for common problematic patterns in file content that cause JSON parsing issues
+    if (resumeText.trim().startsWith('<!DOCTYPE') || resumeText.includes('<?xml')) {
+      console.warn("Detected DOCTYPE/XML content in resume text - cleaning");
+      resumeText = resumeText.replace(/<!DOCTYPE[^>]*>/gi, '')
+                        .replace(/<\?xml[^>]*\?>/gi, '')
+                        .replace(/<!--[\s\S]*?-->/g, '')
+                        .replace(/<[^>]*>?/g, ' ');
+    }
+    
+    // If text is too short after cleanup or clearly not a text document, return minimal data
+    if (resumeText.trim().length < 50) {
+      console.warn("Resume text is too short after cleaning (<50 chars)");
+      return {
+        clientNames: [],
+        jobTitles: [],
+        relevantDates: [],
+        skills: [],
+        education: [],
+        extractedText: resumeText.trim()
+      };
+    }
+    
+    // Further sanitize the text to prevent encoding issues (double sanitization for safety)
+    resumeText = sanitizeHtml(resumeText);
+    
+    try {
+      console.log("Analyzing resume text with OpenAI...");
+      
+      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert at analyzing resumes for the IT staffing industry. 
+            
+            Extract the following information from the resume, paying special attention to formatting and consistency:
+            
+            1. CLIENT NAMES: List all companies the candidate worked for as a contractor or consultant (not direct employers).
+               - Look for patterns like "Client: [Company Name]" or similar indicators of contract work
+               - Identify companies following words like "Client" or that appear before date ranges
+               - Each client should be a separate entry with exact, full company name
+               - Do NOT include location information in the client name
+               - For example, if you see "Client: First Republic Bank", extract just "First Republic Bank"
+               
+            2. JOB TITLES: List the professional roles/titles held by the candidate.
+               - Extract exactly as written in the resume (e.g., "Senior Software Developer", "Software Developer")
+               - List titles in chronological order (most recent first)
+               - Do NOT include extraneous information, just the title itself
+               
+            3. RELEVANT DATES: Employment periods for each role.
+               - Extract date ranges exactly as written (e.g., "Dec 2022- Present", "March 2019 – July 2021")
+               - Preserve the original formatting of dates (don't standardize to MM/YYYY)
+               - Make sure each date corresponds to the correct client and job title
+               
+            4. SKILLS: Technical skills and technologies the candidate has experience with.
+               - Focus on technical skills, programming languages, frameworks, tools
+               - Include version numbers when mentioned (e.g., "Java 8", "Spring Boot 2.x")
+               - List skills as individual entries, not paragraphs
+               - Prioritize skills that appear most frequently or recently in the resume
+               
+            5. EDUCATION: Educational qualifications, degrees, certifications.
+               - Include university degrees, certifications, and specialized training
+               - Include graduation years when available
+            
+            Return the information in a structured JSON format with these exact keys: clientNames, jobTitles, relevantDates, skills, education.
+            
+            The response MUST be valid JSON with no trailing commas, properly escaped special characters, and all array entries must be strings.`
+          },
+          {
+            role: "user",
+            content: resumeText
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 1500,
+        temperature: 0.3 // Lower temperature for more focused extraction
+      });
 
-    const validatedResult = resumeSchema.parse(normalizedResult);
+      const content = response.choices[0].message.content;
+      if (!content) {
+        console.warn("Empty response from OpenAI, returning minimal data");
+        return {
+          clientNames: [],
+          jobTitles: [],
+          relevantDates: [],
+          skills: [],
+          education: [],
+          extractedText: resumeText.substring(0, 5000)
+        };
+      }
 
-    return {
-      ...validatedResult,
-      extractedText: resumeText.substring(0, 5000) // Store first 5000 chars as a sample
-    };
+      console.log("OpenAI analysis completed successfully");
+      
+      // Try to parse the content as JSON, with error handling
+      let result;
+      try {
+        // Attempt to clean up the response if it's not properly formatted JSON
+        let cleanedContent = content;
+        
+        // If content has markdown code blocks, extract just the JSON part
+        if (content.includes("```json")) {
+          const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+          if (jsonBlockMatch && jsonBlockMatch[1]) {
+            cleanedContent = jsonBlockMatch[1].trim();
+          }
+        } else if (content.includes("```")) {
+          const codeBlockMatch = content.match(/```\s*([\s\S]*?)\s*```/);
+          if (codeBlockMatch && codeBlockMatch[1]) {
+            cleanedContent = codeBlockMatch[1].trim();
+          }
+        }
+        
+        // Remove any trailing commas that might cause JSON parse errors
+        cleanedContent = cleanedContent.replace(/,(\s*[}\]])/g, '$1');
+        
+        result = JSON.parse(cleanedContent);
+      } catch (parseError) {
+        console.error("Error parsing OpenAI response:", parseError);
+        console.log("Raw content:", content);
+        
+        // Provide fallback values if we can't parse the response
+        result = {
+          clientNames: [],
+          jobTitles: [],
+          relevantDates: [],
+          skills: [],
+          education: []
+        };
+      }
+      
+      // Convert any non-string array elements to strings
+      const normalizeStringArray = (arr: any[]): string[] => {
+        if (!Array.isArray(arr)) return [];
+        return arr.map(item => 
+          typeof item === 'string' 
+            ? item 
+            : typeof item === 'object' && item !== null
+              ? JSON.stringify(item)
+              : String(item)
+        );
+      };
+
+      // Normalize the result structure
+      const normalizedResult = {
+        clientNames: normalizeStringArray(result.clientNames || []),
+        jobTitles: normalizeStringArray(result.jobTitles || []),
+        relevantDates: normalizeStringArray(result.relevantDates || []),
+        skills: normalizeStringArray(result.skills || []),
+        education: normalizeStringArray(result.education || [])
+      };
+      
+      // Ensure we have the expected structure
+      const resumeSchema = z.object({
+        clientNames: z.array(z.string()).default([]),
+        jobTitles: z.array(z.string()).default([]),
+        relevantDates: z.array(z.string()).default([]),
+        skills: z.array(z.string()).default([]),
+        education: z.array(z.string()).default([])
+      });
+
+      const validatedResult = resumeSchema.parse(normalizedResult);
+
+      return {
+        ...validatedResult,
+        extractedText: resumeText.substring(0, 5000) // Store first 5000 chars as a sample
+      };
+    } catch (openaiError) {
+      console.error("OpenAI API error:", openaiError);
+      // Return minimal data instead of throwing error
+      return {
+        clientNames: [],
+        jobTitles: [],
+        relevantDates: [],
+        skills: [],
+        education: [],
+        extractedText: resumeText.substring(0, 5000)
+      };
+    }
   } catch (error) {
-    console.error("OpenAI resume analysis error:", error);
-    throw new Error(`Failed to analyze resume: ${(error as Error).message}`);
+    console.error("Unexpected error in resume analysis:", error);
+    // Return minimal data instead of throwing error for any unexpected issues
+    return {
+      clientNames: [],
+      jobTitles: [],
+      relevantDates: [],
+      skills: [],
+      education: [],
+      extractedText: resumeText ? resumeText.substring(0, 5000) : "Error processing resume"
+    };
   }
 }
 
@@ -341,123 +405,143 @@ export async function matchResumeToJob(
   resumeText: string,
   jobDescription: string
 ): Promise<MatchScoreResult> {
-  // Import the sanitization utility
-  const { sanitizeHtml } = await import('./utils');
-  
-  // Sanitize both the resume text and job description to remove any HTML tags
-  // (Double sanitization for safety)
-  resumeText = sanitizeHtml(resumeText);
-  jobDescription = sanitizeHtml(jobDescription);
-  // Set timeout for OpenAI call
-  const TIMEOUT_MS = 20000; // Increased timeout for more detailed analysis
+  // Handle empty inputs with a fallback result
+  if (!resumeText || !jobDescription || resumeText.trim().length < 50 || jobDescription.trim().length < 50) {
+    console.warn("Resume or job description too short, using fallback matcher");
+    return simpleResumeJobMatcher(resumeText || "", jobDescription || "");
+  }
   
   try {
-    console.log("Matching resume to job description with OpenAI...");
+    // Import the sanitization utility
+    const { sanitizeHtml } = await import('./utils');
     
-    // Create promise with timeout
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("OpenAI request timed out")), TIMEOUT_MS);
-    });
+    // Check for problematic patterns in file content that cause JSON parsing issues
+    if (resumeText.trim().startsWith('<!DOCTYPE') || resumeText.includes('<?xml')) {
+      console.warn("Detected DOCTYPE/XML content in resume text - cleaning");
+      resumeText = resumeText.replace(/<!DOCTYPE[^>]*>/gi, '')
+                      .replace(/<\?xml[^>]*\?>/gi, '')
+                      .replace(/<!--[\s\S]*?-->/g, '')
+                      .replace(/<[^>]*>?/g, ' ');
+    }
     
-    // Create the OpenAI request promise
-    const openAiPromise = (async () => {
-      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert at matching candidates to job descriptions with emphasis on technical skills. Analyze the resume and job description to determine:
-            1. A match score from 0-100
-            2. The candidate's key strengths for this role (limit to 5)
-            3. Specific technologies and skills mentioned in the job description that are missing from the resume (limit to 5)
-            4. Specific client projects and date ranges from the resume, and whether they provide relevant experience
-            5. Suggestions for how the candidate could be positioned for this role (limit to 3)
-            
-            Be very specific about technologies and skills that are missing. For example, instead of saying "Missing Java experience", say "Missing experience with Java Spring Boot" or "Missing experience with Java 11 features".
-            
-            Return as a JSON object with the keys: score, strengths, weaknesses, suggestions, and a new key called "technicalGaps" which contains an array of specific technologies missing.`
-          },
-          {
-            role: "user",
-            content: `RESUME:\n${resumeText}\n\nJOB DESCRIPTION:\n${jobDescription}`
-          }
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 1500
-      });
-
-      const content = response.choices[0].message.content;
-      if (!content) {
-        throw new Error("Empty response from OpenAI");
-      }
-
-      console.log("OpenAI job matching completed successfully");
+    // Sanitize both the resume text and job description to remove any HTML tags
+    resumeText = sanitizeHtml(resumeText);
+    jobDescription = sanitizeHtml(jobDescription);
+    
+    // Set timeout for OpenAI call
+    const TIMEOUT_MS = 20000; // Increased timeout for more detailed analysis
+    
+    try {
+      console.log("Matching resume to job description with OpenAI...");
       
-      // Try to parse the content as JSON, with error handling
-      let result;
-      try {
-        // Attempt to clean up the response if it's not properly formatted JSON
-        let cleanedContent = content;
+      // Create promise with timeout
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("OpenAI request timed out")), TIMEOUT_MS);
+      });
+      
+      // Create the OpenAI request promise
+      const openAiPromise = (async () => {
+        // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: `You are an expert at matching candidates to job descriptions with emphasis on technical skills. Analyze the resume and job description to determine:
+              1. A match score from 0-100
+              2. The candidate's key strengths for this role (limit to 5)
+              3. Specific technologies and skills mentioned in the job description that are missing from the resume (limit to 5)
+              4. Specific client projects and date ranges from the resume, and whether they provide relevant experience
+              5. Suggestions for how the candidate could be positioned for this role (limit to 3)
+              
+              Be very specific about technologies and skills that are missing. For example, instead of saying "Missing Java experience", say "Missing experience with Java Spring Boot" or "Missing experience with Java 11 features".
+              
+              Return as a JSON object with the keys: score, strengths, weaknesses, suggestions, and a new key called "technicalGaps" which contains an array of specific technologies missing.`
+            },
+            {
+              role: "user",
+              content: `RESUME:\n${resumeText}\n\nJOB DESCRIPTION:\n${jobDescription}`
+            }
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: 1500
+        });
+
+        const content = response.choices[0].message.content;
+        if (!content) {
+          throw new Error("Empty response from OpenAI");
+        }
+
+        console.log("OpenAI job matching completed successfully");
         
-        // If content has markdown code blocks, extract just the JSON part
-        if (content.includes("```json")) {
-          const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
-          if (jsonBlockMatch && jsonBlockMatch[1]) {
-            cleanedContent = jsonBlockMatch[1].trim();
+        // Try to parse the content as JSON, with error handling
+        let result;
+        try {
+          // Attempt to clean up the response if it's not properly formatted JSON
+          let cleanedContent = content;
+          
+          // If content has markdown code blocks, extract just the JSON part
+          if (content.includes("```json")) {
+            const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonBlockMatch && jsonBlockMatch[1]) {
+              cleanedContent = jsonBlockMatch[1].trim();
+            }
+          } else if (content.includes("```")) {
+            const codeBlockMatch = content.match(/```\s*([\s\S]*?)\s*```/);
+            if (codeBlockMatch && codeBlockMatch[1]) {
+              cleanedContent = codeBlockMatch[1].trim();
+            }
           }
-        } else if (content.includes("```")) {
-          const codeBlockMatch = content.match(/```\s*([\s\S]*?)\s*```/);
-          if (codeBlockMatch && codeBlockMatch[1]) {
-            cleanedContent = codeBlockMatch[1].trim();
-          }
+          
+          // Remove any trailing commas that might cause JSON parse errors
+          cleanedContent = cleanedContent.replace(/,(\s*[}\]])/g, '$1');
+          
+          result = JSON.parse(cleanedContent);
+        } catch (parseError) {
+          console.error("Error parsing OpenAI response:", parseError);
+          console.log("Raw content:", content);
+          
+          // Provide fallback values if we can't parse the response
+          result = {
+            score: 0,
+            strengths: [],
+            weaknesses: ["Unable to process the match results"],
+            suggestions: ["Try with a different resume format"],
+            technicalGaps: []
+          };
         }
         
-        // Remove any trailing commas that might cause JSON parse errors
-        cleanedContent = cleanedContent.replace(/,(\s*[}\]])/g, '$1');
-        
-        result = JSON.parse(cleanedContent);
-      } catch (parseError) {
-        console.error("Error parsing OpenAI response:", parseError);
-        console.log("Raw content:", content);
-        
-        // Provide fallback values if we can't parse the response
-        result = {
-          score: 0,
-          strengths: [],
-          weaknesses: ["Unable to process the match results"],
-          suggestions: ["Try with a different resume format"],
-          technicalGaps: []
-        };
-      }
-      
-      // Ensure we have the expected structure with new technicalGaps field
-      const matchSchema = z.object({
-        score: z.number().min(0).max(100),
-        strengths: z.array(z.string()),
-        weaknesses: z.array(z.string()),
-        suggestions: z.array(z.string()),
-        technicalGaps: z.array(z.string()).optional()
-      });
+        // Ensure we have the expected structure with new technicalGaps field
+        const matchSchema = z.object({
+          score: z.number().min(0).max(100),
+          strengths: z.array(z.string()),
+          weaknesses: z.array(z.string()),
+          suggestions: z.array(z.string()),
+          technicalGaps: z.array(z.string()).optional()
+        });
 
-      const validatedResult = matchSchema.parse(result);
-      
-      // If technicalGaps exists, add them to weaknesses with "Missing skill: " prefix
-      if (validatedResult.technicalGaps && validatedResult.technicalGaps.length > 0) {
-        validatedResult.weaknesses = [
-          ...validatedResult.weaknesses,
-          ...validatedResult.technicalGaps.map(gap => `Missing technology: ${gap}`)
-        ].slice(0, 10); // Limit to 10 total weaknesses
-      }
+        const validatedResult = matchSchema.parse(result);
+        
+        // If technicalGaps exists, add them to weaknesses with "Missing skill: " prefix
+        if (validatedResult.technicalGaps && validatedResult.technicalGaps.length > 0) {
+          validatedResult.weaknesses = [
+            ...validatedResult.weaknesses,
+            ...validatedResult.technicalGaps.map(gap => `Missing technology: ${gap}`)
+          ].slice(0, 10); // Limit to 10 total weaknesses
+        }
 
-      return validatedResult;
-    })();
-    
-    // Race between timeout and OpenAI request
-    return await Promise.race([openAiPromise, timeoutPromise]);
-    
+        return validatedResult;
+      })();
+      
+      // Race between timeout and OpenAI request
+      return await Promise.race([openAiPromise, timeoutPromise]);
+      
+    } catch (innerError) {
+      console.error("Inner try-catch: OpenAI job matching error:", innerError);
+      throw innerError; // Re-throw for outer catch block
+    }
   } catch (error) {
-    console.error("OpenAI job matching error:", error);
+    console.error("Outer try-catch: OpenAI job matching error:", error);
     console.log("Falling back to simple matcher due to error or timeout");
     
     // Fall back to simple matcher if OpenAI times out or errors
