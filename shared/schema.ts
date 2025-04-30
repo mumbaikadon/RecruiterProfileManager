@@ -83,13 +83,26 @@ export const submissions = pgTable("submissions", {
   candidateId: integer("candidate_id").notNull().references(() => candidates.id),
   recruiterId: integer("recruiter_id").notNull().references(() => users.id),
   status: text("status", { 
-    enum: ["new", "reviewing", "interview", "offer", "hired", "rejected"] 
-  }).notNull().default("new"),
+    enum: [
+      "New", 
+      "Submitted To Vendor", 
+      "Rejected By Vendor", 
+      "Submitted To Client", 
+      "Interview Scheduled", 
+      "Interview Completed", 
+      "Offer Extended", 
+      "Offer Accepted", 
+      "Offer Declined", 
+      "Rejected"
+    ] 
+  }).notNull().default("New"),
   matchScore: integer("match_score").default(65),  // Default match score of 65%
   agreedRate: integer("agreed_rate").default(0),  // Default to 0 for better handling
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   notes: text("notes"),
+  feedback: text("feedback"),  // Feedback about status changes
+  lastUpdatedBy: integer("last_updated_by").references(() => users.id),
 }, (table) => {
   return {
     // Ensure each candidate is only submitted once per job
@@ -101,7 +114,14 @@ export const submissions = pgTable("submissions", {
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
   type: text("type", { 
-    enum: ["job_created", "job_closed", "candidate_submitted", "status_changed", "duplicate_detected"] 
+    enum: [
+      "job_created", 
+      "job_closed", 
+      "candidate_submitted", 
+      "status_changed", 
+      "duplicate_detected", 
+      "submission_status_changed"
+    ] 
   }).notNull(),
   userId: integer("user_id").references(() => users.id),
   jobId: integer("job_id").references(() => jobs.id),
