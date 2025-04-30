@@ -11,6 +11,7 @@ import JobDetailPage from "@/pages/jobs/[id]";
 import CandidatesPage from "@/pages/candidates/index";
 import CandidateDetailPage from "@/pages/candidates/[id]";
 import SubmissionsPage from "@/pages/submissions/index";
+import SubmissionDetailPage from "@/pages/submissions/[id]";
 
 function Router() {
   return (
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/candidates" component={CandidatesPage} />
       <Route path="/candidates/:id" component={CandidateDetailPage} />
       <Route path="/submissions" component={SubmissionsPage} />
+      <Route path="/submissions/:id" component={SubmissionDetailPage} />
       <Route component={NotFound} />
     </Switch>
   );
