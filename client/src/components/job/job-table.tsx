@@ -59,7 +59,7 @@ const JobTable: React.FC<JobTableProps> = ({
 
   return (
     <div>
-      <div className="overflow-x-auto">
+      <div className="table-container overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
