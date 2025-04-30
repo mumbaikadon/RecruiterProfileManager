@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { ChevronLeft, FileText, Briefcase, User, Calendar, DollarSign, BarChart2, Lock, Shield } from "lucide-react";
 import { formatDate, formatDateTime, formatRate } from "@/lib/date-utils";
 import StatusBadge from "@/components/submission/status-badge";
+import WorkExperienceCard from "@/components/candidate/work-experience-card";
 
 const SubmissionDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -75,7 +76,14 @@ const SubmissionDetailPage: React.FC = () => {
     skills: [],
     education: [],
     extractedText: "",
-    fileName: ""
+    fileName: "",
+    workExperience: [],
+    qualityScore: 0,
+    keywordScore: 0,
+    readabilityScore: 0,
+    contentSuggestions: [],
+    formattingSuggestions: [],
+    languageSuggestions: []
   };
   
   return (
@@ -379,11 +387,25 @@ const SubmissionDetailPage: React.FC = () => {
                     </div>
                   )}
                   
+                  {/* Work Experience Section - Main highlight of resume data */}
+                  {resumeData.workExperience && resumeData.workExperience.length > 0 && (
+                    <div className="mb-6">
+                      <div className="bg-background border border-border p-4 rounded-md">
+                        <h3 className="text-md font-medium mb-3">Professional Experience</h3>
+                        <div className="space-y-4">
+                          {resumeData.workExperience.map((experience, index) => (
+                            <WorkExperienceCard key={index} experience={experience} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Skills Section with Visual Enhancement */}
                     {resumeData.skills && resumeData.skills.length > 0 && (
                       <div className="bg-background border border-border p-4 rounded-md">
-                        <h3 className="text-md font-medium mb-3">Skills</h3>
+                        <h3 className="text-md font-medium mb-3">Technical Skills</h3>
                         <div className="flex flex-wrap gap-2">
                           {resumeData.skills.map((skill: string, i: number) => (
                             <Badge key={i} variant="outline" className="bg-accent/30">
