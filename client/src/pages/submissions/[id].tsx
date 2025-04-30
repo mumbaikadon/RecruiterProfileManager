@@ -343,9 +343,10 @@ const SubmissionDetailPage: React.FC = () => {
                           <Button 
                             size="sm" 
                             onClick={() => {
-                              if (resumeData.fileUrl) {
-                                window.open(`/api/candidates/${candidate?.id}/resume`, '_blank');
-                              }
+                              // Always use the candidate ID to fetch the resume
+                              const downloadUrl = `/api/candidates/${candidate?.id}/resume`;
+                              console.log("Downloading resume from:", downloadUrl);
+                              window.open(downloadUrl, '_blank');
                             }}
                           >
                             Download
