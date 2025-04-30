@@ -20,6 +20,7 @@ export interface MatchScoreResult {
   strengths: string[];
   weaknesses: string[];
   suggestions: string[];
+  technicalGaps?: string[]; // Added for more specific technology gap analysis
 }
 
 /**
@@ -41,7 +42,35 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       messages: [
         {
           role: "system",
-          content: "You are a resume analysis expert. Extract the following information from the resume: client names, job titles, relevant dates (employment periods), skills, and education details. Respond with a JSON object with these categories."
+          content: `You are an expert at analyzing resumes for the IT staffing industry. 
+          
+          Extract the following information from the resume:
+          
+          1. CLIENT NAMES: List all companies the candidate worked for as a contractor or consultant (not direct employers).
+             - Focus on identifying client companies where the person was placed through staffing firms
+             - Each client should be a separate entry
+             - Be precise and list the full client name
+             
+          2. JOB TITLES: List the professional roles/titles held by the candidate.
+             - List all job titles in chronological order (most recent first)
+             - Include both official titles and functional roles
+             
+          3. RELEVANT DATES: Employment periods for each role.
+             - Try to match dates with clients and job titles
+             - Use format "MM/YYYY - MM/YYYY" when possible
+             - Include present/current for ongoing roles
+             
+          4. SKILLS: Technical skills and technologies the candidate has experience with.
+             - Focus on technical skills, programming languages, frameworks, tools
+             - Be specific about versions and specializations when mentioned
+             - Include both hard and soft skills
+             - Prioritize recent and emphasized skills
+             
+          5. EDUCATION: Educational qualifications, degrees, certifications.
+             - Include university degrees, certifications, and specialized training
+             - Include graduation years when available
+          
+          Return the information in a structured JSON format with these keys: clientNames, jobTitles, relevantDates, skills, education.`
         },
         {
           role: "user",
@@ -49,7 +78,8 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1500
+      max_tokens: 1500,
+      temperature: 0.3 // Lower temperature for more focused extraction
     });
 
     const content = response.choices[0].message.content;
@@ -111,38 +141,154 @@ function simpleResumeJobMatcher(resumeText: string, jobDescription: string): Mat
   const resumeLower = resumeText.toLowerCase();
   const jobLower = jobDescription.toLowerCase();
 
-  // Simple keyword extraction for skills and requirements
+  // Expanded list of common technical skills with variations
   const commonSkills = [
-    'javascript', 'typescript', 'react', 'angular', 'vue', 'node', 'express',
-    'python', 'java', 'c#', 'c++', 'ruby', 'php', 'sql', 'nosql', 'mongodb',
-    'aws', 'azure', 'gcp', 'cloud', 'docker', 'kubernetes', 'ci/cd', 'git',
-    'agile', 'scrum', 'rest', 'graphql', 'microservices', 'frontend', 'backend',
-    'fullstack', 'testing', 'ui/ux', 'mobile', 'responsive', 'security', 'devops'
+    // Frontend
+    'javascript', 'typescript', 'react', 'angular', 'vue', 'nextjs', 'nuxt', 'svelte', 
+    'redux', 'jquery', 'html5', 'css3', 'sass', 'less', 'tailwind', 'bootstrap', 'material-ui',
+    'webpack', 'babel', 'eslint', 'prettier', 'storybook', 'responsive', 'mobile-first',
+    
+    // Backend
+    'node', 'express', 'nestjs', 'python', 'django', 'flask', 'fastapi', 'java', 'spring', 
+    'c#', '.net', 'asp.net', 'ruby', 'rails', 'php', 'laravel', 'symfony', 'go', 'golang',
+    'rust', 'scala', 'kotlin', 'deno',
+    
+    // Database
+    'sql', 'mysql', 'postgresql', 'sqlite', 'oracle', 'nosql', 'mongodb', 'dynamodb', 
+    'firebase', 'cassandra', 'redis', 'elasticsearch', 'neo4j', 'couchdb', 'mariadb',
+    'orm', 'sequelize', 'mongoose', 'typeorm', 'prisma', 'drizzle',
+    
+    // Cloud & DevOps
+    'aws', 'ec2', 's3', 'lambda', 'azure', 'gcp', 'cloud', 'serverless', 'docker', 'kubernetes', 
+    'ci/cd', 'jenkins', 'github actions', 'travis', 'gitlab', 'terraform', 'ansible', 'chef', 'puppet',
+    'nginx', 'apache', 'load balancing', 'monitoring', 'prometheus', 'grafana', 'elk',
+    
+    // Methodologies & Practices
+    'agile', 'scrum', 'kanban', 'tdd', 'bdd', 'devops', 'microservices', 'rest', 'graphql', 
+    'soap', 'grpc', 'oauth', 'jwt', 'security', 'testing', 'unit testing', 'integration testing',
+    'e2e testing', 'cypress', 'jest', 'mocha', 'chai', 'selenium',
+    
+    // Version Control
+    'git', 'github', 'gitlab', 'bitbucket', 'svn', 'mercurial',
+    
+    // Mobile
+    'ios', 'android', 'swift', 'objective-c', 'kotlin', 'java', 'react native', 'flutter', 
+    'xamarin', 'ionic', 'cordova', 'mobile',
+    
+    // Big Data & ML
+    'hadoop', 'spark', 'kafka', 'airflow', 'machine learning', 'deep learning', 'ai', 
+    'tensorflow', 'pytorch', 'scikit-learn', 'nlp', 'computer vision', 'data science',
+    
+    // Specific tools & frameworks
+    'jira', 'confluence', 'slack', 'figma', 'sketch', 'adobe xd', 'photoshop', 'illustrator',
+    'webpack', 'parcel', 'rollup', 'vite', 'babel', 'moleculer'
   ];
 
+  // Extract technical terms from job description that might not be in our common list
+  const extractTechnicalTerms = (text: string): string[] => {
+    // Look for text that might be a technology (e.g., capitalized words, words with numbers, hyphenated words)
+    const technicalPattern = /\b([A-Z][a-z0-9]+(?:\.[A-Za-z0-9]+)*|\w+\.\w+|\w+-\w+)\b/g;
+    const potentialTerms = text.match(technicalPattern) || [];
+    
+    // Filter out common English words and keep only likely technical terms
+    return potentialTerms
+      .filter(term => term.length > 2) // Avoid short words
+      .map(term => term.toLowerCase());
+  };
+
+  // Add potential technical terms from job description to our skills list
+  const jobSpecificTerms = extractTechnicalTerms(jobDescription);
+  // Create a Set and convert back to array to get unique skills
+  const uniqueSkills = new Set([...commonSkills, ...jobSpecificTerms]);
+  const allSkills = Array.from(uniqueSkills);
+
   // Count matching skills
-  const matchingSkills = commonSkills.filter(skill => 
+  const matchingSkills = allSkills.filter(skill => 
     resumeLower.includes(skill) && jobLower.includes(skill)
   );
   
   // Skills in job but not in resume
-  const missingSkills = commonSkills.filter(skill => 
+  const missingSkills = allSkills.filter(skill => 
     !resumeLower.includes(skill) && jobLower.includes(skill)
   );
 
-  // Calculate a simple score based on matching skills
-  const jobSkillsCount = commonSkills.filter(skill => jobLower.includes(skill)).length;
-  const score = jobSkillsCount > 0 
-    ? Math.min(100, Math.round((matchingSkills.length / jobSkillsCount) * 100))
-    : 50; // Default to 50% if no skills found in job description
+  // Try to extract candidate strengths from resume
+  const extractStrengths = (text: string): string[] => {
+    const strengthPatterns = [
+      /experience (?:with|in) ([^.]+)/gi,
+      /proficient (?:with|in) ([^.]+)/gi,
+      /expertise (?:with|in) ([^.]+)/gi,
+      /skilled (?:with|in) ([^.]+)/gi,
+      /knowledge of ([^.]+)/gi
+    ];
+    
+    let strengths: string[] = [];
+    
+    strengthPatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        if (match[1] && match[1].length > 3 && match[1].length < 100) {
+          strengths.push(match[1].trim());
+        }
+      }
+    });
+    
+    // Create a Set and convert back to array to get unique strengths
+    const uniqueStrengths = new Set(strengths);
+    return Array.from(uniqueStrengths).slice(0, 5); // Limit to 5 unique strengths
+  };
 
+  const candidateStrengths = extractStrengths(resumeText);
+
+  // Calculate a more nuanced score based on matching skills and job requirements
+  const jobSkillsCount = allSkills.filter(skill => jobLower.includes(skill)).length;
+  
+  // If no skills are found in job description, use a more basic approach
+  if (jobSkillsCount === 0) {
+    // Calculate the percentage of common words between resume and job description
+    const resumeWordsArray = resumeLower.split(/\s+/).filter(w => w.length > 3);
+    const jobWordsArray = jobLower.split(/\s+/).filter(w => w.length > 3);
+    
+    // Convert to Sets
+    const resumeWords = new Set(resumeWordsArray);
+    const jobWords = new Set(jobWordsArray);
+    
+    // Convert back to array to use filter
+    const resumeWordsUnique = Array.from(resumeWords);
+    const commonWordsCount = resumeWordsUnique.filter(word => jobWords.has(word)).length;
+    const score = Math.min(100, Math.round((commonWordsCount / jobWords.size) * 100));
+    
+    return {
+      score: Math.max(10, score), // Ensure minimum score of 10%
+      strengths: candidateStrengths.length > 0 ? candidateStrengths : ["Generic skill match"],
+      weaknesses: ["Specific technical requirements could not be identified in job description"],
+      suggestions: ["Request more details about technical requirements for this role"]
+    };
+  }
+  
+  // Normal scoring based on technical skills
+  let score = Math.min(100, Math.round((matchingSkills.length / jobSkillsCount) * 100));
+  
+  // Ensure we have a minimum score of 5% when we have actual skills to match
+  score = Math.max(5, score);
+  
+  // Generate specific missing technology gaps
+  const technicalGaps = missingSkills.map(skill => 
+    `Missing technology: ${skill.charAt(0).toUpperCase() + skill.slice(1)}`
+  );
+  
   return {
     score,
-    strengths: matchingSkills.map(skill => `Experience with ${skill}`),
+    strengths: matchingSkills.length > 0 
+      ? matchingSkills.map(skill => `Experience with ${skill}`)
+      : candidateStrengths.length > 0 
+        ? candidateStrengths 
+        : ["No specific matching skills identified"],
     weaknesses: missingSkills.map(skill => `No mention of ${skill}`),
     suggestions: missingSkills.slice(0, 3).map(skill => 
       `Consider highlighting any experience with ${skill}`
-    )
+    ),
+    technicalGaps: technicalGaps.slice(0, 5) // Limit to top 5 technical gaps
   };
 }
 

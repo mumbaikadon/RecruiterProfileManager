@@ -1,370 +1,379 @@
-import React, { useState } from "react";
-import { useParams, useLocation } from "wouter";
+import { useParams } from "wouter";
 import { useCandidate } from "@/hooks/use-candidates";
-import { useSubmissions } from "@/hooks/use-submissions";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
+import { formatDate, formatDateTime, formatRate } from "@/lib/date-utils";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, User, Briefcase, Calendar, Mail, Phone, MapPin, FileText, Tag, Users, Clock } from "lucide-react";
-import { formatDate, formatDob, formatRate } from "@/lib/date-utils";
+import { Calendar, DollarSign, Mail, MapPin, Phone, User } from "lucide-react";
+import { CircularProgress } from "@/components/ui/progress";
 
-const CandidateDetailPage: React.FC = () => {
-  const params = useParams<{ id: string }>();
-  const id = parseInt(params.id);
-  const [_, setLocation] = useLocation();
-  const { data: candidate, isLoading: candidateLoading } = useCandidate(id);
-  const { data: submissions, isLoading: submissionsLoading } = useSubmissions({ candidateId: id });
-
-  if (candidateLoading) {
+function CandidateDetailPage() {
+  const { id } = useParams();
+  const candidateId = parseInt(id);
+  
+  const { data: candidate, isLoading, error } = useCandidate(candidateId);
+  
+  if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading candidate details...</p>
+        </div>
       </div>
     );
   }
-
-  if (!candidate) {
+  
+  if (error || !candidate) {
     return (
-      <div className="text-center py-16">
-        <h2 className="text-2xl font-bold text-gray-700">Candidate not found</h2>
-        <p className="mt-2 text-gray-500">The candidate you're looking for doesn't exist or has been removed.</p>
-        <Button className="mt-4" onClick={() => setLocation("/candidates")}>
-          Back to candidates
-        </Button>
+      <div className="p-8 text-center">
+        <h2 className="text-2xl font-bold text-destructive mb-2">Error Loading Candidate</h2>
+        <p className="text-muted-foreground">{error?.message || "Candidate not found"}</p>
       </div>
     );
   }
-
-  const getWorkAuthorizationDisplay = (auth: string) => {
-    switch (auth) {
-      case "citizen":
-        return "US Citizen";
-      case "green-card":
-        return "Green Card";
-      case "h1b":
-        return "H1-B Visa";
-      case "ead":
-        return "EAD";
-      default:
-        return auth.charAt(0).toUpperCase() + auth.slice(1);
-    }
-  };
-
+  
+  const hasResumeData = candidate.resumeData && Object.keys(candidate.resumeData).length > 0;
+  
+  // Calculate match rate statistics
+  const submissionRates = candidate.submissions?.map(sub => sub.rate || 0) || [];
+  const avgRate = submissionRates.length > 0 
+    ? submissionRates.reduce((sum, rate) => sum + rate, 0) / submissionRates.length 
+    : 0;
+  const minRate = submissionRates.length > 0 ? Math.min(...submissionRates) : 0;
+  const maxRate = submissionRates.length > 0 ? Math.max(...submissionRates) : 0;
+  
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="text-muted-foreground"
-          onClick={() => setLocation("/candidates")}
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back
-        </Button>
-        <h2 className="text-2xl font-semibold">
-          {candidate.firstName} {candidate.middleName && candidate.middleName + " "}{candidate.lastName}
-        </h2>
+    <div className="container mx-auto py-6 space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {candidate.firstName} {candidate.middleName ? candidate.middleName + " " : ""}{candidate.lastName}
+          </h1>
+          <p className="text-muted-foreground">
+            {candidate.workAuthorization} • Added on {formatDate(candidate.createdAt)}
+          </p>
+        </div>
       </div>
-
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList>
+      
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="grid w-full md:w-auto grid-cols-3">
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="submissions">Submissions</TabsTrigger>
-          <TabsTrigger value="resume">Resume Data</TabsTrigger>
+          <TabsTrigger value="resume-data">Resume Data</TabsTrigger>
+          <TabsTrigger value="submissions">Submissions ({candidate.submissions?.length || 0})</TabsTrigger>
         </TabsList>
-
+        
         <TabsContent value="profile" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>Basic candidate information</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Full Name</div>
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">
-                    {candidate.firstName} {candidate.middleName || ""} {candidate.lastName}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Date of Birth</div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{formatDob(candidate.dobMonth, candidate.dobDay)}</span>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Email</div>
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <a 
-                    href={`mailto:${candidate.email}`} 
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {candidate.email}
-                  </a>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Phone</div>
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <a 
-                    href={`tel:${candidate.phone}`} 
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {candidate.phone}
-                  </a>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Location</div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{candidate.location}</span>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Work Authorization</div>
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">
-                    {getWorkAuthorizationDisplay(candidate.workAuthorization)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">LinkedIn</div>
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  {candidate.linkedin ? (
-                    <a 
-                      href={candidate.linkedin}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-primary hover:underline"
-                    >
-                      View Profile
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground">Not provided</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">SSN (Last 4)</div>
-                <div className="flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">XXX-XX-{candidate.ssn4}</span>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between border-t pt-4">
-              <div className="text-xs text-muted-foreground">
-                <span>Created at: {formatDate(candidate.createdAt)}</span>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => window.location.reload()}
-              >
-                Refresh
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="resume" className="space-y-6">
-          {candidate.resumeData ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Resume Data</CardTitle>
-                <CardDescription>Information extracted from candidate's resume</CardDescription>
+                <CardTitle>Personal Information</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <User className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Full Name</p>
+                    <p className="text-sm text-muted-foreground">
+                      {candidate.firstName} {candidate.middleName || ""} {candidate.lastName}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-3">
+                  <Phone className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Phone</p>
+                    <p className="text-sm text-muted-foreground">{candidate.phone}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-3">
+                  <Mail className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Email</p>
+                    <p className="text-sm text-muted-foreground">{candidate.email}</p>
+                  </div>
+                </div>
+                
+                {candidate.location && (
+                  <div className="flex items-start space-x-3">
+                    <MapPin className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Location</p>
+                      <p className="text-sm text-muted-foreground">{candidate.location}</p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex items-start space-x-3">
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Date of Birth</p>
+                    <p className="text-sm text-muted-foreground">
+                      {candidate.dobMonth}/{candidate.dobDay} (Month/Day)
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Work & Authorization</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Client History</h3>
-                  {candidate.resumeData.clientNames.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {candidate.resumeData.clientNames.map((client, index) => (
-                        <div key={index} className="bg-muted p-3 rounded-lg">
-                          <div className="font-medium">{client}</div>
-                          {candidate.resumeData.relevantDates && candidate.resumeData.relevantDates[index] && (
-                            <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {candidate.resumeData.relevantDates[index]}
-                            </div>
+                  <p className="text-sm font-medium">Work Authorization</p>
+                  <Badge variant="outline" className="mt-1">
+                    {candidate.workAuthorization}
+                  </Badge>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium">Relocation Preference</p>
+                  <p className="text-sm text-muted-foreground">
+                    {candidate.willingToRelocate ? "Willing to relocate" : "Not willing to relocate"}
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium">LinkedIn</p>
+                  <p className="text-sm text-muted-foreground">
+                    {candidate.linkedIn ? (
+                      <a 
+                        href={candidate.linkedIn.startsWith("http") ? candidate.linkedIn : `https://${candidate.linkedIn}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        View Profile
+                      </a>
+                    ) : (
+                      "Not provided"
+                    )}
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium">SSN (Last 4)</p>
+                  <p className="text-sm text-muted-foreground">***-**-{candidate.ssn4}</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Rates & Statistics</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {submissionRates.length > 0 ? (
+                  <>
+                    <div>
+                      <p className="text-sm font-medium">Average Rate</p>
+                      <p className="text-xl font-bold text-primary">{formatRate(avgRate)}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium">Minimum Rate</p>
+                        <p className="text-sm font-semibold">{formatRate(minRate)}</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm font-medium">Maximum Rate</p>
+                        <p className="text-sm font-semibold">{formatRate(maxRate)}</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-medium">Total Submissions</p>
+                      <p className="text-sm font-semibold">{candidate.submissions?.length || 0}</p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-8 text-center">
+                    <DollarSign className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground">No submission rates available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="resume-data" className="space-y-6">
+          {hasResumeData ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Client History</CardTitle>
+                  <CardDescription>Companies the candidate has worked for</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {candidate.resumeData.clientNames && candidate.resumeData.clientNames.length > 0 ? (
+                    <div className="space-y-4">
+                      {candidate.resumeData.clientNames.map((client, idx) => (
+                        <div key={idx} className="border-l-2 border-primary pl-4 py-1">
+                          <p className="font-medium">{client}</p>
+                          {candidate.resumeData.relevantDates && candidate.resumeData.relevantDates[idx] && (
+                            <p className="text-sm text-muted-foreground">
+                              {candidate.resumeData.relevantDates[idx]}
+                            </p>
                           )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-muted-foreground italic">No client history found</div>
+                    <p className="text-muted-foreground py-4">No client history detected</p>
                   )}
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Job Titles</h3>
-                  {candidate.resumeData.jobTitles.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {candidate.resumeData.jobTitles.map((title, index) => (
-                        <Badge key={index} variant="secondary">{title}</Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-muted-foreground italic">No job titles found</div>
-                  )}
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Skills</h3>
-                  {candidate.resumeData.skills.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {candidate.resumeData.skills.map((skill, index) => (
-                        <Badge key={index}>{skill}</Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-muted-foreground italic">No skills found</div>
-                  )}
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Education</h3>
-                  {candidate.resumeData.education.length > 0 ? (
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Job Titles</CardTitle>
+                  <CardDescription>Professional roles held by the candidate</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {candidate.resumeData.jobTitles && candidate.resumeData.jobTitles.length > 0 ? (
                     <div className="space-y-2">
-                      {candidate.resumeData.education.map((edu, index) => (
-                        <div key={index} className="bg-muted p-3 rounded-lg">
-                          <div className="font-medium">{edu}</div>
+                      {candidate.resumeData.jobTitles.map((title, idx) => (
+                        <Badge key={idx} variant="secondary" className="mr-2 mb-2">
+                          {title}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground py-4">No job titles detected</p>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Skills & Technologies</CardTitle>
+                  <CardDescription>Technical expertise and competencies</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {candidate.resumeData.skills && candidate.resumeData.skills.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {candidate.resumeData.skills.map((skill, idx) => (
+                        <Badge key={idx} variant="outline" className="bg-primary/10">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground py-4">No skills detected</p>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Education</CardTitle>
+                  <CardDescription>Educational background and qualifications</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {candidate.resumeData.education && candidate.resumeData.education.length > 0 ? (
+                    <div className="space-y-4">
+                      {candidate.resumeData.education.map((edu, idx) => (
+                        <div key={idx} className="pl-4">
+                          <p className="font-medium">{edu}</p>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-muted-foreground italic">No education history found</div>
+                    <p className="text-muted-foreground py-4">No education information detected</p>
                   )}
-                </div>
-
-                {candidate.resumeData.extractedText && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-2">Extracted Text Sample</h3>
-                      <div className="bg-muted p-3 rounded-lg text-sm max-h-40 overflow-y-auto">
-                        {candidate.resumeData.extractedText.substring(0, 1000)}
-                        {candidate.resumeData.extractedText.length > 1000 && '...'}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           ) : (
             <Card>
-              <CardHeader>
-                <CardTitle>No Resume Data</CardTitle>
-                <CardDescription>
-                  No resume data has been extracted for this candidate
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Resume data may not be available because the candidate was added manually or
-                  their resume could not be processed.
+              <CardContent className="py-12 text-center">
+                <p className="text-xl text-muted-foreground mb-2">No Resume Data Available</p>
+                <p className="text-sm text-muted-foreground">
+                  This candidate doesn't have any resume data extracted or processed yet.
                 </p>
               </CardContent>
             </Card>
           )}
         </TabsContent>
-
+        
         <TabsContent value="submissions" className="space-y-6">
-          {submissionsLoading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : submissions && submissions.length > 0 ? (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Submission History</h3>
-              {submissions.map((submission) => (
-                <Card key={submission.id} className="hover:bg-accent/5 transition-colors">
+          {candidate.submissions && candidate.submissions.length > 0 ? (
+            <div className="space-y-6">
+              {candidate.submissions.map((submission, idx) => (
+                <Card key={idx}>
                   <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-base">
-                          {submission.job?.title || 'Unknown Job'}
-                        </CardTitle>
-                        <CardDescription>{submission.job?.jobId || 'No Job ID'}</CardDescription>
-                      </div>
-                      <Badge 
-                        variant={
-                          submission.status === 'accepted' ? 'success' :
-                          submission.status === 'rejected' ? 'destructive' :
-                          'secondary'
+                    <div className="flex justify-between">
+                      <CardTitle>{submission.job?.title || "Unknown Job"}</CardTitle>
+                      <Badge
+                        className={
+                          submission.status === "submitted" ? "bg-yellow-500" :
+                          submission.status === "accepted" ? "bg-green-500" :
+                          submission.status === "rejected" ? "bg-red-500" :
+                          "bg-blue-500"
                         }
                       >
-                        {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
+                        {submission.status}
                       </Badge>
                     </div>
+                    <CardDescription>
+                      Job ID: {submission.job?.jobId || "Unknown"} • 
+                      Submitted on {formatDateTime(submission.submittedAt)}
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="pb-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <div className="text-muted-foreground">Submitted</div>
-                        <div className="font-medium">{formatDate(submission.submittedAt)}</div>
+                        <p className="text-sm font-medium">Submission Rate</p>
+                        <p className="text-lg font-bold text-primary">{formatRate(submission.rate)}</p>
                       </div>
+                      
                       <div>
-                        <div className="text-muted-foreground">Match Score</div>
-                        <div className="font-medium">
-                          {submission.matchScore !== null ? `${submission.matchScore}%` : 'N/A'}
-                        </div>
+                        <p className="text-sm font-medium">Recruiter</p>
+                        <p className="text-sm">{submission.recruiter?.name || "Unknown"}</p>
                       </div>
+                      
                       <div>
-                        <div className="text-muted-foreground">Rate</div>
-                        <div className="font-medium">
-                          {submission.agreedRate ? formatRate(submission.agreedRate) : 'N/A'}
+                        <p className="text-sm font-medium">Match Score</p>
+                        <div className="flex items-center space-x-2">
+                          <CircularProgress value={submission.matchScore || 0} size="small" />
+                          <span className={
+                            (submission.matchScore || 0) < 30 ? "text-red-500" :
+                            (submission.matchScore || 0) < 70 ? "text-yellow-500" :
+                            "text-green-500"
+                          }>
+                            {submission.matchScore || 0}%
+                          </span>
                         </div>
                       </div>
                     </div>
+                    
                     {submission.notes && (
-                      <div className="mt-4 text-sm">
-                        <div className="text-muted-foreground">Notes</div>
-                        <div className="mt-1 bg-muted p-2 rounded-lg">{submission.notes}</div>
-                      </div>
+                      <>
+                        <Separator />
+                        <div>
+                          <p className="text-sm font-medium">Notes</p>
+                          <p className="text-sm text-muted-foreground whitespace-pre-line">{submission.notes}</p>
+                        </div>
+                      </>
                     )}
                   </CardContent>
-                  <CardFooter className="text-sm text-muted-foreground pt-0">
-                    <div>Submitted by: {submission.recruiter?.name || 'Unknown'}</div>
-                  </CardFooter>
                 </Card>
               ))}
             </div>
           ) : (
             <Card>
-              <CardHeader>
-                <CardTitle>No Submissions</CardTitle>
-                <CardDescription>This candidate has not been submitted to any jobs yet</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  When this candidate is submitted to jobs, their submission history will appear here.
+              <CardContent className="py-12 text-center">
+                <p className="text-xl text-muted-foreground mb-2">No Submissions Yet</p>
+                <p className="text-sm text-muted-foreground">
+                  This candidate hasn't been submitted to any jobs yet.
                 </p>
               </CardContent>
             </Card>
@@ -373,6 +382,6 @@ const CandidateDetailPage: React.FC = () => {
       </Tabs>
     </div>
   );
-};
+}
 
 export default CandidateDetailPage;
