@@ -14,17 +14,13 @@ const TALENT_STREAMLINE_URL = process.env.TALENT_STREAMLINE_URL || 'https://api.
 const API_KEY = process.env.TALENT_STREAMLINE_API_KEY;
 
 /**
- * Send candidate information to TalentStreamline when their submission status is set to "offer_accepted"
+ * Send candidate information to TalentStreamline when their submission status is set to "Offer Accepted"
  */
 export async function syncCandidateToTalentStreamline(submissionId: number): Promise<boolean> {
   try {
     // Get the submission with related candidate and job information
     const submission = await db.query.submissions.findFirst({
-      where: eq(submissions.id, submissionId),
-      with: {
-        candidate: true,
-        job: true,
-      }
+      where: eq(submissions.id, submissionId)
     });
 
     if (!submission) {
@@ -33,21 +29,41 @@ export async function syncCandidateToTalentStreamline(submissionId: number): Pro
     }
 
     // Only send data for "Offer Accepted" status
-    if (submission.status !== 'offer_accepted' && submission.status !== 'Offer Accepted') {
+    if (submission.status !== 'Offer Accepted') {
       logger.info(`Skipping sync for submission #${submissionId} with status: ${submission.status}`);
+      return false;
+    }
+
+    // Get candidate information
+    const candidate = await db.query.candidates.findFirst({
+      where: eq(candidates.id, submission.candidateId)
+    });
+
+    if (!candidate) {
+      logger.error(`Cannot sync to TalentStreamline: Candidate not found for submission #${submissionId}`);
+      return false;
+    }
+
+    // Get job information
+    const job = await db.query.jobs.findFirst({
+      where: eq(jobs.id, submission.jobId)
+    });
+
+    if (!job) {
+      logger.error(`Cannot sync to TalentStreamline: Job not found for submission #${submissionId}`);
       return false;
     }
 
     // Format the candidate data for the TalentStreamline API
     const candidateData = {
-      id: submission.candidate.id,
-      firstName: submission.candidate.firstName,
-      lastName: submission.candidate.lastName,
-      email: submission.candidate.email,
-      phone: submission.candidate.phone,
-      location: submission.candidate.location,
-      jobTitle: submission.job.title,
-      jobId: submission.job.jobId,
+      id: candidate.id,
+      firstName: candidate.firstName,
+      lastName: candidate.lastName,
+      email: candidate.email,
+      phone: candidate.phone,
+      location: candidate.location,
+      jobTitle: job.title,
+      jobId: job.jobId,
       agreedRate: submission.agreedRate,
       offerAcceptedDate: new Date().toISOString(),
       submissionId: submission.id,

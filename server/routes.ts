@@ -695,8 +695,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } else {
               console.error(`Failed to sync submission #${id} to TalentStreamline`);
             }
-          } catch (syncError) {
-            console.error(`Error syncing to TalentStreamline: ${syncError.message}`);
+          } catch (syncError: any) {
+            const errorMessage = syncError?.message || 'Unknown error';
+            console.error(`Error syncing to TalentStreamline: ${errorMessage}`);
             // We don't want to fail the status update if the sync fails,
             // so we just log the error and continue
           }

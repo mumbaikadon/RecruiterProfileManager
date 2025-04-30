@@ -120,7 +120,8 @@ export const activities = pgTable("activities", {
       "candidate_submitted", 
       "status_changed", 
       "duplicate_detected", 
-      "submission_status_changed"
+      "submission_status_changed",
+      "system_integration"
     ] 
   }).notNull(),
   userId: integer("user_id").references(() => users.id),

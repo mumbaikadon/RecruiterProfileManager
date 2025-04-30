@@ -37,6 +37,13 @@ export function sanitizeContent(content: string): string {
 }
 
 /**
+ * Alias for sanitizeContent to maintain backward compatibility
+ */
+export function sanitizeHtml(content: string): string {
+  return sanitizeContent(content);
+}
+
+/**
  * Format error response
  */
 export function formatErrorResponse(error: any): { message: string; details?: any } {
@@ -44,4 +51,16 @@ export function formatErrorResponse(error: any): { message: string; details?: an
     message: error.message || 'An unknown error occurred',
     details: process.env.NODE_ENV !== 'production' ? error : undefined
   };
+}
+
+/**
+ * Checks if a string is valid JSON
+ */
+export function isValidJson(str: string): boolean {
+  try {
+    JSON.parse(str);
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
