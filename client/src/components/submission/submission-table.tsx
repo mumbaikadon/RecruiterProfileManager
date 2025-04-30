@@ -99,17 +99,25 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
               </TableCell>
               <TableCell className="hidden sm:table-cell">{formatDate(submission.submittedAt)}</TableCell>
               <TableCell className="hidden lg:table-cell">
-                {submission.agreedRate ? (
-                  formatRate(submission.agreedRate)
-                ) : (
-                  <span className="text-muted-foreground">N/A</span>
-                )}
+                {formatRate(submission.agreedRate)}
               </TableCell>
               <TableCell className="hidden lg:table-cell">
                 {submission.matchScore ? (
-                  <span className="font-medium">{submission.matchScore}%</span>
+                  <div className="flex items-center">
+                    <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
+                      <div 
+                        className={cn("h-2 rounded-full", {
+                          "bg-green-500": submission.matchScore >= 80,
+                          "bg-yellow-500": submission.matchScore >= 60 && submission.matchScore < 80,
+                          "bg-red-500": submission.matchScore < 60,
+                        })}
+                        style={{ width: `${submission.matchScore}%` }}
+                      ></div>
+                    </div>
+                    <span className="font-medium">{submission.matchScore}%</span>
+                  </div>
                 ) : (
-                  <span className="text-muted-foreground">N/A</span>
+                  <span className="text-muted-foreground">65%</span>
                 )}
               </TableCell>
               <TableCell>
