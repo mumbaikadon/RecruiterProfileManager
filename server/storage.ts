@@ -304,14 +304,29 @@ export class DatabaseStorage implements IStorage {
     return submission;
   }
 
-  async updateSubmissionStatus(id: number, status: string): Promise<Submission> {
+  async updateSubmissionStatus(
+    id: number, 
+    status: string, 
+    feedback?: string, 
+    lastUpdatedBy?: number
+  ): Promise<Submission> {
     const now = new Date();
+    const updateData: any = { 
+      status, 
+      updatedAt: now
+    };
+    
+    if (feedback !== undefined) {
+      updateData.feedback = feedback;
+    }
+    
+    if (lastUpdatedBy) {
+      updateData.lastUpdatedBy = lastUpdatedBy;
+    }
+    
     const [submission] = await db
       .update(submissions)
-      .set({
-        status,
-        updatedAt: now
-      })
+      .set(updateData)
       .where(eq(submissions.id, id))
       .returning();
     
