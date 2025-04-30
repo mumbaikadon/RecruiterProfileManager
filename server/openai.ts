@@ -5,6 +5,7 @@ import * as nodeNlp from 'node-nlp';
 import * as fs from 'fs';
 import * as util from 'util';
 import * as path from 'path';
+import OpenAI from "openai";
 
 // NLP setup
 const nlpManager = new nodeNlp.NlpManager({ language: 'en' });
@@ -13,6 +14,19 @@ const stemmer = natural.PorterStemmer;
 
 // Initialize basic NLP tools
 const sentimentAnalyzer = new nodeNlp.SentimentAnalyzer({ language: 'en' });
+
+// OpenAI client setup - use if API key is available
+let openai: OpenAI | null = null;
+try {
+  if (process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    console.log("OpenAI client initialized successfully");
+  } else {
+    console.log("No OpenAI API key found, using NLP-only mode");
+  }
+} catch (error) {
+  console.error("Error initializing OpenAI client:", error);
+}
 
 /**
  * Calculate cosine similarity between two arrays of strings
@@ -76,6 +90,19 @@ export interface MatchScoreResult {
   missingSkills?: string[]; // Skills required by job but missing from resume
   clientExperience?: string; // Analysis of how client experience relates to job
   confidence?: number; // Confidence level in the analysis (0-100)
+}
+
+/**
+ * Enhanced resume analysis interface with quality metrics
+ */
+export interface EnhancedResumeAnalysis extends ResumeAnalysisResult {
+  qualityScore?: number;         // Overall quality score (0-100)
+  contentSuggestions?: string[]; // Suggestions for content improvement
+  formattingSuggestions?: string[]; // Suggestions for formatting improvement
+  languageSuggestions?: string[]; // Suggestions for language improvement
+  keywordScore?: number;         // How well the resume matches industry keywords (0-100)
+  readabilityScore?: number;     // Readability score (0-100)
+  aiEnhanced: boolean;           // Whether AI was used for enhanced analysis
 }
 
 /**
@@ -194,6 +221,132 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       extractedText: resumeText ? resumeText.substring(0, 5000) : "Error processing resume"
     };
   }
+}
+
+/**
+ * AI-enhanced resume analysis that adds quality metrics and improvement suggestions
+ * Uses OpenAI if available, falls back to NLP methods if not
+ */
+export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedResumeAnalysis> {
+  // First get the basic NLP analysis
+  const basicAnalysis = await analyzeResumeText(resumeText);
+  
+  // If OpenAI is not available, return basic analysis with dummy quality metrics
+  if (!openai) {
+    console.log("OpenAI client not available, returning basic analysis only");
+    const readabilityScore = calculateReadabilityScore(resumeText);
+    
+    return {
+      ...basicAnalysis,
+      qualityScore: 70, // Default score
+      contentSuggestions: ["Use the OpenAI integration for more detailed content suggestions"],
+      formattingSuggestions: ["Use the OpenAI integration for formatting suggestions"],
+      languageSuggestions: [],
+      readabilityScore,
+      keywordScore: 65, // Default score
+      aiEnhanced: false
+    };
+  }
+  
+  try {
+    // Perform enhanced analysis with OpenAI
+    console.log("Performing enhanced resume analysis with OpenAI...");
+    
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert resume analyzer for IT staffing industry. Analyze this resume and provide quality metrics and improvement suggestions.
+          
+          Return your analysis in a structured JSON format with these exact keys:
+          
+          1. qualityScore: A number between 0 and 100 indicating overall resume quality
+          2. contentSuggestions: Array of 3-5 specific suggestions for improving content
+          3. formattingSuggestions: Array of 2-3 suggestions for improving formatting
+          4. languageSuggestions: Array of 2-3 suggestions for improving language
+          5. keywordScore: A number between 0 and 100 indicating how well the resume contains relevant IT industry keywords
+          6. readabilityScore: A number between 0 and 100 indicating how readable the resume is
+          
+          Ensure your assessment is fair and constructive, offering actionable advice that would help the candidate improve their resume for IT positions.`
+        },
+        {
+          role: "user",
+          content: resumeText
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1500
+    });
+    
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error("Empty response from OpenAI");
+    }
+    
+    console.log("OpenAI enhanced analysis completed successfully");
+    
+    // Parse the response
+    const enhancedAnalysis = JSON.parse(content);
+    
+    // Merge the basic NLP analysis with the enhanced AI analysis
+    return {
+      ...basicAnalysis,
+      qualityScore: enhancedAnalysis.qualityScore || 75,
+      contentSuggestions: enhancedAnalysis.contentSuggestions || [],
+      formattingSuggestions: enhancedAnalysis.formattingSuggestions || [],
+      languageSuggestions: enhancedAnalysis.languageSuggestions || [],
+      keywordScore: enhancedAnalysis.keywordScore || 70,
+      readabilityScore: enhancedAnalysis.readabilityScore || calculateReadabilityScore(resumeText),
+      aiEnhanced: true
+    };
+  } catch (error) {
+    console.error("Error in AI-enhanced resume analysis:", error);
+    
+    // Fall back to basic analysis with calculated metrics
+    const readabilityScore = calculateReadabilityScore(resumeText);
+    
+    return {
+      ...basicAnalysis,
+      qualityScore: 70, // Default fallback score
+      contentSuggestions: ["Unable to provide AI-powered suggestions at this time"],
+      formattingSuggestions: [],
+      languageSuggestions: [],
+      readabilityScore,
+      keywordScore: 65, // Default fallback score
+      aiEnhanced: false
+    };
+  }
+}
+
+/**
+ * Calculate a simple readability score based on text metrics
+ */
+function calculateReadabilityScore(text: string): number {
+  // Calculate average sentence length
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const totalWords = text.split(/\s+/).filter(w => w.length > 0).length;
+  
+  if (sentences.length === 0) return 50; // Default score
+  
+  const avgSentenceLength = totalWords / sentences.length;
+  
+  // Calculate average word length
+  const totalChars = text.replace(/\s+/g, '').length;
+  const avgWordLength = totalWords > 0 ? totalChars / totalWords : 5;
+  
+  // Ideally we would use a proper readability formula like Flesch-Kincaid
+  // But for simplicity, we'll use a basic model:
+  // - Penalize very long sentences (over 25 words)
+  // - Penalize very long words (over 8 chars)
+  // - Score between 0-100
+  
+  const sentencePenalty = Math.max(0, Math.min(30, (avgSentenceLength - 15) * 2));
+  const wordPenalty = Math.max(0, Math.min(30, (avgWordLength - 5) * 6));
+  
+  // Start with 100 and subtract penalties
+  return Math.max(0, Math.min(100, 100 - sentencePenalty - wordPenalty));
 }
 
 /**
@@ -718,94 +871,82 @@ export async function matchResumeToJob(
     resumeText = sanitizeHtml(resumeText);
     jobDescription = sanitizeHtml(jobDescription);
     
-    console.log("Analyzing resume match using NLP techniques...");
+    // First, get the NLP-based match result as a fallback
+    const nlpResult = simpleResumeJobMatcher(resumeText, jobDescription);
     
-    // Extract skill lists from both resume and job description using our NLP-based function
-    const resumeSkills = extractSkills(resumeText);
-    const jobSkills = extractSkills(jobDescription);
+    // If OpenAI is not available, return the NLP result
+    if (!openai) {
+      console.log("OpenAI not available, using NLP-only matching");
+      return nlpResult;
+    }
     
-    // Extract resume tokens and job tokens for analysis
-    const resumeTokens = extractTerms(resumeText);
-    const jobTokens = extractTerms(jobDescription);
-    
-    // Calculate similarity using cosine similarity on tokenized texts
-    const similarity = cosineSimilarity(resumeTokens, jobTokens);
-    console.log(`Text similarity between resume and job: ${similarity.toFixed(4)}`);
-    
-    // Calculate skills match rate
-    const jobSkillsSet = new Set(jobSkills.map(s => s.toLowerCase()));
-    const resumeSkillsSet = new Set(resumeSkills.map(s => s.toLowerCase()));
-    
-    // Find matching skills (intersection)
-    const matchingSkills: string[] = [];
-    resumeSkills.forEach(skill => {
-      if (jobSkillsSet.has(skill.toLowerCase())) {
-        matchingSkills.push(skill);
+    try {
+      console.log("Using OpenAI for enhanced resume-job matching...");
+      
+      // Prepare a shortened version of both texts to fit within token limits
+      const resumeExcerpt = resumeText.substring(0, 2500); // Limit resume to 2500 chars
+      const jobExcerpt = jobDescription.substring(0, 1500); // Limit job to 1500 chars
+      
+      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert IT recruiter specializing in matching candidates to job descriptions.
+            Analyze the resume and job description to provide a detailed match assessment.
+            
+            Return a JSON object with the following fields:
+            1. score: A number between 0 and 100 indicating the overall match (higher is better)
+            2. strengths: An array of 3-5 specific candidate strengths relevant to this job
+            3. weaknesses: An array of 2-4 areas where the candidate lacks qualifications
+            4. suggestions: An array of 2-3 actionable suggestions to improve candidacy 
+            5. technicalGaps: An array of specific technical skills mentioned in the job but missing from the resume
+            6. matchingSkills: An array of technical skills that match between the resume and job
+            7. missingSkills: An array of skills required by the job but not found in the resume
+            8. clientExperience: A string analyzing how the candidate's client experience relates to the job requirements
+            9. confidence: A number between 0 and 100 indicating confidence in this analysis
+            
+            Be specific, insightful, and fair in your assessment.`
+          },
+          {
+            role: "user",
+            content: `Resume: ${resumeExcerpt}
+            
+            Job Description: ${jobExcerpt}`
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 1500
+      });
+      
+      const content = response.choices[0].message.content;
+      if (!content) {
+        throw new Error("Empty response from OpenAI");
       }
-    });
-    
-    // Find missing skills (in job but not in resume)
-    const missingSkills: string[] = [];
-    jobSkills.forEach(skill => {
-      if (!resumeSkillsSet.has(skill.toLowerCase())) {
-        missingSkills.push(skill);
-      }
-    });
-    
-    // Calculate match score based on skill matching and text similarity
-    // Weight: 70% skills matching, 30% overall text similarity
-    const skillMatchRate = jobSkillsSet.size > 0 
-      ? matchingSkills.length / jobSkillsSet.size 
-      : 0;
-    
-    // Start with a base score in the 75-95% range for fair evaluation
-    let score = 75; // Minimum score for qualified candidates
-    
-    // Adjust score based on skill match rate
-    if (skillMatchRate > 0.3) score = 80;  // >30% skill match
-    if (skillMatchRate > 0.5) score = 85;  // >50% skill match
-    if (skillMatchRate > 0.7) score = 90;  // >70% skill match
-    if (skillMatchRate > 0.9) score = 95;  // >90% skill match
-    
-    // Apply text similarity as an adjustment factor (±5 points)
-    const similarityAdjustment = Math.round((similarity - 0.5) * 10);
-    score = Math.max(60, Math.min(95, score + similarityAdjustment));
-    
-    console.log(`Match score: ${score}% (Skill match rate: ${(skillMatchRate * 100).toFixed(1)}%, Similarity adjustment: ${similarityAdjustment})`);
-    
-    // Extract potential candidate strengths based on matching skills and experience
-    const strengths = extractCandidateStrengths(resumeText, matchingSkills);
-    
-    // Generate weaknesses based on missing skills
-    const weaknesses = missingSkills.slice(0, 5).map(skill => {
-      return `No mention of ${skill}`;
-    });
-    
-    // Generate improvement suggestions
-    const suggestions = missingSkills.slice(0, 3).map(skill => {
-      return `Consider highlighting any experience with ${skill}`;
-    });
-    
-    // Analyze client experience
-    const clientNames = extractClientNames(resumeText);
-    const clientExperience = clientNames.length > 0
-      ? `Candidate has experience with ${clientNames.length} client(s): ${clientNames.join(', ')}`
-      : "No specific client experience detected";
-    
-    // Calculate confidence level
-    const confidence = Math.min(100, Math.round(70 + (resumeText.length / 1000) + (matchingSkills.length * 2)));
-    
-    return {
-      score,
-      strengths: strengths.length > 0 ? strengths : [`Experience with ${matchingSkills.slice(0, 3).join(', ')}`],
-      weaknesses: weaknesses.length > 0 ? weaknesses : ["Missing some technology experience"],
-      suggestions: suggestions.length > 0 ? suggestions : ["Add more specific technical details to resume"],
-      technicalGaps: missingSkills.slice(0, 5),
-      matchingSkills,
-      missingSkills,
-      clientExperience,
-      confidence
-    };
+      
+      console.log("OpenAI resume-job match analysis completed");
+      
+      // Parse the response
+      const aiResult = JSON.parse(content);
+      
+      // Merge with NLP results taking the best parts of each
+      return {
+        score: aiResult.score || nlpResult.score,
+        strengths: aiResult.strengths || nlpResult.strengths,
+        weaknesses: aiResult.weaknesses || nlpResult.weaknesses,
+        suggestions: aiResult.suggestions || nlpResult.suggestions,
+        technicalGaps: aiResult.technicalGaps || [],
+        matchingSkills: aiResult.matchingSkills || nlpResult.matchingSkills,
+        missingSkills: aiResult.missingSkills || nlpResult.missingSkills,
+        clientExperience: aiResult.clientExperience || "",
+        confidence: aiResult.confidence || 90 // High confidence with AI analysis
+      };
+    } catch (error) {
+      console.error("Error in AI resume-job matching:", error);
+      console.log("Falling back to NLP-based matching due to OpenAI error");
+      return nlpResult;
+    }
   } catch (error) {
     console.error("Error in resume matching:", error);
     console.log("Falling back to simple matcher due to error");
