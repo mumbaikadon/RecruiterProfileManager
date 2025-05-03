@@ -51,6 +51,14 @@ export const candidates = pgTable("candidates", {
   phone: text("phone").notNull(),
   linkedIn: text("linkedin"),
   workAuthorization: text("work_authorization").notNull(),
+  // New field to track unreal candidates
+  isUnreal: boolean("is_unreal").default(false).notNull(),
+  // New field to store reason for marking as unreal
+  unrealReason: text("unreal_reason"),
+  // New field to track when candidate was validated
+  lastValidated: timestamp("last_validated"),
+  // New field to track who validated the candidate
+  validatedBy: integer("validated_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").references(() => users.id),
 }, (table) => {
@@ -110,6 +118,30 @@ export const submissions = pgTable("submissions", {
   };
 });
 
+// Candidate validation history table
+export const candidateValidations = pgTable("candidate_validations", {
+  id: serial("id").primaryKey(),
+  candidateId: integer("candidate_id").notNull().references(() => candidates.id),
+  jobId: integer("job_id").references(() => jobs.id), // Job they were being submitted to
+  // Validation details
+  validationType: text("validation_type", { enum: ["initial", "resubmission"] }).notNull(),
+  validationResult: text("validation_result", { enum: ["matching", "unreal"] }).notNull(),
+  // Previous resume data
+  previousClientNames: text("previous_client_names").array(),
+  previousJobTitles: text("previous_job_titles").array(),
+  previousDates: text("previous_dates").array(),
+  // New resume data
+  newClientNames: text("new_client_names").array(),
+  newJobTitles: text("new_job_titles").array(),
+  newDates: text("new_dates").array(),
+  // Resume file details
+  resumeFileName: text("resume_file_name"),
+  // Validation metadata
+  reason: text("reason"),
+  validatedAt: timestamp("validated_at").defaultNow().notNull(),
+  validatedBy: integer("validated_by").notNull().references(() => users.id),
+});
+
 // Activities table (for activity feed)
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
@@ -121,7 +153,8 @@ export const activities = pgTable("activities", {
       "status_changed", 
       "duplicate_detected", 
       "submission_status_changed",
-      "system_integration"
+      "system_integration",
+      "candidate_validated"  // New activity type for candidate validation
     ] 
   }).notNull(),
   userId: integer("user_id").references(() => users.id),
@@ -140,6 +173,7 @@ export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: t
 export const insertResumeDataSchema = createInsertSchema(resumeData).omit({ id: true, uploadedAt: true });
 export const insertSubmissionSchema = createInsertSchema(submissions).omit({ id: true, submittedAt: true, updatedAt: true });
 export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, createdAt: true });
+export const insertCandidateValidationSchema = createInsertSchema(candidateValidations).omit({ id: true, validatedAt: true });
 
 // Export types
 export type User = typeof users.$inferSelect;
@@ -162,3 +196,6 @@ export type InsertSubmission = z.infer<typeof insertSubmissionSchema>;
 
 export type Activity = typeof activities.$inferSelect;
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
+
+export type CandidateValidation = typeof candidateValidations.$inferSelect;
+export type InsertCandidateValidation = z.infer<typeof insertCandidateValidationSchema>;
