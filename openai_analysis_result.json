@@ -1,0 +1,66 @@
+{
+  "clientNames": [
+    "Velocity Tech",
+    "FIS Global",
+    "AT&T",
+    "HMS",
+    "AIG"
+  ],
+  "jobTitles": [
+    "Software Engineer",
+    "Java Backend Developer",
+    "Java Full Stack Developer",
+    "Java Developer",
+    "Java Developer"
+  ],
+  "relevantDates": [
+    "Feb 2023- Present",
+    "Sep 2021– Feb 2023",
+    "Aug 2020 – Aug 2021",
+    "May 2018 – July 2020",
+    "Feb 2017 – Apr 2018"
+  ],
+  "skillsGapAnalysis": {
+    "missingSkills": [
+      "React"
+    ],
+    "matchingSkills": [
+      "Java/J2EE",
+      "Spring Boot",
+      "Hibernate",
+      "RESTful API development",
+      "Angular",
+      "SQL",
+      "NoSQL",
+      "Agile/Scrum methodology",
+      "Microservices architecture",
+      "5+ years of professional software development experience"
+    ],
+    "suggestedTraining": [
+      "React training"
+    ]
+  },
+  "relevantExperience": [
+    "Worked as a senior backend developer with Java 11 and Spring Boot for creating and maintaining microservices at Velocity Tech.",
+    "Developed RESTful APIs and used Spring Boot in microservices architecture at FIS Global.",
+    "Developed Single Page Applications using Angular and involved in microservices development at AT&T.",
+    "Implemented DAO using Hibernate and developed RESTful API at HMS.",
+    "Migrated parts of existing applications into microservices architecture using Rest APIs, Spring Boot and AWS at AIG."
+  ],
+  "improvements": {
+    "content": [
+      "Include more details on specific achievements or projects for each role.",
+      "Highlight any leadership or mentorship roles."
+    ],
+    "formatting": [
+      "Ensure consistent formatting for dates and job titles.",
+      "Use bullet points for better readability."
+    ],
+    "language": [
+      "Use active voice for stronger impact.",
+      "Avoid overly technical jargon without context."
+    ]
+  },
+  "overallScore": 90,
+  "confidenceScore": 0.95
+}

@@ -1072,22 +1072,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("- Job description length:", sanitizedJobDescription.length);
 
       console.log("Analyzing resume match...");
-      const matchResult = await matchResumeToJob(
-        sanitizedResumeText,
-        sanitizedJobDescription,
-      );
-
+      
+      // Use OpenAI directly to extract employment history
+      let matchResult;
+      
+      try {
+        // Import and initialize OpenAI
+        const OpenAI = await import("openai");
+        const openai = new OpenAI.default({ apiKey: process.env.OPENAI_API_KEY });
+        
+        console.log("Starting resume analysis with OpenAI...");
+        console.log(`Sending OpenAI request with resume length: ${sanitizedResumeText.length} and job description length: ${sanitizedJobDescription.length}`);
+        
+        // Log first 300 chars of resume for debugging
+        const resumePreview = sanitizedResumeText.substring(0, 300);
+        console.log("Resume text preview for analysis:", resumePreview);
+        
+        // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: 
+                "You are an expert resume analyzer specializing in extracting accurate employment history from resumes. " +
+                "Your primary task is to extract REAL employment data from the resume - never generate fake or generic data. " +
+                "If you cannot find clear employment history, respond with empty arrays rather than making up placeholder data. " +
+                "Extract exact company names, job titles, and employment dates directly from the resume text. " +
+                "Be precise, accurate, and only use information actually present in the resume."
+            },
+            {
+              role: "user",
+              content: 
+                `I need you to analyze this resume for compatibility with the following job description.
+                
+                Resume:
+                ${sanitizedResumeText}
+                
+                Job Description:
+                ${sanitizedJobDescription}
+                
+                IMPORTANT - EMPLOYMENT HISTORY EXTRACTION INSTRUCTIONS:
+                1. Carefully read the entire resume text
+                2. Search for sections labeled "Experience", "Work Experience", "Professional Experience", "Employment History", etc.
+                3. Extract the following from these sections EXACTLY as they appear in the resume - do not generate or fabricate data:
+                   - clientNames: Array of company/employer names the candidate worked for (most recent first)
+                   - jobTitles: Array of job titles/positions held by the candidate (most recent first)
+                   - relevantDates: Array of employment periods (most recent first)
+                
+                2. Then analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
+                
+                Return your analysis in a structured JSON format with the following fields:
+                - clientNames (array of strings: extract EXACT company names from the resume)
+                - jobTitles (array of strings: extract EXACT job titles from the resume)
+                - relevantDates (array of strings: extract EXACT date ranges from the resume)
+                - skillsGapAnalysis: { missingSkills (array), matchingSkills (array), suggestedTraining (array) }
+                - relevantExperience (array of relevant experiences from the resume)
+                - improvements: { content (array), formatting (array), language (array) }
+                - overallScore (number 0-100)
+                - confidenceScore (number 0-1)
+                
+                NOTICE: It is critical that you extract only actual employment data from the resume. NEVER invent company names, job titles, or dates. If you cannot find employment history, return empty arrays.`
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.5,
+          max_tokens: 2000,
+        });
+        
+        console.log("OpenAI analysis completed");
+        
+        // Parse the response
+        const analysisResult = JSON.parse(response.choices[0].message.content);
+        
+        // Create a match result with the extracted information
+        matchResult = {
+          score: analysisResult.overallScore || 0,
+          strengths: analysisResult.relevantExperience || [],
+          weaknesses: (analysisResult.skillsGapAnalysis?.missingSkills || []),
+          suggestions: (analysisResult.improvements?.content || []),
+          
+          // Employment history data - directly from OpenAI
+          clientNames: analysisResult.clientNames || [],
+          jobTitles: analysisResult.jobTitles || [],
+          relevantDates: analysisResult.relevantDates || [],
+        };
+      } 
+      catch (openaiError) {
+        console.error("Error with OpenAI analysis:", openaiError);
+        
+        // Fallback to basic matching
+        matchResult = await matchResumeToJob(
+          sanitizedResumeText,
+          sanitizedJobDescription,
+        );
+      }
+      
       // Log the employment history data
       console.log("OpenAI extracted employment history data:");
-      console.log(
-        "- clientNames:",
-        JSON.stringify(matchResult.clientNames || []),
-      );
+      console.log("- clientNames:", JSON.stringify(matchResult.clientNames || []));
       console.log("- jobTitles:", JSON.stringify(matchResult.jobTitles || []));
-      console.log(
-        "- relevantDates:",
-        JSON.stringify(matchResult.relevantDates || []),
-      );
+      console.log("- relevantDates:", JSON.stringify(matchResult.relevantDates || []));
 
       // Ensure we return a properly structured response even if the matching service fails
       const response = {
