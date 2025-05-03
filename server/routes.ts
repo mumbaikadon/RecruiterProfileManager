@@ -969,7 +969,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For DOCX files, use mammoth
         try {
           console.log("Using mammoth for DOCX extraction");
-          const mammoth = require('mammoth');
+          // Import mammoth dynamically using ESM syntax
+          const mammoth = await import('mammoth');
           const result = await mammoth.extractRawText({ buffer: fileBuffer });
           extractedText = result.value || "";
         } catch (docxError) {
@@ -985,7 +986,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For PDF files, use pdf-parse
         try {
           console.log("Using pdf-parse for PDF extraction");
-          const pdfParse = require('pdf-parse');
+          // Import pdf-parse dynamically using ESM syntax
+          const pdfParseModule = await import('pdf-parse');
+          const pdfParse = pdfParseModule.default;
           const data = await pdfParse(fileBuffer);
           extractedText = data.text || "";
         } catch (pdfError) {
