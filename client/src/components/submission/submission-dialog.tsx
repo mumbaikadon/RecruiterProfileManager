@@ -247,6 +247,53 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           setValidationDialogOpen(true);
           return;
         }
+      } else if (candidateResponse.status === 202) {
+        // Handle validation required case
+        console.log("Status 202: Validation required");
+        
+        let data;
+        try {
+          data = await candidateResponse.json();
+        } catch (error) {
+          console.error("Error parsing 202 response:", error);
+          throw new Error("Failed to parse validation data. Please try again.");
+        }
+        
+        if (data.candidateId && data.requiresValidation) {
+          console.log("Validation data received:", data);
+          
+          // Get candidate name
+          const candidateDetailsResponse = await fetch(`/api/candidates/${data.candidateId}`);
+          let candidateName = "Existing Candidate";
+          
+          if (candidateDetailsResponse.ok) {
+            try {
+              const details = await candidateDetailsResponse.json();
+              candidateName = `${details.firstName} ${details.lastName}`;
+            } catch (error) {
+              console.error("Error getting candidate details:", error);
+            }
+          }
+          
+          // Check that we have all the necessary data for validation
+          if (data.existingResumeData && data.newResumeData) {
+            // Open validation dialog
+            setValidationData({
+              candidateId: data.candidateId,
+              candidateName,
+              resumeFileName: values.resumeData?.fileName || "Resume",
+              existingResumeData: data.existingResumeData,
+              newResumeData: data.newResumeData
+            });
+            setValidationDialogOpen(true);
+            return;
+          } else {
+            console.warn("Validation required but missing required data:", data);
+          }
+        }
+        
+        // If we couldn't handle the validation properly, show a generic error
+        throw new Error(data.message || "Candidate exists but validation data is incomplete");
       } else if (!candidateResponse.ok) {
         // Handle other errors
         try {
