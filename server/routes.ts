@@ -16,6 +16,8 @@ import {
 import { syncCandidateToTalentStreamline } from "./talentStreamline";
 import { analyzeResume } from "./resumeAnalyzer";
 import fs from "fs";
+// Import the modular OpenAI routes
+import openaiRoutes from "./routes/openai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Jobs routes
