@@ -44,6 +44,7 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
     
     // Use OpenAI to analyze the resume against the job description
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    console.log("Sending OpenAI request with resume length:", resumeText.length, "and job description length:", jobDescription.length);
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -99,6 +100,12 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
     // Parse the JSON response content (ensuring it's not null)
     const responseContent = response.choices[0].message.content || '{}';
     const analysisResult = JSON.parse(responseContent) as AnalysisResult;
+    
+    // Log the structured data from OpenAI to help with debugging
+    console.log("OpenAI extracted employment history data:");
+    console.log("- clientNames:", JSON.stringify(analysisResult.clientNames));
+    console.log("- jobTitles:", JSON.stringify(analysisResult.jobTitles));
+    console.log("- relevantDates:", JSON.stringify(analysisResult.relevantDates));
     
     // Validate and sanitize the response
     const sanitizedResult: AnalysisResult = {
