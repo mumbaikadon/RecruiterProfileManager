@@ -102,6 +102,17 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
     
     // Validate and sanitize the response
     const sanitizedResult: AnalysisResult = {
+      // Add employment history data
+      clientNames: Array.isArray(analysisResult.clientNames) 
+        ? analysisResult.clientNames 
+        : [],
+      jobTitles: Array.isArray(analysisResult.jobTitles) 
+        ? analysisResult.jobTitles 
+        : [],
+      relevantDates: Array.isArray(analysisResult.relevantDates) 
+        ? analysisResult.relevantDates 
+        : [],
+      // Skills analysis
       skillsGapAnalysis: {
         missingSkills: Array.isArray(analysisResult.skillsGapAnalysis?.missingSkills) 
           ? analysisResult.skillsGapAnalysis.missingSkills 
