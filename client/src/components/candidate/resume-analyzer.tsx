@@ -42,14 +42,14 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
       // Process the resume
       const result = await analyzeResume(file);
       setResumeData(result.analysis);
-      
+
       // Match against job description
       const matchResult = await matchResumeToJob(result.text, jobDescription);
       setMatchResults(matchResult);
-      
+
       // Pass results to parent component
       onAnalysisComplete(result.analysis, matchResult);
-      
+
       toast({
         title: "Analysis Complete",
         description: "Resume has been analyzed successfully.",
@@ -85,7 +85,7 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
             />
             <p className="mt-2 text-sm text-gray-500">PDF or Word document only.</p>
           </div>
-          
+
           <div className="flex justify-end">
             <Button
               onClick={handleAnalyze}
@@ -135,7 +135,7 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
                 ))}
               </ul>
             </div>
-            
+
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-2">Potential Gaps:</h3>
               <ul className="pl-5 text-sm text-gray-600 list-disc">
@@ -144,7 +144,7 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
                 ))}
               </ul>
             </div>
-            
+
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-2">Improvement Suggestions:</h3>
               <ul className="pl-5 text-sm text-gray-600 list-disc">
@@ -153,7 +153,7 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
                 ))}
               </ul>
             </div>
-            
+
             {matchResults.technicalGaps && matchResults.technicalGaps.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Technical Gaps:</h3>
@@ -164,18 +164,18 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
                 </ul>
               </div>
             )}
-            
+
             {matchResults.clientExperience && (
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Client Experience Analysis:</h3>
                 <p className="text-sm text-gray-600 pl-2 border-l-2 border-gray-300">{matchResults.clientExperience}</p>
               </div>
             )}
-            
+
             {resumeData && (
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Resume Analysis</h3>
-                
+
                 {resumeData.aiEnhanced && (
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-3">
@@ -186,7 +186,7 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
                         </span>
                       )}
                     </div>
-                    
+
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 mb-3">
                       {resumeData.keywordScore && (
                         <div className="flex flex-col items-center p-2 bg-gray-50 rounded">
@@ -201,7 +201,7 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
                         </div>
                       )}
                     </div>
-                    
+
                     {resumeData.contentSuggestions && resumeData.contentSuggestions.length > 0 && (
                       <div className="mb-3">
                         <h4 className="text-xs font-medium text-gray-700 mb-1">Content Suggestions:</h4>
@@ -212,7 +212,7 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
                         </ul>
                       </div>
                     )}
-                    
+
                     {resumeData.formattingSuggestions && resumeData.formattingSuggestions.length > 0 && (
                       <div>
                         <h4 className="text-xs font-medium text-gray-700 mb-1">Formatting Suggestions:</h4>
@@ -225,7 +225,7 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
                     )}
                   </div>
                 )}
-                
+
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <p className="text-xs text-gray-500">Client History:</p>

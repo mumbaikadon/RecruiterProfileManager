@@ -80,10 +80,10 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   const [candidateExists, setCandidateExists] = useState(false);
   const [showOtherAuthorizationInput, setShowOtherAuthorizationInput] = useState(false);
   const [otherAuthorization, setOtherAuthorization] = useState("");
-  
+
   const { toast } = useToast();
   const { mutateAsync: checkCandidate } = useCheckCandidate();
-  
+
   const form = useForm<CandidateFormValues>({
     resolver: zodResolver(candidateFormSchema),
     defaultValues: {
@@ -107,9 +107,9 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
     if (pastedData.length > 0) {
       console.log("Attempting to parse pasted data:", pastedData.length, "characters");
       console.log("DEBUG - Pasted data:", pastedData);
-      
+
       // Check for multiple text formats and patterns
-      
+
       // Format 1: Pattern with -Label: Value format (like the first example)
       const firstNamePattern1 = pastedData.match(/[-]?Legal First Name:?\s*([^\n\r]*)/i) || 
                                 pastedData.match(/[-]?First Name:?\s*([^\n\r]*)/i);
@@ -117,13 +117,13 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                                  pastedData.match(/[-]?Middle Name:?\s*([^\n\r]*)/i);
       const lastNamePattern1 = pastedData.match(/[-]?Legal Last Name:?\s*([^\n\r]*)/i) || 
                               pastedData.match(/[-]?Last Name:?\s*([^\n\r]*)/i);
-      
+
       // Format 2: Full legal name format (as per passport)
       const fullNameMatch = pastedData.match(/(?:full legal name|your full legal name|as per passport|legal name):?\s*([^\n\r]*)/i);
-      
+
       // Format 3: Direct extraction of "Your full legal name (As per passport): Name"
       const fullNameAsPerPassportMatch = pastedData.match(/your full legal name\s*\(as per passport\):?\s*([^\n\r]*)/i);
-      
+
       console.log("DEBUG - Extracted patterns:", {
         firstNamePattern1,
         middleNamePattern1,
@@ -131,32 +131,32 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         fullNameMatch,
         fullNameAsPerPassportMatch
       });
-      
+
       // Apply matches in priority order
       if (firstNamePattern1 && firstNamePattern1[1].trim()) {
         form.setValue("firstName", firstNamePattern1[1].trim());
       }
-      
+
       if (middleNamePattern1 && middleNamePattern1[1].trim()) {
         form.setValue("middleName", middleNamePattern1[1].trim());
       }
-      
+
       if (lastNamePattern1 && lastNamePattern1[1].trim()) {
         form.setValue("lastName", lastNamePattern1[1].trim());
       }
-      
+
       // Handle the specific format from the example: "Your full legal name (As per passport): Swornim Malla"
       if (fullNameAsPerPassportMatch && fullNameAsPerPassportMatch[1].trim()) {
         console.log("DEBUG - Found full name format with 'As per passport':", fullNameAsPerPassportMatch[1]);
-        
+
         const nameParts = fullNameAsPerPassportMatch[1].trim().split(/\s+/);
         if (nameParts.length >= 2) {
           // First part is first name
           form.setValue("firstName", nameParts[0]);
-          
+
           // Last part is last name
           form.setValue("lastName", nameParts[nameParts.length - 1]);
-          
+
           // Middle parts (if any) are middle name
           if (nameParts.length > 2) {
             form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
@@ -169,10 +169,10 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         if (nameParts.length >= 2) {
           // First part is first name
           form.setValue("firstName", nameParts[0]);
-          
+
           // Last part is last name
           form.setValue("lastName", nameParts[nameParts.length - 1]);
-          
+
           // Middle parts (if any) are middle name
           if (nameParts.length > 2) {
             form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
@@ -185,14 +185,14 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       const dobFormatA = pastedData.match(/DOB:?\s*(\d{1,2})(?:st|nd|rd|th)?\s+([a-zA-Z]+)\s+(\d{4})/i);
       // Format: MM/DD/YYYY or MM/DD with variations including "DOB : 06/25"
       const dobFormatB = pastedData.match(/DOB\s*:?\s*(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?/i);
-      
+
       // Month name format - e.g., "January 15"
       const dobFormatC = pastedData.match(/Birth Month[^:]*:?\s*([a-zA-Z]+)/i);
       const dobDayFormatC = pastedData.match(/Birth Day[^:]*:?\s*(\d{1,2})/i);
-      
+
       // Debug logging for DOB formats
       console.log("DEBUG - DOB patterns:", { dobFormatA, dobFormatB });
-      
+
       const monthNameToNumber = (month: string): number => {
         const months: {[key: string]: number} = {
           'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
@@ -202,7 +202,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         };
         return months[month.toLowerCase()] || 0;
       };
-      
+
       if (dobFormatA) {
         // 11th December 1993 format
         const day = parseInt(dobFormatA[1]);
@@ -233,7 +233,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       const ssnPattern1 = pastedData.match(/SSN:?\s*(?:.*?)(\d{4})(?:\D|$)/i); // Last 4 of 123-45-6789
       const ssnPattern2 = pastedData.match(/Last 4 of SSN:?\s*(\d{4})/i); // Explicit "Last 4 of SSN"
       const ssnPattern3 = pastedData.match(/Last 4 SSN:?\s*(\d{4})/i); // Explicit "Last 4 SSN"
-      
+
       if (ssnPattern1) {
         form.setValue("ssn4", ssnPattern1[1]);
       } else if (ssnPattern2) {
@@ -258,7 +258,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         // International format
         pastedData.match(/(\+\d{1,2}\s?\d{10})/),
       ];
-      
+
       const validPhoneMatch = phonePatterns.find(match => match !== null);
       if (validPhoneMatch) {
         form.setValue("phone", validPhoneMatch[1]);
@@ -273,7 +273,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         // Full URL in text
         pastedData.match(/(https?:\/\/(?:www\.)?linkedin\.com\/[^\s]+)/i)
       ];
-      
+
       const validLinkedInMatch = linkedInPatterns.find(match => match !== null);
       if (validLinkedInMatch) {
         if (validLinkedInMatch[1].startsWith('http')) {
@@ -296,12 +296,12 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         // Format with TX, FL, etc.
         pastedData.match(/([A-Za-z\s.-]+,\s*(?:TX|FL|CA|NY|IL|PA|OH|GA|NC|MI|NJ|VA|WA|AZ|MA|TN|IN|MO|MD|WI|CO|MN|SC|AL|LA|KY|OR|OK|CT|UT|IA|NV|AR|MS|KS|NM|NE|ID|WV|HI|NH|ME|MT|RI|DE|SD|ND|AK|DC|VT|WY))/i)
       ];
-      
+
       const validLocationMatch = locationPatterns.find(match => match !== null);
       if (validLocationMatch) {
         form.setValue("location", validLocationMatch[1].trim());
       }
-      
+
       // Extract work authorization - multiple formats
       const workAuthPatterns = [
         // Format: "Work Authorization: GC EAD" or similar
@@ -311,14 +311,14 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         // Key phrases
         pastedData.match(/(?:authorized\s*to\s*work|visa\s*status|work\s*permit)[^:]*:?\s*([^\n\r,;]+)/i)
       ];
-      
+
       console.log("DEBUG - Work authorization patterns:", workAuthPatterns);
-      
+
       const validAuthMatch = workAuthPatterns.find(match => match !== null);
       if (validAuthMatch) {
         const authText = validAuthMatch[1] || validAuthMatch[0];
         const authLower = authText.toLowerCase().trim();
-        
+
         // Map common authorization texts to our dropdown values
         if (authLower.includes('citizen')) {
           form.setValue("workAuthorization", "citizen");
@@ -356,7 +356,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       }
     }
   }, [pastedData, form, setShowOtherAuthorizationInput, setOtherAuthorization]);
-  
+
   const handlePasteDataChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setPastedData(e.target.value);
   };
@@ -364,23 +364,23 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setResumeFile(file);
     setIsAnalyzing(true);
-    
+
     try {
       // Check if file type is actually supported
       const fileName = file.name.toLowerCase();
       if (!fileName.endsWith('.pdf') && !fileName.endsWith('.doc') && !fileName.endsWith('.docx') && !fileName.endsWith('.txt')) {
         throw new Error("File format not supported. Please use PDF, Word documents, or plain text files only.");
       }
-      
+
       // For DOCX files, we'll take a different approach since they can't be reliably read as text
       if (fileName.endsWith('.docx')) {
         // For DOCX files, we'll extract key information from the filename and form data
         // instead of trying to parse the binary file
         console.log("Processing DOCX file: using form-based data extraction");
-        
+
         // Extract basic information from form fields instead of parsing file
         const formBasedData = {
           clientNames: [],
@@ -390,10 +390,10 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           education: [],
           extractedText: `Resume for candidate submission. File: ${fileName}`
         };
-        
+
         setResumeText(formBasedData.extractedText);
         setResumeData(formBasedData);
-        
+
         // Extract skills from job description for comparison
         const extractJobSkills = (description: string) => {
           // Define common technical skill keywords to look for
@@ -405,28 +405,28 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             'sass', 'less', 'redux', 'express', 'rest', 'graphql', 'grpc', 'jenkins', 'gitlab',
             'github', 'ci/cd', 'devops', 'agile', 'scrum', 'kanban', 'jira', 'confluence'
           ];
-          
+
           const lowerDesc = description.toLowerCase();
           return skillKeywords.filter(skill => lowerDesc.includes(skill));
         };
-        
+
         // Use form fields to extract some basic information
         const formSkills: string[] = [];
-        
+
         // Add skills from form fields if they exist
         if (form.getValues('linkedIn')) formSkills.push('linkedin');
         if (form.getValues('email')) formSkills.push('communication');
         if (form.getValues('workAuthorization')) formSkills.push('work authorization');
-        
+
         // Extract job skills
         const jobSkills = extractJobSkills(jobDescription);
-        
+
         // Determine matching skills
         const matchingSkills = formSkills.filter(skill => jobSkills.includes(skill));
-        
+
         // Determine missing skills
         const missingSkills = jobSkills.filter(skill => !formSkills.includes(skill));
-        
+
         // Calculate actual score based on matching percentage
         let calculatedScore = 0;
         if (jobSkills.length > 0) {
@@ -437,7 +437,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         } else {
           calculatedScore = 75; // Default if no skills could be extracted
         }
-        
+
         // Set a more accurate match result based on our analysis
         setMatchResults({
           score: calculatedScore,
@@ -453,33 +453,33 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           clientExperience: "No client experience data could be extracted from the DOCX format",
           confidence: 60 // Lower confidence due to limited data
         });
-        
+
         // Continue with form submission using manual fields
         toast({
           title: "Resume Format Notice",
           description: "DOCX format detected. The system will use the information you provided in the form fields.",
         });
-        
+
         setIsAnalyzing(false);
         return;
       }
-      
+
       // For other file types, process normally
       try {
         const result = await analyzeResume(file);
         setResumeText(result.text);
         setResumeData(result.analysis);
-        
+
         // Sanitize job description and resume text before matching
         const sanitizedJobDescription = sanitizeHtml(jobDescription);
         const sanitizedResumeText = sanitizeHtml(result.text);
-        
+
         // Match against job description
         const matchResult = await matchResumeToJob(sanitizedResumeText, sanitizedJobDescription);
         setMatchResults(matchResult);
       } catch (processingError: any) {
         console.error("Error in resume processing:", processingError);
-        
+
         // Set fallback data for resume in case of error
         setResumeData({
           clientNames: [],
@@ -495,7 +495,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           weaknesses: ["Unable to process the file format"],
           suggestions: ["Try uploading a plain text (.txt) version for better results"]
         });
-        
+
         // Still show error to user but make it less alarming
         toast({
           title: "Resume Analysis Partial",
@@ -508,7 +508,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         title: "Resume Analysis Notice",
         description: error.message || "The resume format couldn't be processed automatically. You can still submit using the form fields.",
       });
-      
+
       // Create minimal resume data even when there's an error
       setResumeData({
         clientNames: [],
@@ -522,7 +522,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       setIsAnalyzing(false);
     }
   };
-  
+
   const handleSubmitForm = async (values: CandidateFormValues) => {
     try {
       // Check if candidate already exists
@@ -531,7 +531,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         dobDay: values.dobDay,
         ssn4: values.ssn4
       });
-      
+
       if (result.exists) {
         setCandidateExists(true);
         toast({
@@ -541,7 +541,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         });
         return;
       }
-      
+
       // If work authorization is "other" without custom input, show error
       if (values.workAuthorization === "other" && !otherAuthorization) {
         toast({
@@ -551,7 +551,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         });
         return;
       }
-      
+
       // Include resume data and match results if available
       onSubmit({
         ...values,
@@ -567,12 +567,12 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       });
     }
   };
-  
+
   // Watch for fields to check candidate identity
   const dobMonth = form.watch("dobMonth");
   const dobDay = form.watch("dobDay");
   const ssn4 = form.watch("ssn4");
-  
+
   // Check candidate existence when identity fields change
   useEffect(() => {
     const checkExistingCandidate = async () => {
@@ -583,9 +583,9 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             dobDay,
             ssn4
           });
-          
+
           setCandidateExists(result.exists);
-          
+
           if (result.exists) {
             toast({
               title: "Candidate Already Exists",
@@ -598,7 +598,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         }
       }
     };
-    
+
     checkExistingCandidate();
   }, [dobMonth, dobDay, ssn4, checkCandidate, toast]);
 
@@ -612,7 +612,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           Job ID: {jobId}
         </p>
       </div>
-      
+
       {candidateExists && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -622,7 +622,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           </AlertDescription>
         </Alert>
       )}
-      
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmitForm)} className="space-y-6">
           {/* Paste Data Section */}
@@ -655,7 +655,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 )}
               />
             </div>
-            
+
             <div className="sm:col-span-2">
               <FormField
                 control={form.control}
@@ -671,7 +671,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 )}
               />
             </div>
-            
+
             <div className="sm:col-span-2">
               <FormField
                 control={form.control}
@@ -706,7 +706,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 )}
               />
             </div>
-            
+
             <div className="sm:col-span-2">
               <FormField
                 control={form.control}
@@ -722,7 +722,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 )}
               />
             </div>
-            
+
             <div className="sm:col-span-2">
               <FormField
                 control={form.control}
@@ -757,7 +757,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 )}
               />
             </div>
-            
+
             <div className="sm:col-span-2">
               <FormField
                 control={form.control}
@@ -773,7 +773,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 )}
               />
             </div>
-            
+
             <div className="sm:col-span-2">
               <FormField
                 control={form.control}
@@ -808,7 +808,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 )}
               />
             </div>
-            
+
             <div className="sm:col-span-2">
               <FormField
                 control={form.control}
@@ -859,7 +859,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 )}
               />
             </div>
-            
+
             <div className="sm:col-span-2">
               <FormField
                 control={form.control}
@@ -888,7 +888,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
               className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-blue-600"
             />
             <p className="mt-2 text-sm text-gray-500">PDF or Word document only.</p>
-            
+
             {isAnalyzing && (
               <div className="mt-2 flex items-center text-sm text-gray-500">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
@@ -927,7 +927,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mb-4">
                   <h5 className="text-sm font-medium text-gray-700 mb-2">Strengths:</h5>
                   <ul className="pl-5 text-sm text-gray-600 list-disc">
@@ -936,7 +936,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                     ))}
                   </ul>
                 </div>
-                
+
                 <div className="mb-4">
                   <h5 className="text-sm font-medium text-gray-700 mb-2">Potential Gaps:</h5>
                   <ul className="pl-5 text-sm text-gray-600 list-disc">
@@ -945,7 +945,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                     ))}
                   </ul>
                 </div>
-                
+
                 {resumeData && (
                   <div>
                     <h5 className="text-sm font-medium text-gray-700 mb-2">Extracted Resume Data:</h5>

@@ -61,12 +61,12 @@ async function testResumeAnalysis() {
       },
       body: JSON.stringify({ text: resumeText }),
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`API error: ${response.status} - ${errorText}`);
     }
-    
+
     const data = await response.json();
     console.log('Resume analysis result:');
     console.log(JSON.stringify(data, null, 2));
@@ -89,12 +89,12 @@ async function testResumeMatching(resumeText, jobDescription) {
         jobDescription 
       }),
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`API error: ${response.status} - ${errorText}`);
     }
-    
+
     const data = await response.json();
     console.log('Resume matching result:');
     console.log(JSON.stringify(data, null, 2));
