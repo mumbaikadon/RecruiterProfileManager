@@ -376,23 +376,45 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         throw new Error("File format not supported. Please use PDF, Word documents, or plain text files only.");
       }
 
-      // Process file with simplified resume handling
+      // Process file with resume handling
       const result = await analyzeResume(file);
       setResumeText(result.text);
       setResumeData(result.analysis);
 
-      // Create minimal match result with no analysis
-      setMatchResults({
-        score: 0,
-        strengths: [],
-        weaknesses: ["Resume analysis feature has been removed"],
-        suggestions: ["Manual evaluation required"],
-        technicalGaps: [],
-        matchingSkills: [],
-        missingSkills: [],
-        clientExperience: "",
-        confidence: 0
-      });
+      try {
+        // Use OpenAI to match resume against job description
+        console.log("Starting resume matching with OpenAI...");
+        const matchResult = await matchResumeToJob(result.text, jobDescription);
+        console.log("Resume match results:", matchResult);
+        
+        // Set the real analysis results
+        setMatchResults(matchResult);
+        
+        toast({
+          title: "Resume Analysis Complete",
+          description: `Match score: ${matchResult.score}%`,
+        });
+      } catch (error) {
+        console.error("Error matching resume:", error);
+        toast({
+          title: "Resume Analysis Issue",
+          description: error instanceof Error ? error.message : "Could not analyze resume against job description",
+          variant: "destructive",
+        });
+        
+        // Provide fallback match results in case of error
+        setMatchResults({
+          score: 0,
+          strengths: [],
+          weaknesses: ["Failed to analyze against job description"],
+          suggestions: ["Please try again or proceed with manual evaluation"],
+          technicalGaps: [],
+          matchingSkills: [],
+          missingSkills: [],
+          clientExperience: "",
+          confidence: 0
+        });
+      }
 
       toast({
         title: "Resume Uploaded",
