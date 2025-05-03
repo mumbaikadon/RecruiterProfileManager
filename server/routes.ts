@@ -1,21 +1,21 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { 
-  insertJobSchema, 
-  insertCandidateSchema, 
-  insertSubmissionSchema, 
+import {
+  insertJobSchema,
+  insertCandidateSchema,
+  insertSubmissionSchema,
   insertResumeDataSchema,
-  insertActivitySchema
+  insertActivitySchema,
 } from "@shared/schema";
 import { z } from "zod";
-import { 
-  analyzeResumeText, 
-  matchResumeToJob 
-} from "./document-parser";
-import { syncCandidateToTalentStreamline } from "./talentStreamline";
-import { analyzeResume } from "./resumeAnalyzer";
+import { analyzeResumeText, matchResumeToJob } from "./openai";
 import fs from "fs";
+import multer from "multer";
+
+// Configure multer for file uploads 
+const multerStorage = multer.memoryStorage();
+const fileUpload = multer({ storage: multerStorage });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Jobs routes
@@ -57,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Import the sanitization utility
-      const { sanitizeHtml } = await import('./utils');
+      const { sanitizeHtml } = await import("./utils");
 
       // Sanitize the job description to prevent HTML parsing issues
       if (job.description) {
@@ -66,9 +66,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get assigned recruiters
       const assignments = await storage.getJobAssignments(job.id);
-      const assignedUserIds = assignments.map(a => a.userId);
+      const assignedUserIds = assignments.map((a) => a.userId);
       const recruiters = await Promise.all(
-        assignedUserIds.map(id => storage.getUser(id))
+        assignedUserIds.map((id) => storage.getUser(id)),
       );
 
       // Get submissions for this job
@@ -77,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         ...job,
         assignedRecruiters: recruiters.filter(Boolean),
-        submissions
+        submissions,
       });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -87,7 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/jobs", async (req: Request, res: Response) => {
     try {
       // Import sanitization utility
-      const { sanitizeHtml } = await import('./utils');
+      const { sanitizeHtml } = await import("./utils");
 
       // Sanitize job description if it exists
       if (req.body.description) {
@@ -107,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: "job_created",
         userId: job.createdBy,
         jobId: job.id,
-        message: `Job ${job.title} (${job.jobId}) was created`
+        message: `Job ${job.title} (${job.jobId}) was created`,
       });
 
       res.status(201).json(job);
@@ -141,8 +141,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedJob = await storage.updateJobStatus(id, status);
 
       // If job is being closed (status changing from active to closed)
-      if (prevStatus.toLowerCase() === 'active' && status.toLowerCase() === 'closed') {
-        console.log(`Job ${job.jobId} (${job.title}) is being closed. Updating candidate resume data...`);
+      if (
+        prevStatus.toLowerCase() === "active" &&
+        status.toLowerCase() === "closed"
+      ) {
+        console.log(
+          `Job ${job.jobId} (${job.title}) is being closed. Updating candidate resume data...`,
+        );
 
         // Get all submissions for this job
         const submissions = await storage.getSubmissions({ jobId: id });
@@ -151,12 +156,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createActivity({
           type: "job_closed",
           jobId: id,
-          message: `Job ${job.title} (${job.jobId}) status changed from ${prevStatus} to ${status}. ${submissions.length} candidate submissions affected.`
+          message: `Job ${job.title} (${job.jobId}) status changed from ${prevStatus} to ${status}. ${submissions.length} candidate submissions affected.`,
         });
 
         // Process each submission to ensure resume data is preserved
         for (const submission of submissions) {
-          console.log(`Processing submission ID ${submission.id} for candidate ID ${submission.candidateId}`);
+          console.log(
+            `Processing submission ID ${submission.id} for candidate ID ${submission.candidateId}`,
+          );
 
           // We don't need to do anything special here since the data model
           // already preserves candidate resume data independently of job status
@@ -192,13 +199,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Filter out any non-numeric values to ensure data integrity
-      const validRecruiterIds = recruiterIds.filter(id => !isNaN(Number(id))).map(Number);
+      const validRecruiterIds = recruiterIds
+        .filter((id) => !isNaN(Number(id)))
+        .map(Number);
 
       if (validRecruiterIds.length === 0) {
-        return res.status(400).json({ message: "No valid recruiter IDs provided" });
+        return res
+          .status(400)
+          .json({ message: "No valid recruiter IDs provided" });
       }
 
-      const assignments = await storage.assignRecruitersToJob(id, validRecruiterIds);
+      const assignments = await storage.assignRecruitersToJob(
+        id,
+        validRecruiterIds,
+      );
       res.status(201).json(assignments);
     } catch (error) {
       console.error("Error assigning recruiters:", error);
@@ -232,36 +246,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resumeData = await storage.getResumeData(candidate.id);
 
       // Get submissions for this candidate
-      const submissions = await storage.getSubmissions({ candidateId: candidate.id });
+      const submissions = await storage.getSubmissions({
+        candidateId: candidate.id,
+      });
 
       // Enhance submissions with job and recruiter details
-      const enhancedSubmissions = await Promise.all(submissions.map(async (submission) => {
-        // Get job details
-        let job = null;
-        if (submission.jobId) {
-          job = await storage.getJob(submission.jobId);
-        }
+      const enhancedSubmissions = await Promise.all(
+        submissions.map(async (submission) => {
+          // Get job details
+          let job = null;
+          if (submission.jobId) {
+            job = await storage.getJob(submission.jobId);
+          }
 
-        // Get recruiter details
-        let recruiter = null;
-        if (submission.recruiterId) {
-          recruiter = await storage.getUser(submission.recruiterId);
-        }
+          // Get recruiter details
+          let recruiter = null;
+          if (submission.recruiterId) {
+            recruiter = await storage.getUser(submission.recruiterId);
+          }
 
-        return {
-          ...submission,
-          job,
-          recruiter: recruiter ? {
-            id: recruiter.id,
-            name: recruiter.username,
-          } : null
-        };
-      }));
+          return {
+            ...submission,
+            job,
+            recruiter: recruiter
+              ? {
+                  id: recruiter.id,
+                  name: recruiter.username,
+                }
+              : null,
+          };
+        }),
+      );
 
       res.json({
         ...candidate,
         resumeData,
-        submissions: enhancedSubmissions
+        submissions: enhancedSubmissions,
       });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -276,23 +296,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingCandidate = await storage.getCandidateByIdentity(
         validatedData.dobMonth,
         validatedData.dobDay,
-        validatedData.ssn4
+        validatedData.ssn4,
       );
 
       // Only count as duplicate if already submitted to the same job
       if (existingCandidate && req.body.jobId) {
         try {
           // Check if candidate is already submitted to this job
-          const existingSubmission = await storage.getSubmissionByJobAndCandidate(
-            parseInt(req.body.jobId),
-            existingCandidate.id
-          );
+          const existingSubmission =
+            await storage.getSubmissionByJobAndCandidate(
+              parseInt(req.body.jobId),
+              existingCandidate.id,
+            );
 
           if (existingSubmission) {
-            return res.status(409).json({ 
-              message: "This candidate is already in our past submitted list for this job", 
+            return res.status(409).json({
+              message:
+                "This candidate is already in our past submitted list for this job",
               candidateId: existingCandidate.id,
-              submissionId: existingSubmission.id
+              submissionId: existingSubmission.id,
             });
           }
         } catch (error) {
@@ -300,16 +322,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Candidate exists but has not been submitted to this job
-        return res.status(409).json({ 
-          message: "Existing candidate found, proceed with submission to this job", 
-          candidateId: existingCandidate.id 
+        return res.status(409).json({
+          message:
+            "Existing candidate found, proceed with submission to this job",
+          candidateId: existingCandidate.id,
         });
       }
 
       const candidate = await storage.createCandidate(validatedData);
 
       // Import the sanitization utility
-      const { sanitizeHtml } = await import('./utils');
+      const { sanitizeHtml } = await import("./utils");
 
       // Create resume data if provided
       if (req.body.resumeData) {
@@ -317,24 +340,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Sanitize all resume data to prevent encoding issues
           const resumeDataPayload = {
             candidateId: candidate.id,
-            clientNames: Array.isArray(req.body.resumeData.clientNames) 
-              ? req.body.resumeData.clientNames.map((name: string) => sanitizeHtml(name)) 
+            clientNames: Array.isArray(req.body.resumeData.clientNames)
+              ? req.body.resumeData.clientNames.map((name: string) =>
+                  sanitizeHtml(name),
+                )
               : [],
-            jobTitles: Array.isArray(req.body.resumeData.jobTitles) 
-              ? req.body.resumeData.jobTitles.map((title: string) => sanitizeHtml(title)) 
+            jobTitles: Array.isArray(req.body.resumeData.jobTitles)
+              ? req.body.resumeData.jobTitles.map((title: string) =>
+                  sanitizeHtml(title),
+                )
               : [],
-            relevantDates: Array.isArray(req.body.resumeData.relevantDates) 
-              ? req.body.resumeData.relevantDates.map((date: string) => sanitizeHtml(date)) 
+            relevantDates: Array.isArray(req.body.resumeData.relevantDates)
+              ? req.body.resumeData.relevantDates.map((date: string) =>
+                  sanitizeHtml(date),
+                )
               : [],
-            skills: Array.isArray(req.body.resumeData.skills) 
-              ? req.body.resumeData.skills.map((skill: string) => sanitizeHtml(skill)) 
+            skills: Array.isArray(req.body.resumeData.skills)
+              ? req.body.resumeData.skills.map((skill: string) =>
+                  sanitizeHtml(skill),
+                )
               : [],
-            education: Array.isArray(req.body.resumeData.education) 
-              ? req.body.resumeData.education.map((edu: string) => sanitizeHtml(edu)) 
+            education: Array.isArray(req.body.resumeData.education)
+              ? req.body.resumeData.education.map((edu: string) =>
+                  sanitizeHtml(edu),
+                )
               : [],
-            extractedText: req.body.resumeData.extractedText 
-              ? sanitizeHtml(req.body.resumeData.extractedText).substring(0, 4000) 
-              : ""
+            extractedText: req.body.resumeData.extractedText
+              ? sanitizeHtml(req.body.resumeData.extractedText).substring(
+                  0,
+                  30000,
+                )
+              : "",
           };
 
           await storage.createResumeData(resumeDataPayload);
@@ -361,7 +397,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { jobId, candidateId, recruiterId } = req.query;
 
-      const filters: { jobId?: number; candidateId?: number; recruiterId?: number } = {};
+      const filters: {
+        jobId?: number;
+        candidateId?: number;
+        recruiterId?: number;
+      } = {};
 
       if (jobId && typeof jobId === "string") {
         filters.jobId = parseInt(jobId);
@@ -378,43 +418,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const submissions = await storage.getSubmissions(filters);
 
       // Enhance submissions with related data
-      const enhancedSubmissions = await Promise.all(submissions.map(async (submission) => {
-        const job = await storage.getJob(submission.jobId);
-        const candidate = await storage.getCandidate(submission.candidateId);
-        const recruiter = await storage.getUser(submission.recruiterId);
+      const enhancedSubmissions = await Promise.all(
+        submissions.map(async (submission) => {
+          const job = await storage.getJob(submission.jobId);
+          const candidate = await storage.getCandidate(submission.candidateId);
+          const recruiter = await storage.getUser(submission.recruiterId);
 
-        // Get resume data only if job is active
-        let resumeData = null;
-        if (job && job.status.toLowerCase() === 'active' && candidate) {
-          resumeData = await storage.getResumeData(candidate.id);
-        }
+          // Get resume data only if job is active
+          let resumeData = null;
+          if (job && job.status.toLowerCase() === "active" && candidate) {
+            resumeData = await storage.getResumeData(candidate.id);
+          }
 
-        return {
-          ...submission,
-          job: job ? {
-            id: job.id,
-            jobId: job.jobId,
-            title: job.title,
-            status: job.status
-          } : undefined,
-          candidate: candidate ? {
-            id: candidate.id,
-            firstName: candidate.firstName,
-            lastName: candidate.lastName,
-            location: candidate.location,
-            workAuthorization: candidate.workAuthorization
-          } : undefined,
-          recruiter: recruiter ? {
-            id: recruiter.id,
-            name: recruiter.name
-          } : undefined,
-          // Always include resume data, but add a flag to indicate if file access is restricted
-          resumeData: resumeData ? {
-            ...resumeData,
-            fileAccessRestricted: !(job && job.status.toLowerCase() === 'active')
-          } : null
-        };
-      }));
+          return {
+            ...submission,
+            job: job
+              ? {
+                  id: job.id,
+                  jobId: job.jobId,
+                  title: job.title,
+                  status: job.status,
+                }
+              : undefined,
+            candidate: candidate
+              ? {
+                  id: candidate.id,
+                  firstName: candidate.firstName,
+                  lastName: candidate.lastName,
+                  location: candidate.location,
+                  workAuthorization: candidate.workAuthorization,
+                }
+              : undefined,
+            recruiter: recruiter
+              ? {
+                  id: recruiter.id,
+                  name: recruiter.name,
+                }
+              : undefined,
+            // Include resume data in response if job is active
+            resumeData:
+              job && job.status.toLowerCase() === "active" ? resumeData : null,
+          };
+        }),
+      );
 
       res.json(enhancedSubmissions);
     } catch (error) {
@@ -443,25 +489,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get recruiter
       const recruiter = await storage.getUser(submission.recruiterId);
 
-      // Always get resume data for display, but mark it as readonly if job is closed
+      // Get resume data only if job is active, otherwise provide null
       let resumeData = null;
-      if (candidate) {
+      if (job && job.status.toLowerCase() === "active" && candidate) {
         resumeData = await storage.getResumeData(candidate.id);
       }
-
-      // Determine if the file should be accessible based on job status
-      const isJobActive = job && job.status.toLowerCase() === 'active';
 
       res.json({
         ...submission,
         job,
         candidate,
         recruiter,
-        // Always include resume data, but add a flag to indicate if file access is restricted
-        resumeData: resumeData ? {
-          ...resumeData,
-          fileAccessRestricted: !isJobActive
-        } : null
+        // Include resume data in response if job is active
+        resumeData:
+          job && job.status.toLowerCase() === "active" ? resumeData : null,
       });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -481,28 +522,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle case where this is a new candidate (has candidateData)
       if (submissionData.candidateData) {
         // First validate the candidate data
-        const validatedCandidateData = insertCandidateSchema.parse(submissionData.candidateData);
+        const validatedCandidateData = insertCandidateSchema.parse(
+          submissionData.candidateData,
+        );
 
         // Check if candidate already exists
         const existingCandidate = await storage.getCandidateByIdentity(
           validatedCandidateData.dobMonth,
           validatedCandidateData.dobDay,
-          validatedCandidateData.ssn4
+          validatedCandidateData.ssn4,
         );
 
         // Check if this candidate has already been submitted for this specific job
         if (existingCandidate) {
           // Check if this candidate is already submitted for this job
-          const existingSubmission = await storage.getSubmissionByJobAndCandidate(
-            jobId,
-            existingCandidate.id
-          );
+          const existingSubmission =
+            await storage.getSubmissionByJobAndCandidate(
+              jobId,
+              existingCandidate.id,
+            );
 
           if (existingSubmission) {
-            return res.status(409).json({ 
-              message: "This candidate is already in our past submitted list for this job", 
+            return res.status(409).json({
+              message:
+                "This candidate is already in our past submitted list for this job",
               candidateId: existingCandidate.id,
-              submissionId: existingSubmission.id
+              submissionId: existingSubmission.id,
             });
           }
 
@@ -510,56 +555,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
           candidateId = existingCandidate.id;
         } else {
           // Create a new candidate
-          const newCandidate = await storage.createCandidate(validatedCandidateData);
+          const newCandidate = await storage.createCandidate(
+            validatedCandidateData,
+          );
           candidateId = newCandidate.id;
 
           // Create resume data if provided
           if (submissionData.resumeData) {
             try {
               // Import the sanitization utility
-              const { sanitizeHtml } = await import('./utils');
+              const { sanitizeHtml } = await import("./utils");
 
               // Sanitize all resume data to prevent encoding issues
               const resumeDataPayload = {
                 candidateId: newCandidate.id,
-                clientNames: Array.isArray(submissionData.resumeData.clientNames) 
-                  ? submissionData.resumeData.clientNames.map((name: string) => sanitizeHtml(name)) 
+                clientNames: Array.isArray(
+                  submissionData.resumeData.clientNames,
+                )
+                  ? submissionData.resumeData.clientNames.map((name: string) =>
+                      sanitizeHtml(name),
+                    )
                   : [],
-                jobTitles: Array.isArray(submissionData.resumeData.jobTitles) 
-                  ? submissionData.resumeData.jobTitles.map((title: string) => sanitizeHtml(title)) 
+                jobTitles: Array.isArray(submissionData.resumeData.jobTitles)
+                  ? submissionData.resumeData.jobTitles.map((title: string) =>
+                      sanitizeHtml(title),
+                    )
                   : [],
-                relevantDates: Array.isArray(submissionData.resumeData.relevantDates) 
-                  ? submissionData.resumeData.relevantDates.map((date: string) => sanitizeHtml(date)) 
+                relevantDates: Array.isArray(
+                  submissionData.resumeData.relevantDates,
+                )
+                  ? submissionData.resumeData.relevantDates.map(
+                      (date: string) => sanitizeHtml(date),
+                    )
                   : [],
-                skills: Array.isArray(submissionData.resumeData.skills) 
-                  ? submissionData.resumeData.skills.map((skill: string) => sanitizeHtml(skill)) 
+                skills: Array.isArray(submissionData.resumeData.skills)
+                  ? submissionData.resumeData.skills.map((skill: string) =>
+                      sanitizeHtml(skill),
+                    )
                   : [],
-                education: Array.isArray(submissionData.resumeData.education) 
-                  ? submissionData.resumeData.education.map((edu: string) => sanitizeHtml(edu)) 
+                education: Array.isArray(submissionData.resumeData.education)
+                  ? submissionData.resumeData.education.map((edu: string) =>
+                      sanitizeHtml(edu),
+                    )
                   : [],
-                extractedText: submissionData.resumeData.extractedText 
-                  ? sanitizeHtml(submissionData.resumeData.extractedText).substring(0, 4000) 
+                extractedText: submissionData.resumeData.extractedText
+                  ? sanitizeHtml(
+                      submissionData.resumeData.extractedText,
+                    ).substring(0, 30000)
                   : "",
-                fileName: submissionData.resumeData.fileName || "",
-                // Store any quality metrics from AI analysis if they exist
-                qualityScore: submissionData.resumeData.qualityScore,
-                contentSuggestions: Array.isArray(submissionData.resumeData.contentSuggestions)
-                  ? submissionData.resumeData.contentSuggestions.map((suggestion: string) => sanitizeHtml(suggestion))
-                  : [],
-                formattingSuggestions: Array.isArray(submissionData.resumeData.formattingSuggestions)
-                  ? submissionData.resumeData.formattingSuggestions.map((suggestion: string) => sanitizeHtml(suggestion))
-                  : [],
-                languageSuggestions: Array.isArray(submissionData.resumeData.languageSuggestions)
-                  ? submissionData.resumeData.languageSuggestions.map((suggestion: string) => sanitizeHtml(suggestion))
-                  : [],
-                keywordScore: submissionData.resumeData.keywordScore,
-                readabilityScore: submissionData.resumeData.readabilityScore
               };
 
               await storage.createResumeData(resumeDataPayload);
               console.log("Resume data successfully saved during submission");
             } catch (resumeError) {
-              console.error("Failed to save resume data during submission:", resumeError);
+              console.error(
+                "Failed to save resume data during submission:",
+                resumeError,
+              );
               // Continue with candidate creation even if resume data fails
             }
           }
@@ -568,7 +620,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For existing candidate, just use the candidateId provided
         candidateId = submissionData.candidateId;
         if (!candidateId) {
-          return res.status(400).json({ message: "Either candidateData or candidateId must be provided" });
+          return res
+            .status(400)
+            .json({
+              message: "Either candidateData or candidateId must be provided",
+            });
         }
       }
 
@@ -581,15 +637,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         matchScore: submissionData.matchScore,
         agreedRate: submissionData.agreedRate,
         notes: submissionData.notes || "",
-        // Additional analysis fields needed for detailed view
-        strengths: submissionData.strengths || [],
-        weaknesses: submissionData.weaknesses || [],
-        suggestions: submissionData.suggestions || [],
-        technicalGaps: submissionData.technicalGaps || [],
-        matchingSkills: submissionData.matchingSkills || [],
-        missingSkills: submissionData.missingSkills || [],
-        clientExperience: submissionData.clientExperience || "",
-        confidence: submissionData.confidence || 0
       };
 
       const validatedData = insertSubmissionSchema.parse(submissionPayload);
@@ -597,7 +644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if the candidate has already been submitted for this job
       const existingSubmission = await storage.getSubmissionByJobAndCandidate(
         validatedData.jobId,
-        validatedData.candidateId
+        validatedData.candidateId,
       );
 
       if (existingSubmission) {
@@ -607,12 +654,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId: validatedData.recruiterId,
           jobId: validatedData.jobId,
           candidateId: validatedData.candidateId,
-          message: `Duplicate submission detected for job ID ${validatedData.jobId}`
+          message: `Duplicate submission detected for job ID ${validatedData.jobId}`,
         });
 
-        return res.status(409).json({ 
-          message: "This candidate is already in our past submitted list for this job",
-          submissionId: existingSubmission.id
+        return res.status(409).json({
+          message:
+            "This candidate is already in our past submitted list for this job",
+          submissionId: existingSubmission.id,
         });
       }
 
@@ -630,13 +678,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           jobId: submission.jobId,
           candidateId: submission.candidateId,
           submissionId: submission.id,
-          message: `Candidate ${candidate.firstName} ${candidate.lastName} was submitted for ${job.title} (${job.jobId})`
+          message: `Candidate ${candidate.firstName} ${candidate.lastName} was submitted for ${job.title} (${job.jobId})`,
         });
       }
 
       res.status(201).json({
         submission,
-        candidate
+        candidate,
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -646,74 +694,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/submissions/:id/status", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid submission ID" });
-      }
-
-      const { status, feedback } = req.body;
-      if (!status || typeof status !== "string") {
-        return res.status(400).json({ message: "Status is required" });
-      }
-
-      // For now, we don't have authentication implemented, so use a default value
-      // Later this can be updated when auth is implemented
-      const userId = 1; // Default to admin user
-
-      // Update submission with status, feedback, and last updated by
-      const updatedSubmission = await storage.updateSubmissionStatus(id, status, feedback, userId);
-
-      // Create an activity for the status change
-      const submission = await storage.getSubmission(id);
-      if (submission) {
-        await storage.createActivity({
-          type: "submission_status_changed",
-          submissionId: id,
-          jobId: submission.jobId,
-          candidateId: submission.candidateId,
-          userId: userId,
-          message: `Submission status changed to ${status}${feedback ? " with feedback" : ""}`
-        });
-
-        // If status is "Offer Accepted", sync candidate data to TalentStreamline microservice
-        if (status === "Offer Accepted") {
-          console.log(`Offer accepted for submission #${id}. Syncing to TalentStreamline...`);
-          try {
-            const syncResult = await syncCandidateToTalentStreamline(id);
-            if (syncResult) {
-              console.log(`Successfully synced submission #${id} to TalentStreamline`);
-              // Create an activity to log the sync
-              await storage.createActivity({
-                type: "system_integration",
-                submissionId: id,
-                jobId: submission.jobId,
-                candidateId: submission.candidateId,
-                message: `Candidate information synced to TalentStreamline`
-              });
-            } else {
-              console.error(`Failed to sync submission #${id} to TalentStreamline`);
-            }
-          } catch (syncError: any) {
-            const errorMessage = syncError?.message || 'Unknown error';
-            console.error(`Error syncing to TalentStreamline: ${errorMessage}`);
-            // We don't want to fail the status update if the sync fails,
-            // so we just log the error and continue
-          }
+  app.put(
+    "/api/submissions/:id/status",
+    async (req: Request, res: Response) => {
+      try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({ message: "Invalid submission ID" });
         }
-      }
 
-      res.json(updatedSubmission);
-    } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
-    }
-  });
+        const { status } = req.body;
+        if (!status || typeof status !== "string") {
+          return res.status(400).json({ message: "Status is required" });
+        }
+
+        const updatedSubmission = await storage.updateSubmissionStatus(
+          id,
+          status,
+        );
+
+        // Create an activity for the status change
+        const submission = await storage.getSubmission(id);
+        if (submission) {
+          await storage.createActivity({
+            type: "status_changed",
+            submissionId: id,
+            jobId: submission.jobId,
+            candidateId: submission.candidateId,
+            message: `Submission status changed to ${status}`,
+          });
+        }
+
+        res.json(updatedSubmission);
+      } catch (error) {
+        res.status(500).json({ message: (error as Error).message });
+      }
+    },
+  );
 
   // Activities routes
   app.get("/api/activities", async (req: Request, res: Response) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string)
+        : undefined;
       const activities = await storage.getActivities(limit);
 
       // Enrich activities with related data
@@ -730,11 +754,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           if (activity.candidateId) {
-            enriched.candidate = await storage.getCandidate(activity.candidateId);
+            enriched.candidate = await storage.getCandidate(
+              activity.candidateId,
+            );
           }
 
           return enriched;
-        })
+        }),
       );
 
       res.json(enrichedActivities);
@@ -776,294 +802,475 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Simple document processing endpoints
-  // Note: Resume analysis features have been removed - these endpoints
-  // now return minimal placeholder data to maintain API compatibility
-  
-  app.post("/api/openai/analyze-resume", async (req: Request, res: Response) => {
-    try {
-      const { text } = req.body;
-
-      if (!text || typeof text !== "string") {
-        return res.status(400).json({ message: "Resume text is required" });
-      }
-
-      // Import the sanitization utility
-      const { sanitizeHtml } = await import('./utils');
-      
-      // Sanitize the text 
-      const sanitizedText = sanitizeHtml(text);
-      
-      // Return minimal structure without actual analysis
-      res.json({
-        clientNames: [],
-        jobTitles: [],
-        relevantDates: [],
-        skills: [],
-        education: [],
-        extractedText: sanitizedText.substring(0, 4000)
-      });
-    } catch (error) {
-      console.error("Resume processing error:", error);
-      // Return a safe fallback response
-      res.status(200).json({ 
-        clientNames: [],
-        jobTitles: [],
-        relevantDates: [],
-        skills: [],
-        education: [],
-        extractedText: "",
-        message: "Resume analysis functionality has been removed"
-      });
-    }
-  });
-
-  app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
-    try {
-      const { resumeText, jobDescription } = req.body;
-
-      // Validate inputs
-      if (!resumeText || typeof resumeText !== "string") {
-        return res.status(400).json({ message: "Resume text is required" });
-      }
-
-      if (!jobDescription || typeof jobDescription !== "string") {
-        return res.status(400).json({ message: "Job description is required" });
-      }
-
-      // Import the sanitization utility and resumeAnalyzer
-      const { sanitizeHtml } = await import('./utils');
-      const { analyzeResume } = await import('./resumeAnalyzer');
-      
-      // Sanitize the inputs
-      const sanitizedResumeText = sanitizeHtml(resumeText);
-      const sanitizedJobDescription = sanitizeHtml(jobDescription);
-
-      console.log("Analyzing resume match...");
-      
+  // OpenAI integration routes
+  app.post(
+    "/api/openai/analyze-resume",
+    async (req: Request, res: Response) => {
       try {
-        // Analyze the resume against the job description
-        const analysisResult = await analyzeResume(sanitizedResumeText, sanitizedJobDescription);
-        
-        // Format the response to match the expected structure, including employment history data
-        const response = {
-          // Core match scores and analysis
-          score: analysisResult.overallScore,
-          strengths: analysisResult.relevantExperience,
-          weaknesses: analysisResult.improvements.content,
-          suggestions: analysisResult.improvements.formatting,
-          technicalGaps: analysisResult.skillsGapAnalysis.missingSkills,
-          matchingSkills: analysisResult.skillsGapAnalysis.matchingSkills,
-          missingSkills: analysisResult.skillsGapAnalysis.missingSkills,
-          
-          // Include employment history
-          clientNames: Array.isArray(analysisResult.clientNames) ? analysisResult.clientNames : [],
-          jobTitles: Array.isArray(analysisResult.jobTitles) ? analysisResult.jobTitles : [],
-          relevantDates: Array.isArray(analysisResult.relevantDates) ? analysisResult.relevantDates : [],
-          
-          // Legacy fields maintained for backward compatibility
-          clientExperience: analysisResult.relevantExperience.join(", "),
-          confidence: analysisResult.confidenceScore,
-          suggestedTraining: analysisResult.skillsGapAnalysis.suggestedTraining
-        };
-        
-        console.log("Resume analysis completed successfully");
-        console.log("Final response including employment history data:", 
-                   JSON.stringify({
-                     clientNames: response.clientNames, 
-                     jobTitles: response.jobTitles, 
-                     relevantDates: response.relevantDates
-                   }, null, 2));
-        res.json(response);
-      } catch (analysisError) {
-        console.error("Resume analysis error:", analysisError);
-        // If analysis fails, return a meaningful error but with a successful status code
-        res.status(200).json({ 
-          message: `Resume analysis error: ${analysisError instanceof Error ? analysisError.message : "Unknown error"}`,
-          score: 0,
-          strengths: [],
-          weaknesses: ["Error during resume analysis"],
-          suggestions: ["Try with a different resume or job description"],
-          technicalGaps: [],
-          matchingSkills: [],
-          missingSkills: [],
-          clientExperience: "",
-          confidence: 0
-        });
-      }
-    } catch (error) {
-      console.error("Resume matching error:", error);
-      res.status(500).json({ 
-        message: "Internal server error",
-        score: 0,
-        strengths: [],
-        weaknesses: ["Server encountered an error"],
-        suggestions: ["Please try again later"],
-        technicalGaps: [],
-        matchingSkills: [],
-        missingSkills: [],
-        clientExperience: "",
-        confidence: 0
-      });
-    }
-  });
+        const { text } = req.body;
 
-  // Resume file download endpoint
-  app.get("/api/candidates/:id/resume", async (req: Request, res: Response) => {
-    try {
-      const candidateId = parseInt(req.params.id);
-      if (isNaN(candidateId)) {
-        return res.status(400).json({ error: "Invalid candidate ID" });
-      }
+        if (!text || typeof text !== "string") {
+          return res.status(400).json({ message: "Resume text is required" });
+        }
 
-      // Get the resume data
-      const resumeData = await storage.getResumeData(candidateId);
-      if (!resumeData) {
-        return res.status(404).json({ error: "Resume not found" });
-      }
+        // Import the sanitization utility
+        const { sanitizeHtml, isValidJson } = await import("./utils");
 
-      // Check if file exists in the resume data
-      if (!resumeData.fileName) {
-        return res.status(404).json({ error: "Resume file not available" });
-      }
+        // Check if text contains XML/HTML-like content that might cause issues
+        if (
+          text.includes("<!DOCTYPE") ||
+          text.includes("<?xml") ||
+          text.includes("<html")
+        ) {
+          console.log(
+            "Detected potentially problematic document format with XML/HTML tags",
+          );
 
-      // Check if this resume is for a closed job
-      // If so, we shouldn't provide access to the actual file
-      const submissions = await storage.getSubmissions({ candidateId });
-      if (submissions.length > 0) {
-        // Get unique job IDs without using Set
-        const jobIds: number[] = [];
-        submissions.forEach(s => {
-          if (!jobIds.includes(s.jobId)) {
-            jobIds.push(s.jobId);
+          // Special handling for Word documents or HTML content
+          // Remove all XML/HTML tags and normalize whitespace
+          let cleanedText = text
+            .replace(/<[^>]*>?/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+          // If text is still problematic, respond with a more specific error
+          if (cleanedText.length < 100) {
+            return res.status(200).json({
+              clientNames: [],
+              jobTitles: [],
+              relevantDates: [],
+              skills: [],
+              education: [],
+              extractedText: "",
+              message:
+                "Unable to extract meaningful text from this document format. Please convert to plain text or a simpler format.",
+            });
           }
-        });
 
-        // Check if all jobs are closed
-        let allJobsClosed = true;
-        for (const jobId of jobIds) {
-          const job = await storage.getJob(jobId);
-          if (job && job.status.toLowerCase() === 'active') {
-            allJobsClosed = false;
-            break;
+          // Use the cleaned text instead
+          console.log(
+            "Using cleaned text from structured document, length:",
+            cleanedText.length,
+          );
+
+          // Proceed with analyzing the cleaned text
+          try {
+            const analysis = await analyzeResumeText(cleanedText);
+
+            // Additional safety sanitization for extracted values
+            const safeAnalysis = {
+              clientNames: analysis.clientNames.map((client) =>
+                sanitizeHtml(client),
+              ),
+              jobTitles: analysis.jobTitles.map((title) => sanitizeHtml(title)),
+              relevantDates: analysis.relevantDates.map((date) =>
+                sanitizeHtml(date),
+              ),
+              skills: analysis.skills.map((skill) => sanitizeHtml(skill)),
+              education: analysis.education.map((edu) => sanitizeHtml(edu)),
+              // Truncate extractedText to ensure it doesn't exceed DB limits
+              extractedText: cleanedText.substring(0, 30000),
+            };
+
+            return res.json(safeAnalysis);
+          } catch (innerError) {
+            console.error(
+              "Failed to analyze cleaned document text:",
+              innerError,
+            );
+            return res.status(200).json({
+              clientNames: [],
+              jobTitles: [],
+              relevantDates: [],
+              skills: [],
+              education: [],
+              extractedText: cleanedText.substring(0, 1000),
+              message:
+                "Document was processed but couldn't be fully analyzed. Try a different format.",
+            });
           }
         }
 
-        // If all jobs are closed, don't allow resume download
-        if (allJobsClosed) {
-          return res.status(403).json({ 
-            error: "Resume file not available", 
-            message: "Resume files are not available for candidates with only closed jobs" 
+        // For regular text content, proceed as normal
+        // Sanitize the text before passing to OpenAI
+        const sanitizedText = sanitizeHtml(text);
+
+        console.log("Sanitized text length:", sanitizedText.length);
+
+        const analysis = await analyzeResumeText(sanitizedText);
+
+        // Additional safety sanitization for extracted values
+        const safeAnalysis = {
+          clientNames: analysis.clientNames.map((client) =>
+            sanitizeHtml(client),
+          ),
+          jobTitles: analysis.jobTitles.map((title) => sanitizeHtml(title)),
+          relevantDates: analysis.relevantDates.map((date) =>
+            sanitizeHtml(date),
+          ),
+          skills: analysis.skills.map((skill) => sanitizeHtml(skill)),
+          education: analysis.education.map((edu) => sanitizeHtml(edu)),
+          // Truncate extractedText to ensure it doesn't exceed DB limits
+          extractedText: sanitizeHtml(analysis.extractedText).substring(
+            0,
+            30000,
+          ),
+        };
+
+        res.json(safeAnalysis);
+      } catch (error) {
+        console.error("Resume analysis error:", error);
+        // Return a safe fallback response
+        res.status(200).json({
+          clientNames: [],
+          jobTitles: [],
+          relevantDates: [],
+          skills: [],
+          education: [],
+          extractedText: "",
+          message:
+            "Failed to analyze resume due to encoding issues. Please try a different file format.",
+        });
+      }
+    },
+  );
+
+  // Fixed document parsing endpoint using reusable multer setup
+  const multerStorage = multer.memoryStorage();
+  const fileUpload = multer({ storage: multerStorage });
+  
+  app.post("/api/parse-document", fileUpload.single('file'), async (req: Request, res: Response) => {
+    console.log("Document parsing request received");
+    
+    try {
+      if (!req.file) {
+        console.error("No file in the request");
+        return res.status(400).json({ 
+          success: false, 
+          error: "No file uploaded",
+          message: "Please attach a file with the key 'file'"
+        });
+      }
+
+      console.log(`File received: ${req.file.originalname}, ${Math.round(req.file.size / 1024)}KB`);
+      
+      const fileBuffer = req.file.buffer;
+      const fileName = req.file.originalname.toLowerCase();
+      const fileType = fileName.endsWith('.pdf') ? 'pdf' : 
+                     fileName.endsWith('.docx') ? 'docx' : 
+                     fileName.endsWith('.txt') ? 'txt' : 'unknown';
+      
+      console.log(`Processing ${fileType.toUpperCase()} document: ${req.file.originalname} (${fileBuffer.length} bytes)`);
+      
+      // Extract text based on file type
+      let extractedText = '';
+      
+      if (fileType === 'docx') {
+        // For DOCX files, use mammoth
+        try {
+          console.log("Using mammoth for DOCX extraction");
+          const mammoth = require('mammoth');
+          const result = await mammoth.extractRawText({ buffer: fileBuffer });
+          extractedText = result.value || "";
+        } catch (docxError) {
+          console.error("DOCX extraction error:", docxError);
+          return res.status(500).json({
+            success: false,
+            error: "DOCX parsing failed",
+            message: docxError instanceof Error ? docxError.message : "Unknown error"
+          });
+        }
+      } 
+      else if (fileType === 'pdf') {
+        // For PDF files, use pdf-parse
+        try {
+          console.log("Using pdf-parse for PDF extraction");
+          const pdfParse = require('pdf-parse');
+          const data = await pdfParse(fileBuffer);
+          extractedText = data.text || "";
+        } catch (pdfError) {
+          console.error("PDF extraction error:", pdfError);
+          return res.status(500).json({
+            success: false,
+            error: "PDF parsing failed",
+            message: pdfError instanceof Error ? pdfError.message : "Unknown error"
           });
         }
       }
-
-      // For a simplified test, return a PDF or DOCX file directly
-      const fileName = resumeData.fileName;
-
-      // Set appropriate content type based on file name
-      let contentType = "application/octet-stream";
-      if (fileName.endsWith(".pdf")) {
-        contentType = "application/pdf";
-      } else if (fileName.endsWith(".docx") || fileName.endsWith(".doc")) {
-        contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      else if (fileType === 'txt') {
+        // For TXT files, just convert buffer to string
+        extractedText = fileBuffer.toString('utf8');
       }
-
-      // Get the actual resume file (in a real system, this would be read from storage)
-      // Here we're just sending the attached resume from the assets folder
-      const filePath = `./attached_assets/${fileName}`;
-
-      // Check if the file exists
-      if (!fs.existsSync(filePath)) {
-        // Fall back to the first DOCX resume in the assets folder
-        const assetFiles = fs.readdirSync('./attached_assets');
-        const docxFiles = assetFiles.filter(file => file.endsWith('.docx'));
-
-        if (docxFiles.length === 0) {
-          return res.status(404).json({ error: "Resume file not found" });
-        }
-
-        // Use the first available DOCX file
-        return res.download(`./attached_assets/${docxFiles[0]}`, fileName);
+      else {
+        // Unsupported file type
+        console.error(`Unsupported file type: ${fileType}`);
+        return res.status(400).json({
+          success: false,
+          error: "Unsupported file type",
+          message: `File type '${fileType}' is not supported. Please upload a PDF, DOCX, or TXT file.`
+        });
       }
-
-      // Send file
-      return res.download(filePath);
+      
+      // Check if extraction was successful
+      if (!extractedText || extractedText.length === 0) {
+        console.error("Extraction resulted in empty text");
+        return res.status(500).json({
+          success: false,
+          error: "Empty content", 
+          message: "Extracted text is empty. The file may be corrupted or password-protected."
+        });
+      }
+      
+      // Log the extraction results
+      console.log(`Successfully extracted ${extractedText.length} characters from ${fileType.toUpperCase()}`);
+      console.log("Text preview:", extractedText.substring(0, 200) + "...");
+      
+      // Return success response
+      return res.json({
+        success: true,
+        text: extractedText,
+        fileType,
+        fileName: req.file.originalname,
+        textLength: extractedText.length
+      });
+      
     } catch (error) {
-      console.error("Error downloading resume:", error);
+      // Handle any unexpected errors
+      console.error("Document parsing error:", error);
       return res.status(500).json({ 
-        error: "Failed to download resume file",
-        details: error instanceof Error ? error.message : String(error)
+        success: false,
+        error: "Document parsing failed", 
+        message: error instanceof Error ? error.message : "Unknown error" 
       });
     }
   });
 
-  // OpenAI-powered resume matching endpoint
   app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
     try {
       const { resumeText, jobDescription } = req.body;
-      
-      console.log("==== RESUME ANALYSIS REQUEST RECEIVED ====");
-      console.log("Resume text length:", resumeText?.length || 0);
-      console.log("Job description length:", jobDescription?.length || 0);
-      
-      // Validate input
-      if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 50) {
-        console.log("ERROR: Invalid resume text provided");
-        return res.status(400).json({ 
-          error: "Invalid resume text. Please provide a valid resume with sufficient content." 
+
+      if (!resumeText || typeof resumeText !== "string") {
+        return res.status(200).json({
+          message: "Resume text is required",
+          score: 0,
+          strengths: [],
+          weaknesses: ["Missing resume text"],
+          suggestions: ["Upload a resume to get a match score"],
         });
       }
-      
-      if (!jobDescription || typeof jobDescription !== 'string' || jobDescription.trim().length < 50) {
-        console.log("ERROR: Invalid job description provided");
-        return res.status(400).json({ 
-          error: "Invalid job description. Please provide a valid job description with sufficient content." 
+
+      if (!jobDescription || typeof jobDescription !== "string") {
+        return res.status(200).json({
+          message: "Job description is required",
+          score: 0,
+          strengths: [],
+          weaknesses: ["Missing job description"],
+          suggestions: ["Provide a job description to match against"],
         });
       }
+
+      // Import the sanitization utility
+      const { sanitizeHtml } = await import("./utils");
+
+      // Sanitize both the resume text and job description
+      const sanitizedResumeText = sanitizeHtml(resumeText);
+      const sanitizedJobDescription = sanitizeHtml(jobDescription);
+
+      console.log("Match resume request received:");
+      console.log("- Resume text length:", sanitizedResumeText.length);
+      console.log("- Job description length:", sanitizedJobDescription.length);
+
+      console.log("Analyzing resume match...");
       
-      // Use the advanced OpenAI-powered analyzer
-      console.log("Analyzing resume against job description with OpenAI...");
-      console.log("Resume text preview:", resumeText.substring(0, 100) + "...");
-      console.log("Job description preview:", jobDescription.substring(0, 100) + "...");
+      // Use OpenAI directly to extract employment history
+      let matchResult;
       
-      const analysisResult = await analyzeResume(resumeText, jobDescription);
-      console.log("RECEIVED OpenAI ANALYSIS RESULT:", JSON.stringify(analysisResult, null, 2));
-      
-      // Convert the analysis result to the expected format
-      const matchResult = {
-        // Match metrics
-        score: analysisResult.overallScore,
-        strengths: analysisResult.relevantExperience.slice(0, 5), // Top relevant experiences as strengths
-        weaknesses: analysisResult.skillsGapAnalysis.missingSkills,
-        suggestions: analysisResult.skillsGapAnalysis.suggestedTraining,
-        technicalGaps: analysisResult.skillsGapAnalysis.missingSkills.filter(skill => 
-          !skill.toLowerCase().includes("soft") && 
-          !skill.toLowerCase().includes("communication") &&
-          !skill.toLowerCase().includes("team")
-        ),
-        matchingSkills: analysisResult.skillsGapAnalysis.matchingSkills,
-        missingSkills: analysisResult.skillsGapAnalysis.missingSkills,
+      try {
+        // Import and initialize OpenAI
+        const OpenAI = await import("openai");
+        const openai = new OpenAI.default({ apiKey: process.env.OPENAI_API_KEY });
         
-        // Employment history data
-        clientNames: Array.isArray(analysisResult.clientNames) ? analysisResult.clientNames : [],
-        jobTitles: Array.isArray(analysisResult.jobTitles) ? analysisResult.jobTitles : [],
-        relevantDates: Array.isArray(analysisResult.relevantDates) ? analysisResult.relevantDates : [],
+        console.log("Starting resume analysis with OpenAI...");
+        console.log(`Sending OpenAI request with resume length: ${sanitizedResumeText.length} and job description length: ${sanitizedJobDescription.length}`);
         
-        // Legacy fields
-        clientExperience: "", // This is not provided by our analysis
-        confidence: analysisResult.confidenceScore
+        // Log first 300 chars of resume for debugging
+        const resumePreview = sanitizedResumeText.substring(0, 300);
+        console.log("Resume text preview for analysis:", resumePreview);
+        
+        // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: 
+                "You are an expert resume analyzer specializing in extracting accurate employment history from resumes. " +
+                "Your primary task is to extract REAL employment data from the resume - never generate fake or generic data. " +
+                "If you cannot find clear employment history, respond with empty arrays rather than making up placeholder data. " +
+                "Extract exact company names, job titles, and employment dates directly from the resume text. " +
+                "Be precise, accurate, and only use information actually present in the resume."
+            },
+            {
+              role: "user",
+              content: 
+                `I need you to analyze this resume for compatibility with the following job description.
+                
+                Resume:
+                ${sanitizedResumeText}
+                
+                Job Description:
+                ${sanitizedJobDescription}
+                
+                IMPORTANT - EMPLOYMENT HISTORY EXTRACTION INSTRUCTIONS:
+                1. Carefully read the entire resume text
+                2. Search for sections labeled "Experience", "Work Experience", "Professional Experience", "Employment History", etc.
+                3. Extract the following from these sections EXACTLY as they appear in the resume - do not generate or fabricate data:
+                   - clientNames: Array of company/employer names the candidate worked for (most recent first)
+                   - jobTitles: Array of job titles/positions held by the candidate (most recent first)
+                   - relevantDates: Array of employment periods (most recent first)
+                
+                2. Then analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
+                
+                Return your analysis in a structured JSON format with the following fields:
+                - clientNames (array of strings: extract EXACT company names from the resume)
+                - jobTitles (array of strings: extract EXACT job titles from the resume)
+                - relevantDates (array of strings: extract EXACT date ranges from the resume)
+                - skillsGapAnalysis: { missingSkills (array), matchingSkills (array), suggestedTraining (array) }
+                - relevantExperience (array of relevant experiences from the resume)
+                - improvements: { content (array), formatting (array), language (array) }
+                - overallScore (number 0-100)
+                - confidenceScore (number 0-1)
+                
+                NOTICE: It is critical that you extract only actual employment data from the resume. NEVER invent company names, job titles, or dates. If you cannot find employment history, return empty arrays.`
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.5,
+          max_tokens: 2000,
+        });
+        
+        console.log("OpenAI analysis completed");
+        
+        // Parse the response
+        const analysisResult = JSON.parse(response.choices[0].message.content);
+        
+        // Create a match result with the extracted information
+        matchResult = {
+          score: analysisResult.overallScore || 0,
+          strengths: analysisResult.relevantExperience || [],
+          weaknesses: (analysisResult.skillsGapAnalysis?.missingSkills || []),
+          suggestions: (analysisResult.improvements?.content || []),
+          
+          // Employment history data - directly from OpenAI
+          clientNames: analysisResult.clientNames || [],
+          jobTitles: analysisResult.jobTitles || [],
+          relevantDates: analysisResult.relevantDates || [],
+        };
+      } 
+      catch (openaiError) {
+        console.error("Error with OpenAI analysis:", openaiError);
+        
+        // Fallback to basic matching
+        matchResult = await matchResumeToJob(
+          sanitizedResumeText,
+          sanitizedJobDescription,
+        );
+      }
+      
+      // Log the employment history data
+      console.log("OpenAI extracted employment history data:");
+      console.log("- clientNames:", JSON.stringify(matchResult.clientNames || []));
+      console.log("- jobTitles:", JSON.stringify(matchResult.jobTitles || []));
+      console.log("- relevantDates:", JSON.stringify(matchResult.relevantDates || []));
+      
+      // If we have a valid candidateId in the request, save the employment history to the database
+      if (req.body.candidateId) {
+        try {
+          const candidateId = parseInt(req.body.candidateId);
+          if (!isNaN(candidateId)) {
+            // First check if this candidate exists
+            const candidate = await storage.getCandidate(candidateId);
+            
+            if (candidate) {
+              console.log(`Saving extracted employment history data for candidate ID ${candidateId}`);
+              
+              // Prepare resume data payload with employment history
+              const resumeDataPayload = {
+                candidateId,
+                clientNames: matchResult.clientNames || [],
+                jobTitles: matchResult.jobTitles || [],
+                relevantDates: matchResult.relevantDates || [],
+                // Maintain any existing skills or other resume data fields
+                skills: matchResult.skillsGapAnalysis?.matchingSkills || [],
+              };
+              
+              // Save the resume data to the database
+              const existingResumeData = await storage.getResumeData(candidateId);
+              
+              if (existingResumeData) {
+                // Update existing resume data
+                console.log(`Updating existing resume data for candidate ID ${candidateId}`);
+                await storage.updateResumeData(candidateId, resumeDataPayload);
+              } else {
+                // Create new resume data record
+                console.log(`Creating new resume data for candidate ID ${candidateId}`);
+                await storage.createResumeData(resumeDataPayload);
+              }
+              
+              console.log(`Successfully saved employment history data for candidate ID ${candidateId}`);
+            } else {
+              console.warn(`Cannot save resume data: Candidate ID ${candidateId} not found`);
+            }
+          } else {
+            console.warn(`Cannot save resume data: Invalid candidate ID format ${req.body.candidateId}`);
+          }
+        } catch (dbError) {
+          console.error("Error saving employment history to database:", dbError);
+          // Continue with the API response even if database update fails
+        }
+      }
+      
+      // Ensure we return a properly structured response even if the matching service fails
+      const response = {
+        score: typeof matchResult.score === "number" ? matchResult.score : 0,
+        strengths: Array.isArray(matchResult.strengths)
+          ? matchResult.strengths
+          : [],
+        weaknesses: Array.isArray(matchResult.weaknesses)
+          ? matchResult.weaknesses
+          : [],
+        suggestions: Array.isArray(matchResult.suggestions)
+          ? matchResult.suggestions
+          : [],
+
+        // Include employment history data
+        clientNames: Array.isArray(matchResult.clientNames)
+          ? matchResult.clientNames
+          : [],
+        jobTitles: Array.isArray(matchResult.jobTitles)
+          ? matchResult.jobTitles
+          : [],
+        relevantDates: Array.isArray(matchResult.relevantDates)
+          ? matchResult.relevantDates
+          : [],
       };
-      
-      console.log("Resume analysis complete with score:", matchResult.score);
-      console.log("Match result:", JSON.stringify(matchResult, null, 2));
-      res.json(matchResult);
+
+      console.log("Resume analysis completed successfully");
+      console.log(
+        "Final response including employment history data:",
+        JSON.stringify(response, null, 2),
+      );
+
+      res.json(response);
     } catch (error) {
-      console.error("Error during resume matching:", error);
-      console.error("Error details:", error instanceof Error ? error.stack : String(error));
-      res.status(500).json({ 
-        error: "Error analyzing resume", 
-        message: error instanceof Error ? error.message : String(error)
+      console.error("Resume matching error:", error);
+      // Return a structured error response with 0 score
+      res.status(200).json({
+        message: (error as Error).message,
+        score: 0,
+        strengths: [],
+        weaknesses: ["Error occurred during matching"],
+        suggestions: ["Try a different resume format or contact support"],
       });
     }
   });
@@ -1072,3 +1279,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
+
+// Resume file download endpoint

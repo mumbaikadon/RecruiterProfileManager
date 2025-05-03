@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { useCheckCandidate } from "@/hooks/use-candidates";
-import { analyzeResume, matchResumeToJob } from "@/lib/openai";
+import { analyzeResume, matchResumeToJob, ResumeAnalysisResult } from "@/lib/openai";
 // sanitizeHtml is no longer needed since we removed resume analysis
 // import { sanitizeHtml } from "@/lib/utils";
 
@@ -385,8 +385,8 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         // Use OpenAI to match resume against job description
         console.log("Starting resume matching with OpenAI...");
         
-        // Get candidateId if available from the form values (for existing candidates)
-        const candidateId = formValues.id;
+        // For new candidates, we don't have an ID yet
+        const candidateId = undefined;
         
         // Include candidateId when matched, to store employment history in the database
         const matchResult = await matchResumeToJob(
@@ -401,7 +401,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         setMatchResults(matchResult);
         
         // Update resumeData with employment history from the match results
-        setResumeData(prevData => ({
+        setResumeData((prevData: ResumeAnalysisResult) => ({
           ...prevData,
           clientNames: matchResult.clientNames || prevData.clientNames,
           jobTitles: matchResult.jobTitles || prevData.jobTitles,
