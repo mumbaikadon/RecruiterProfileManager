@@ -1,10 +1,9 @@
 import OpenAI from "openai";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI with API key from environment variables
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Interface for the analysis result
 interface AnalysisResult {
   skillsGapAnalysis: {
     missingSkills: string[];
@@ -28,83 +27,158 @@ interface AnalysisResult {
  * @returns Analysis result with match score and insights
  */
 export async function analyzeResume(resumeText: string, jobDescription: string): Promise<AnalysisResult> {
+  // Validate inputs
+  if (!resumeText || resumeText.trim().length === 0) {
+    throw new Error("Resume text cannot be empty");
+  }
+  
+  if (!jobDescription || jobDescription.trim().length === 0) {
+    throw new Error("Job description cannot be empty");
+  }
+
   try {
-    // Validate inputs
-    if (!resumeText || resumeText.trim().length < 50) {
-      throw new Error("Resume text is too short for meaningful analysis");
-    }
+    console.log("Starting resume analysis with OpenAI...");
     
-    if (!jobDescription || jobDescription.trim().length < 50) {
-      throw new Error("Job description is too short for meaningful analysis");
-    }
-
-    // Prepare a prompt for the OpenAI API
-    const prompt = `
-      Analyze this resume and job description pair. Focus on both matching skills/experience and gaps.
-      Provide detailed feedback in JSON format with the following structure:
-      {
-        "skillsGapAnalysis": {
-          "missingSkills": [], // Skills mentioned in job but missing from resume
-          "matchingSkills": [], // Skills present in both resume and job requirements
-          "suggestedTraining": [] // Specific courses or certifications that could help
-        },
-        "relevantExperience": [], // List of experiences from the resume that directly relate to job requirements
-        "improvements": {
-          "content": [], // Specific content improvement suggestions
-          "formatting": [], // Formatting and structure suggestions
-          "language": [] // Language and phrasing improvements
-        },
-        "overallScore": 0-100, // Overall match score
-        "confidenceScore": 0-1 // Confidence in the analysis
-      }
-
-      Resume:
-      ${resumeText}
-
-      Job Description:
-      ${jobDescription}
-    `;
-
-    // Call the OpenAI API
+    // Use OpenAI to analyze the resume against the job description
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
-      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" }
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: 
+            "You are an expert resume analyzer that compares resumes to job descriptions and provides detailed feedback. " +
+            "Analyze the resume against the job description and provide a comprehensive assessment. " +
+            "Focus on identifying matching skills, missing skills, and areas for improvement. " +
+            "Be constructive and thorough in your analysis. " +
+            "Respond with a JSON structure containing the analysis results."
+        },
+        {
+          role: "user",
+          content: 
+            `Please analyze this resume for compatibility with the following job description. 
+            
+            Resume:
+            ${resumeText}
+            
+            Job Description:
+            ${jobDescription}
+            
+            Analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
+            Return your analysis in a structured JSON format with the following fields:
+            - skillsGapAnalysis: { missingSkills (array), matchingSkills (array), suggestedTraining (array) }
+            - relevantExperience (array of relevant experiences from the resume)
+            - improvements: { content (array), formatting (array), language (array) }
+            - overallScore (number 0-100)
+            - confidenceScore (number 0-1)
+            
+            Focus on technical and soft skills, relevant experience, and overall fit.`
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.5,
+      max_tokens: 2000,
     });
 
-    // Parse the response
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error("Failed to get analysis from OpenAI");
-    }
-
-    // Parse the JSON response
-    let result;
-    try {
-      result = JSON.parse(content);
-    } catch (parseError) {
-      console.error("Error parsing OpenAI response:", parseError);
-      throw new Error("Failed to parse analysis results");
-    }
-
-    // Return the formatted result with default values for any missing fields
-    return {
+    console.log("OpenAI analysis completed");
+    
+    // Parse the response and return the structured analysis
+    const analysisResult = JSON.parse(response.choices[0].message.content) as AnalysisResult;
+    
+    // Validate and sanitize the response
+    const sanitizedResult: AnalysisResult = {
       skillsGapAnalysis: {
-        missingSkills: Array.isArray(result.skillsGapAnalysis?.missingSkills) ? result.skillsGapAnalysis.missingSkills : [],
-        matchingSkills: Array.isArray(result.skillsGapAnalysis?.matchingSkills) ? result.skillsGapAnalysis.matchingSkills : [],
-        suggestedTraining: Array.isArray(result.skillsGapAnalysis?.suggestedTraining) ? result.skillsGapAnalysis.suggestedTraining : []
+        missingSkills: Array.isArray(analysisResult.skillsGapAnalysis?.missingSkills) 
+          ? analysisResult.skillsGapAnalysis.missingSkills 
+          : [],
+        matchingSkills: Array.isArray(analysisResult.skillsGapAnalysis?.matchingSkills) 
+          ? analysisResult.skillsGapAnalysis.matchingSkills 
+          : [],
+        suggestedTraining: Array.isArray(analysisResult.skillsGapAnalysis?.suggestedTraining) 
+          ? analysisResult.skillsGapAnalysis.suggestedTraining 
+          : []
       },
-      relevantExperience: Array.isArray(result.relevantExperience) ? result.relevantExperience : [],
+      relevantExperience: Array.isArray(analysisResult.relevantExperience) 
+        ? analysisResult.relevantExperience 
+        : [],
       improvements: {
-        content: Array.isArray(result.improvements?.content) ? result.improvements.content : [],
-        formatting: Array.isArray(result.improvements?.formatting) ? result.improvements.formatting : [],
-        language: Array.isArray(result.improvements?.language) ? result.improvements.language : []
+        content: Array.isArray(analysisResult.improvements?.content) 
+          ? analysisResult.improvements.content 
+          : [],
+        formatting: Array.isArray(analysisResult.improvements?.formatting) 
+          ? analysisResult.improvements.formatting 
+          : [],
+        language: Array.isArray(analysisResult.improvements?.language) 
+          ? analysisResult.improvements.language 
+          : []
       },
-      overallScore: Math.min(100, Math.max(0, result.overallScore || 0)),
-      confidenceScore: Math.min(1, Math.max(0, result.confidenceScore || 0))
+      overallScore: typeof analysisResult.overallScore === 'number' 
+        ? Math.max(0, Math.min(100, analysisResult.overallScore)) 
+        : 0,
+      confidenceScore: typeof analysisResult.confidenceScore === 'number' 
+        ? Math.max(0, Math.min(1, analysisResult.confidenceScore)) 
+        : 0
     };
+    
+    return sanitizedResult;
+    
   } catch (error) {
-    console.error('Resume analysis error:', error);
-    throw new Error(`Failed to analyze resume: ${error instanceof Error ? error.message : String(error)}`);
+    console.error("Error during resume analysis:", error);
+    
+    // For OpenAI API errors, provide more specific error message
+    if (error instanceof Error) {
+      if (error.message.includes("API key")) {
+        throw new Error("OpenAI API key error: Please check your API key configuration");
+      } else if (error.message.includes("rate limit")) {
+        throw new Error("OpenAI rate limit exceeded: Please try again later");
+      } else if (error.message.includes("timeout")) {
+        throw new Error("OpenAI request timed out: Please try again later");
+      }
+      throw error;
+    }
+    
+    throw new Error("Unknown error during resume analysis");
+  }
+}
+
+/**
+ * Generates improved content for a section of the resume based on analysis
+ * For future implementation if enhanced resume suggestions are needed
+ */
+export async function generateImprovedContent(
+  resumeSection: string,
+  jobDescription: string,
+  sectionType: string
+): Promise<string> {
+  try {
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert resume writer who specializes in optimizing resume content to match job descriptions."
+        },
+        {
+          role: "user",
+          content: `Improve this ${sectionType} section of a resume to better match the following job description:
+          
+          ${sectionType} Section:
+          ${resumeSection}
+          
+          Job Description:
+          ${jobDescription}
+          
+          Focus on highlighting relevant skills and experience. Maintain the original information but improve phrasing, clarity, and relevance to the job description.`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+    
+    return response.choices[0].message.content || '';
+  } catch (error) {
+    console.error(`Error generating improved content for ${sectionType}:`, error);
+    throw new Error(`Failed to generate improved content: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
