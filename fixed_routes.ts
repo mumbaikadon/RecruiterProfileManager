@@ -953,19 +953,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         req.file.originalname.toLowerCase().endsWith('.docx') ? 'docx' : 'txt';
         
         try {
-          // Import document parser utility
-          const { parseDocument } = await import('./document-parser');
+          console.log(`Processing ${fileType} document: ${req.file.originalname} (${fileBuffer.length} bytes)`);
           
-          // Extract text from the document
-          const extractedText = await parseDocument(fileBuffer, fileType);
-          console.log(`Successfully parsed ${fileType} document, extracted ${extractedText.length} characters`);
+          // For docx files, use mammoth directly here for better error handling
+          if (fileType === 'docx') {
+            try {
+              const mammoth = require('mammoth');
+              console.log("Using mammoth to extract DOCX content");
+              
+              const result = await mammoth.extractRawText({ buffer: fileBuffer });
+              const extractedText = result.value || "";
+              
+              console.log(`Successfully extracted ${extractedText.length} characters from DOCX`);
+              console.log("First 100 characters:", extractedText.substring(0, 100));
+              
+              // Return the extracted text
+              return res.json({ 
+                success: true, 
+                text: extractedText,
+                fileType,
+                fileName: req.file.originalname
+              });
+            } catch (docxError) {
+              console.error("DOCX parsing error:", docxError);
+              return res.status(500).json({
+                success: false,
+                error: "Failed to parse DOCX document",
+                message: docxError instanceof Error ? docxError.message : "Unknown error"
+              });
+            }
+          }
           
-          // Return the extracted text
-          res.json({ 
-            success: true, 
-            text: extractedText,
-            fileType,
-            fileName: req.file.originalname
+          // For PDF files, use pdf-parse
+          if (fileType === 'pdf') {
+            try {
+              const pdfParse = require('pdf-parse');
+              console.log("Using pdf-parse to extract PDF content");
+              
+              const data = await pdfParse(fileBuffer);
+              const extractedText = data.text || "";
+              
+              console.log(`Successfully extracted ${extractedText.length} characters from PDF`);
+              console.log("First 100 characters:", extractedText.substring(0, 100));
+              
+              // Return the extracted text
+              return res.json({ 
+                success: true, 
+                text: extractedText,
+                fileType,
+                fileName: req.file.originalname
+              });
+            } catch (pdfError) {
+              console.error("PDF parsing error:", pdfError);
+              return res.status(500).json({
+                success: false,
+                error: "Failed to parse PDF document",
+                message: pdfError instanceof Error ? pdfError.message : "Unknown error"
+              });
+            }
+          }
+          
+          // For unsupported file types
+          return res.status(400).json({
+            success: false,
+            error: "Unsupported file type",
+            message: `File type '${fileType}' is not supported. Please upload a PDF or DOCX file.`
           });
         } catch (parseError) {
           console.error("Document parsing error:", parseError);

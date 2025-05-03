@@ -134,20 +134,37 @@ export async function analyzeResume(file: File): Promise<{
     console.log(`Uploading resume file: ${file.name} (${Math.round(file.size / 1024)} KB) for parsing`);
 
     // Use the server's document parsing API to extract text
+    console.log("Sending document to server for parsing...");
     const response = await fetch('/api/parse-document', {
       method: 'POST',
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to process document");
-    }
-
-    // Extract text from the server's response
-    const parseResult = await response.json();
+    console.log("Document parsing response status:", response.status);
     
-    if (!parseResult.success || !parseResult.text) {
+    // Try to parse response even if the status indicates an error
+    let parseResult;
+    try {
+      const responseText = await response.text();
+      console.log("Response text preview:", responseText.substring(0, 100));
+      
+      try {
+        parseResult = JSON.parse(responseText);
+      } catch (jsonError) {
+        console.error("Failed to parse response as JSON:", jsonError);
+        throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}...`);
+      }
+    } catch (textError) {
+      console.error("Failed to read response text:", textError);
+      throw new Error("Failed to read server response");
+    }
+    
+    if (!response.ok) {
+      throw new Error(parseResult?.message || `Server error: ${response.status}`);
+    }
+    
+    if (!parseResult?.success || !parseResult?.text) {
+      console.error("Document parsing failed:", parseResult);
       throw new Error("Document parsing failed on server");
     }
     
