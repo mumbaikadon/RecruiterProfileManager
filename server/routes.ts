@@ -781,9 +781,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Simple document processing endpoints
-  // Note: Resume analysis features have been removed - these endpoints
-  // now return minimal placeholder data to maintain API compatibility
+  // DEPRECATED: Replaced with modular route implementation in server/routes/openai.ts
+  // These endpoints are now handled by the modular OpenAI routes mounted at /api/openai
   
+  /* REMOVED: Now handled by modular routes
   app.post("/api/openai/analyze-resume", async (req: Request, res: Response) => {
     try {
       const { text } = req.body;
@@ -821,7 +822,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  */
 
+  /* REMOVED: Now handled by modular routes
   app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
     try {
       const { resumeText, jobDescription } = req.body;
@@ -911,6 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  */
 
   // Resume file download endpoint
   app.get("/api/candidates/:id/resume", async (req: Request, res: Response) => {
@@ -1003,6 +1007,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // OpenAI-powered resume matching endpoint
+  // DEPRECATED: Replaced with modular route implementation in server/routes/openai.ts
+  /* REMOVED: Now handled by modular routes
   app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
     try {
       const { resumeText, jobDescription } = req.body;
@@ -1071,6 +1077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  */
 
   // Initialize the HTTP server
   const httpServer = createServer(app);
