@@ -4,8 +4,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { useCheckCandidate } from "@/hooks/use-candidates";
-import { analyzeResume, matchResumeToJob } from "@/lib/openai";
-import { sanitizeHtml } from "@/lib/utils";
+import { analyzeResume } from "@/lib/openai";
+// sanitizeHtml is no longer needed since we removed resume analysis
+// import { sanitizeHtml } from "@/lib/utils";
 
 import {
   Form,
@@ -375,138 +376,33 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         throw new Error("File format not supported. Please use PDF, Word documents, or plain text files only.");
       }
 
-      // For DOCX files, we'll take a different approach since they can't be reliably read as text
-      if (fileName.endsWith('.docx')) {
-        // For DOCX files, we'll extract key information from the filename and form data
-        // instead of trying to parse the binary file
-        console.log("Processing DOCX file: using form-based data extraction");
+      // Process file with simplified resume handling
+      const result = await analyzeResume(file);
+      setResumeText(result.text);
+      setResumeData(result.analysis);
 
-        // Extract basic information from form fields instead of parsing file
-        const formBasedData = {
-          clientNames: [],
-          jobTitles: [],
-          relevantDates: [],
-          skills: [],
-          education: [],
-          extractedText: `Resume for candidate submission. File: ${fileName}`
-        };
+      // Create minimal match result with no analysis
+      setMatchResults({
+        score: 0,
+        strengths: [],
+        weaknesses: ["Resume analysis feature has been removed"],
+        suggestions: ["Manual evaluation required"],
+        technicalGaps: [],
+        matchingSkills: [],
+        missingSkills: [],
+        clientExperience: "",
+        confidence: 0
+      });
 
-        setResumeText(formBasedData.extractedText);
-        setResumeData(formBasedData);
-
-        // Extract skills from job description for comparison
-        const extractJobSkills = (description: string) => {
-          // Define common technical skill keywords to look for
-          const skillKeywords = [
-            'java', 'python', 'javascript', 'typescript', 'react', 'angular', 'vue', 'node', 
-            'sql', 'nosql', 'mongodb', 'postgres', 'mysql', 'oracle', 'aws', 'azure', 'gcp', 
-            'docker', 'kubernetes', 'spring', 'hibernate', 'microservices', '.net', 'c#', 'php',
-            'scala', 'kotlin', 'swift', 'ios', 'android', 'react native', 'flutter', 'html', 'css',
-            'sass', 'less', 'redux', 'express', 'rest', 'graphql', 'grpc', 'jenkins', 'gitlab',
-            'github', 'ci/cd', 'devops', 'agile', 'scrum', 'kanban', 'jira', 'confluence'
-          ];
-
-          const lowerDesc = description.toLowerCase();
-          return skillKeywords.filter(skill => lowerDesc.includes(skill));
-        };
-
-        // Use form fields to extract some basic information
-        const formSkills: string[] = [];
-
-        // Add skills from form fields if they exist
-        if (form.getValues('linkedIn')) formSkills.push('linkedin');
-        if (form.getValues('email')) formSkills.push('communication');
-        if (form.getValues('workAuthorization')) formSkills.push('work authorization');
-
-        // Extract job skills
-        const jobSkills = extractJobSkills(jobDescription);
-
-        // Determine matching skills
-        const matchingSkills = formSkills.filter(skill => jobSkills.includes(skill));
-
-        // Determine missing skills
-        const missingSkills = jobSkills.filter(skill => !formSkills.includes(skill));
-
-        // Calculate actual score based on matching percentage
-        let calculatedScore = 0;
-        if (jobSkills.length > 0) {
-          // Base score of 60, plus up to 35 points based on skill match percentage
-          calculatedScore = 60 + Math.floor((matchingSkills.length / jobSkills.length) * 35);
-          // Ensure score is in the reasonable range
-          calculatedScore = Math.min(90, Math.max(65, calculatedScore));
-        } else {
-          calculatedScore = 75; // Default if no skills could be extracted
-        }
-
-        // Set a more accurate match result based on our analysis
-        setMatchResults({
-          score: calculatedScore,
-          strengths: ["Candidate details have been manually entered"],
-          weaknesses: ["Unable to automatically extract all skills from DOCX format", 
-                      "Limited skill matching based on form fields only"],
-          suggestions: ["Consider uploading a plain text version for better analysis",
-                       "Add more specific skills in the candidate form"],
-          // Include detailed analysis fields
-          technicalGaps: ["Detailed technical skill extraction limited with DOCX format"],
-          matchingSkills: matchingSkills.length ? matchingSkills : [],
-          missingSkills: missingSkills.slice(0, 8), // Limit to top 8 missing skills
-          clientExperience: "No client experience data could be extracted from the DOCX format",
-          confidence: 60 // Lower confidence due to limited data
-        });
-
-        // Continue with form submission using manual fields
-        toast({
-          title: "Resume Format Notice",
-          description: "DOCX format detected. The system will use the information you provided in the form fields.",
-        });
-
-        setIsAnalyzing(false);
-        return;
-      }
-
-      // For other file types, process normally
-      try {
-        const result = await analyzeResume(file);
-        setResumeText(result.text);
-        setResumeData(result.analysis);
-
-        // Sanitize job description and resume text before matching
-        const sanitizedJobDescription = sanitizeHtml(jobDescription);
-        const sanitizedResumeText = sanitizeHtml(result.text);
-
-        // Match against job description
-        const matchResult = await matchResumeToJob(sanitizedResumeText, sanitizedJobDescription);
-        setMatchResults(matchResult);
-      } catch (processingError: any) {
-        console.error("Error in resume processing:", processingError);
-
-        // Set fallback data for resume in case of error
-        setResumeData({
-          clientNames: [],
-          jobTitles: [],
-          relevantDates: [],
-          skills: [],
-          education: [],
-          extractedText: file.name // Just store the filename at minimum
-        });
-        setMatchResults({
-          score: 0,
-          strengths: [],
-          weaknesses: ["Unable to process the file format"],
-          suggestions: ["Try uploading a plain text (.txt) version for better results"]
-        });
-
-        // Still show error to user but make it less alarming
-        toast({
-          title: "Resume Analysis Partial",
-          description: "The resume file couldn't be fully analyzed, but you can still submit the candidate using the form information.",
-        });
-      }
-    } catch (error: any) {
-      console.error("Error analyzing resume:", error);
       toast({
-        title: "Resume Analysis Notice",
-        description: error.message || "The resume format couldn't be processed automatically. You can still submit using the form fields.",
+        title: "Resume Uploaded",
+        description: "Resume file has been uploaded successfully.",
+      });
+    } catch (error: any) {
+      console.error("Error processing resume:", error);
+      toast({
+        title: "Resume Upload Notice",
+        description: error.message || "The resume file couldn't be processed. You can still submit using the form fields.",
       });
 
       // Create minimal resume data even when there's an error
@@ -516,7 +412,8 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         relevantDates: [],
         skills: [],
         education: [],
-        extractedText: file.name
+        extractedText: file.name,
+        fileName: file.name
       });
     } finally {
       setIsAnalyzing(false);
