@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { useCheckCandidate } from "@/hooks/use-candidates";
-import { analyzeResume } from "@/lib/openai";
+import { analyzeResume, matchResumeToJob } from "@/lib/openai";
 // sanitizeHtml is no longer needed since we removed resume analysis
 // import { sanitizeHtml } from "@/lib/utils";
 
