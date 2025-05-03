@@ -1,12 +1,13 @@
 import { 
-  users, jobs, jobAssignments, candidates, resumeData, submissions, activities,
+  users, jobs, jobAssignments, candidates, resumeData, submissions, activities, candidateValidations,
   type User, type InsertUser, 
   type Job, type InsertJob, 
   type JobAssignment, type InsertJobAssignment, 
   type Candidate, type InsertCandidate, 
   type ResumeData, type InsertResumeData, 
   type Submission, type InsertSubmission, 
-  type Activity, type InsertActivity
+  type Activity, type InsertActivity,
+  type CandidateValidation, type InsertCandidateValidation
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql, gte, lte } from "drizzle-orm";
