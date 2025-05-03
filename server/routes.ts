@@ -9,10 +9,13 @@ import {
   insertActivitySchema
 } from "@shared/schema";
 import { z } from "zod";
-import { 
-  analyzeResumeText, 
-  matchResumeToJob 
-} from "./document-parser";
+// Import the OpenAI analysis functions
+import {
+  analyzeResumeText as openaiAnalyzeResumeText,
+  matchResumeToJob as openaiMatchResumeToJob
+} from "./openai";
+// Import document parser only for types
+import { ResumeAnalysisResult, MatchScoreResult } from "./document-parser";
 import { syncCandidateToTalentStreamline } from "./talentStreamline";
 import { analyzeResume } from "./resumeAnalyzer";
 import fs from "fs";
