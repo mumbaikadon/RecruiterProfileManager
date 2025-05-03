@@ -36,17 +36,24 @@ export interface IStorage {
   getCandidate(id: number): Promise<Candidate | undefined>;
   getCandidateByIdentity(dobMonth: number, dobDay: number, ssn4: string): Promise<Candidate | undefined>;
   createCandidate(candidate: InsertCandidate): Promise<Candidate>;
+  markCandidateAsUnreal(candidateId: number, reason: string, validatedBy: number): Promise<Candidate>;
+  updateCandidateValidation(candidateId: number, isUnreal: boolean, reason?: string, validatedBy?: number): Promise<Candidate>;
 
   // Resume data operations
   getResumeData(candidateId: number): Promise<ResumeData | undefined>;
   createResumeData(resumeData: InsertResumeData): Promise<ResumeData>;
+  updateResumeData(id: number, resumeData: Partial<ResumeData>): Promise<ResumeData>;
+
+  // Candidate validation operations
+  createCandidateValidation(validation: InsertCandidateValidation): Promise<CandidateValidation>;
+  getCandidateValidations(candidateId: number): Promise<CandidateValidation[]>;
 
   // Submission operations
   getSubmissions(filters?: { jobId?: number, candidateId?: number, recruiterId?: number }): Promise<Submission[]>;
   getSubmission(id: number): Promise<Submission | undefined>;
   getSubmissionByJobAndCandidate(jobId: number, candidateId: number): Promise<Submission | undefined>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
-  updateSubmissionStatus(id: number, status: string): Promise<Submission>;
+  updateSubmissionStatus(id: number, status: string, feedback?: string, lastUpdatedBy?: number): Promise<Submission>;
   
   // Activity operations
   getActivities(limit?: number): Promise<Activity[]>;
@@ -65,6 +72,78 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
+  }
+  
+  async markCandidateAsUnreal(candidateId: number, reason: string, validatedBy: number): Promise<Candidate> {
+    const lastValidated = new Date();
+    const [candidate] = await db
+      .update(candidates)
+      .set({ 
+        isUnreal: true,
+        unrealReason: reason,
+        lastValidated,
+        validatedBy 
+      })
+      .where(eq(candidates.id, candidateId))
+      .returning();
+    
+    return candidate;
+  }
+  
+  async updateCandidateValidation(
+    candidateId: number, 
+    isUnreal: boolean, 
+    reason?: string, 
+    validatedBy?: number
+  ): Promise<Candidate> {
+    const lastValidated = new Date();
+    const updateData: any = { 
+      isUnreal,
+      lastValidated 
+    };
+    
+    if (reason !== undefined) {
+      updateData.unrealReason = reason;
+    }
+    
+    if (validatedBy !== undefined) {
+      updateData.validatedBy = validatedBy;
+    }
+    
+    const [candidate] = await db
+      .update(candidates)
+      .set(updateData)
+      .where(eq(candidates.id, candidateId))
+      .returning();
+    
+    return candidate;
+  }
+  
+  async updateResumeData(id: number, updateData: Partial<ResumeData>): Promise<ResumeData> {
+    const [data] = await db
+      .update(resumeData)
+      .set(updateData)
+      .where(eq(resumeData.id, id))
+      .returning();
+    
+    return data;
+  }
+  
+  async createCandidateValidation(validation: InsertCandidateValidation): Promise<CandidateValidation> {
+    const [record] = await db
+      .insert(candidateValidations)
+      .values(validation)
+      .returning();
+    
+    return record;
+  }
+  
+  async getCandidateValidations(candidateId: number): Promise<CandidateValidation[]> {
+    return db
+      .select()
+      .from(candidateValidations)
+      .where(eq(candidateValidations.candidateId, candidateId))
+      .orderBy(desc(candidateValidations.validatedAt));
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
