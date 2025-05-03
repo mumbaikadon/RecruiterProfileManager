@@ -46,19 +46,61 @@ export async function parseDocument(buffer: Buffer, fileType: string): Promise<s
       try {
         const pdfParse = require('pdf-parse');
         const data = await pdfParse(buffer);
-        return data.text || "";
+        const extractedText = data.text || "";
+        console.log(`PDF parsing successful. Extracted ${extractedText.length} characters.`);
+        return extractedText;
       } catch (error) {
         console.error("Failed to parse PDF:", error);
-        throw new Error("PDF parsing failed");
+        throw new Error("PDF parsing failed. The file may be corrupted or password-protected.");
       }
-    } else if (fileType === 'docx') {
+    } else if (fileType === 'docx' || fileType === 'doc') {
       try {
+        // First try mammoth for DOCX files
         const mammoth = require('mammoth');
-        const result = await mammoth.extractRawText({ buffer });
-        return result.value || "";
+        let extractedText = "";
+        
+        try {
+          const result = await mammoth.extractRawText({ buffer });
+          extractedText = result.value || "";
+          console.log(`DOCX parsing with mammoth successful. Extracted ${extractedText.length} characters.`);
+        } catch (mammothError) {
+          console.error("Mammoth extraction failed, attempting fallback method:", mammothError);
+          
+          // Fallback method for older DOC files or problematic DOCX files
+          const fs = require('fs');
+          const path = require('path');
+          const os = require('os');
+          const { exec } = require('child_process');
+          const util = require('util');
+          const execPromise = util.promisify(exec);
+          
+          // Create a temporary file
+          const tempDir = os.tmpdir();
+          const tempFilePath = path.join(tempDir, `temp-${Date.now()}.docx`);
+          
+          try {
+            // Write the buffer to a temporary file
+            fs.writeFileSync(tempFilePath, buffer);
+            
+            // Use the extract-resume.js script as a fallback
+            const extractScriptPath = path.resolve('./extract-resume.js');
+            const { stdout } = await execPromise(`node ${extractScriptPath} ${tempFilePath}`);
+            
+            extractedText = stdout || "";
+            console.log(`DOCX parsing with fallback successful. Extracted ${extractedText.length} characters.`);
+            
+            // Clean up the temporary file
+            fs.unlinkSync(tempFilePath);
+          } catch (fallbackError) {
+            console.error("Fallback extraction failed:", fallbackError);
+            throw new Error("Document parsing failed with both primary and fallback methods");
+          }
+        }
+        
+        return extractedText;
       } catch (error) {
         console.error("Failed to parse DOCX:", error);
-        throw new Error("DOCX parsing failed");
+        throw new Error("DOCX parsing failed. The file may be corrupted or in an unsupported format.");
       }
     } else {
       throw new Error(`Unsupported file type: ${fileType}`);
