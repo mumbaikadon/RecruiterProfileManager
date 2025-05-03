@@ -99,29 +99,16 @@ export async function analyzeResume(file: File): Promise<{
   try {
     const formData = new FormData();
     formData.append("file", file);
-    
-    console.log("Uploading resume file:", file.name, "Size:", file.size, "Type:", file.type);
 
-    // Use fetch directly for better control over FormData uploads
-    const response = await fetch("/api/openai/analyze-resume", {
-      method: "POST",
-      body: formData,
-      // Don't set Content-Type, browser will set it with the correct boundary
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Resume upload failed:", response.status, errorText);
-      throw new Error(`Resume upload failed: ${response.status} ${errorText}`);
-    }
-    
-    // Parse the JSON response
-    const analysisResult = await response.json() as ResumeAnalysisResult;
-    console.log("Resume analysis successful, data:", analysisResult);
-    
+    const response = await apiRequest<ResumeAnalysisResult>(
+      "POST",
+      "/api/openai/analyze-resume",
+      formData,
+    );
+
     return {
-      analysis: analysisResult,
-      text: analysisResult.extractedText || "",
+      analysis: response,
+      text: response.extractedText,
     };
   } catch (error) {
     console.error("Error processing resume file:", error);
