@@ -65,7 +65,7 @@ const EmploymentHistoryCard: React.FC<EmploymentHistoryCardProps> = ({
                   </Badge>
                 </div>
                 <p className="text-base text-muted-foreground flex items-center gap-1 mt-1">
-                  <BuildingIcon size={16} className="text-muted-foreground opacity-70" />
+                  <Building2Icon size={16} className="text-muted-foreground opacity-70" />
                   {entry.company}
                 </p>
               </div>
