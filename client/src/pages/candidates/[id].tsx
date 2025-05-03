@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar, DollarSign, Mail, MapPin, Phone, User } from "lucide-react";
 import { CircularProgress } from "@/components/ui/progress";
 import WorkExperienceCard from "@/components/candidate/work-experience-card";
+import EmploymentHistoryCard from "@/components/candidate/employment-history-card";
 
 function CandidateDetailPage() {
   const { id } = useParams();
@@ -196,50 +197,14 @@ function CandidateDetailPage() {
         <TabsContent value="resume-data" className="space-y-6">
           {hasResumeData ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Client History</CardTitle>
-                  <CardDescription>Companies the candidate has worked for</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {candidate.resumeData.clientNames && candidate.resumeData.clientNames.length > 0 ? (
-                    <div className="space-y-4">
-                      {candidate.resumeData.clientNames.map((client, idx) => (
-                        <div key={idx} className="border-l-2 border-primary pl-4 py-1">
-                          <p className="font-medium">{client}</p>
-                          {candidate.resumeData.relevantDates && candidate.resumeData.relevantDates[idx] && (
-                            <p className="text-sm text-muted-foreground">
-                              {candidate.resumeData.relevantDates[idx]}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground py-4">No client history detected</p>
-                  )}
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Job Titles</CardTitle>
-                  <CardDescription>Professional roles held by the candidate</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {candidate.resumeData.jobTitles && candidate.resumeData.jobTitles.length > 0 ? (
-                    <div className="space-y-2">
-                      {candidate.resumeData.jobTitles.map((title, idx) => (
-                        <Badge key={idx} variant="secondary" className="mr-2 mb-2">
-                          {title}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground py-4">No job titles detected</p>
-                  )}
-                </CardContent>
-              </Card>
+              {/* Use our new component for employment history */}
+              <div className="md:col-span-2">
+                <EmploymentHistoryCard 
+                  clientNames={candidate.resumeData.clientNames}
+                  jobTitles={candidate.resumeData.jobTitles}
+                  relevantDates={candidate.resumeData.relevantDates}
+                />
+              </div>
               
               <Card className="md:col-span-2">
                 <CardHeader>
