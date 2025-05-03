@@ -819,26 +819,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
     try {
-      // Return a placeholder response since matching is disabled
-      res.json({ 
-        score: 0,
-        strengths: [],
-        weaknesses: ["Resume analysis functionality has been removed"],
-        suggestions: ["Manual evaluation required"],
-        technicalGaps: [],
-        matchingSkills: [],
-        missingSkills: [],
-        clientExperience: "",
-        confidence: 0
-      });
+      const { resumeText, jobDescription } = req.body;
+
+      // Validate inputs
+      if (!resumeText || typeof resumeText !== "string") {
+        return res.status(400).json({ message: "Resume text is required" });
+      }
+
+      if (!jobDescription || typeof jobDescription !== "string") {
+        return res.status(400).json({ message: "Job description is required" });
+      }
+
+      // Import the sanitization utility and resumeAnalyzer
+      const { sanitizeHtml } = await import('./utils');
+      const { analyzeResume } = await import('./resumeAnalyzer');
+      
+      // Sanitize the inputs
+      const sanitizedResumeText = sanitizeHtml(resumeText);
+      const sanitizedJobDescription = sanitizeHtml(jobDescription);
+
+      console.log("Analyzing resume match...");
+      
+      try {
+        // Analyze the resume against the job description
+        const analysisResult = await analyzeResume(sanitizedResumeText, sanitizedJobDescription);
+        
+        // Format the response to match the expected structure
+        const response = {
+          score: analysisResult.overallScore,
+          strengths: analysisResult.relevantExperience,
+          weaknesses: analysisResult.improvements.content,
+          suggestions: analysisResult.improvements.formatting,
+          technicalGaps: analysisResult.skillsGapAnalysis.missingSkills,
+          matchingSkills: analysisResult.skillsGapAnalysis.matchingSkills,
+          missingSkills: analysisResult.skillsGapAnalysis.missingSkills,
+          clientExperience: analysisResult.relevantExperience.join(", "),
+          confidence: analysisResult.confidenceScore,
+          suggestedTraining: analysisResult.skillsGapAnalysis.suggestedTraining
+        };
+        
+        console.log("Resume analysis completed successfully");
+        res.json(response);
+      } catch (analysisError) {
+        console.error("Resume analysis error:", analysisError);
+        // If analysis fails, return a meaningful error but with a successful status code
+        res.status(200).json({ 
+          message: `Resume analysis error: ${analysisError instanceof Error ? analysisError.message : "Unknown error"}`,
+          score: 0,
+          strengths: [],
+          weaknesses: ["Error during resume analysis"],
+          suggestions: ["Try with a different resume or job description"],
+          technicalGaps: [],
+          matchingSkills: [],
+          missingSkills: [],
+          clientExperience: "",
+          confidence: 0
+        });
+      }
     } catch (error) {
       console.error("Resume matching error:", error);
-      res.status(200).json({ 
-        message: "Resume analysis functionality has been removed",
+      res.status(500).json({ 
+        message: "Internal server error",
         score: 0,
         strengths: [],
-        weaknesses: ["Resume analysis is disabled"],
-        suggestions: ["Manual evaluation required"],
+        weaknesses: ["Server encountered an error"],
+        suggestions: ["Please try again later"],
         technicalGaps: [],
         matchingSkills: [],
         missingSkills: [],
