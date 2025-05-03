@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar, DollarSign, Mail, MapPin, Phone, User } from "lucide-react";
 import { CircularProgress } from "@/components/ui/progress";
 import WorkExperienceCard from "@/components/candidate/work-experience-card";
-import EmploymentHistoryCard from "@/components/candidate/employment-history-card";
+import { EmploymentHistoryCard } from "@/components/candidate/employment-history-card";
 
 function CandidateDetailPage() {
   const { id } = useParams();
@@ -204,9 +204,9 @@ function CandidateDetailPage() {
               {/* Use our new component for employment history */}
               <div className="md:col-span-2">
                 <EmploymentHistoryCard 
-                  clientNames={candidate.resumeData.clientNames}
-                  jobTitles={candidate.resumeData.jobTitles}
-                  relevantDates={candidate.resumeData.relevantDates}
+                  clientNames={candidate.resumeData.clientNames || []}
+                  jobTitles={candidate.resumeData.jobTitles || []}
+                  relevantDates={candidate.resumeData.relevantDates || []}
                 />
               </div>
               

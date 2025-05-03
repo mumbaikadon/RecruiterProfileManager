@@ -11,6 +11,11 @@ import {
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
 import fs from "fs";
+import multer from "multer";
+
+// Configure multer for file uploads 
+const multerStorage = multer.memoryStorage();
+const fileUpload = multer({ storage: multerStorage });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Jobs routes
