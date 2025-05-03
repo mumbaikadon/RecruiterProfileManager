@@ -853,12 +853,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-900">Match Score</p>
                       <p className="text-sm text-gray-500">Based on job description alignment</p>
-                      {matchResults.score === 0 && (
-                        <p className="text-xs text-red-500 mt-1">
-                          Score of 0% usually indicates a processing issue - please try again with a different file format
-                        </p>
-                      )}
-                      {matchResults.score > 0 && matchResults.score < 30 && (
+                      {matchResults.score < 30 && (
                         <p className="text-xs text-red-500 mt-1">
                           Low match score indicates skills or experience may not align well with the position
                         </p>
@@ -883,24 +878,6 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                       <li key={index} className="mb-1">{weakness}</li>
                     ))}
                   </ul>
-                </div>
-                
-                {/* Debug Information - will help diagnose any issues */}
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <details className="text-xs text-gray-500">
-                    <summary className="cursor-pointer mb-2 font-medium">Debug Info (click to expand)</summary>
-                    <div className="p-2 bg-gray-50 rounded overflow-auto max-h-64">
-                      <p><strong>Match Score:</strong> {matchResults.score}</p>
-                      <p><strong>Confidence:</strong> {matchResults.confidence || 'N/A'}</p>
-                      <p><strong>clientNames:</strong> {JSON.stringify(matchResults.clientNames || [])}</p>
-                      <p><strong>jobTitles:</strong> {JSON.stringify(matchResults.jobTitles || [])}</p>
-                      <p><strong>relevantDates:</strong> {JSON.stringify(matchResults.relevantDates || [])}</p>
-                      <p><strong>matchingSkills:</strong> {JSON.stringify(matchResults.matchingSkills || [])}</p>
-                      <p><strong>missingSkills:</strong> {JSON.stringify(matchResults.missingSkills || [])}</p>
-                      <p><strong>strengths length:</strong> {matchResults.strengths?.length || 0}</p>
-                      <p><strong>weaknesses length:</strong> {matchResults.weaknesses?.length || 0}</p>
-                    </div>
-                  </details>
                 </div>
 
                 {resumeData && (
