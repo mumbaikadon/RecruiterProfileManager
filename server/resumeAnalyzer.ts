@@ -83,7 +83,9 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
     console.log("OpenAI analysis completed");
     
     // Parse the response and return the structured analysis
-    const analysisResult = JSON.parse(response.choices[0].message.content) as AnalysisResult;
+    // Parse the JSON response content (ensuring it's not null)
+    const responseContent = response.choices[0].message.content || '{}';
+    const analysisResult = JSON.parse(responseContent) as AnalysisResult;
     
     // Validate and sanitize the response
     const sanitizedResult: AnalysisResult = {

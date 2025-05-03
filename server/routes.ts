@@ -14,6 +14,7 @@ import {
   matchResumeToJob 
 } from "./document-parser";
 import { syncCandidateToTalentStreamline } from "./talentStreamline";
+import { analyzeResume } from "./resumeAnalyzer";
 import fs from "fs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -979,6 +980,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ 
         error: "Failed to download resume file",
         details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // OpenAI-powered resume matching endpoint
+  app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
+    try {
+      const { resumeText, jobDescription } = req.body;
+      
+      // Validate input
+      if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 50) {
+        return res.status(400).json({ 
+          error: "Invalid resume text. Please provide a valid resume with sufficient content." 
+        });
+      }
+      
+      if (!jobDescription || typeof jobDescription !== 'string' || jobDescription.trim().length < 50) {
+        return res.status(400).json({ 
+          error: "Invalid job description. Please provide a valid job description with sufficient content." 
+        });
+      }
+      
+      // Use the advanced OpenAI-powered analyzer
+      console.log("Analyzing resume against job description with OpenAI...");
+      const analysisResult = await analyzeResume(resumeText, jobDescription);
+      
+      // Convert the analysis result to the expected format
+      const matchResult = {
+        score: analysisResult.overallScore,
+        strengths: analysisResult.relevantExperience.slice(0, 5), // Top relevant experiences as strengths
+        weaknesses: analysisResult.skillsGapAnalysis.missingSkills,
+        suggestions: analysisResult.skillsGapAnalysis.suggestedTraining,
+        technicalGaps: analysisResult.skillsGapAnalysis.missingSkills.filter(skill => 
+          !skill.toLowerCase().includes("soft") && 
+          !skill.toLowerCase().includes("communication") &&
+          !skill.toLowerCase().includes("team")
+        ),
+        matchingSkills: analysisResult.skillsGapAnalysis.matchingSkills,
+        missingSkills: analysisResult.skillsGapAnalysis.missingSkills,
+        clientExperience: "", // This is not provided by our analysis
+        confidence: analysisResult.confidenceScore
+      };
+      
+      console.log("Resume analysis complete with score:", matchResult.score);
+      res.json(matchResult);
+    } catch (error) {
+      console.error("Error during resume matching:", error);
+      res.status(500).json({ 
+        error: "Error analyzing resume", 
+        message: error instanceof Error ? error.message : String(error)
       });
     }
   });
