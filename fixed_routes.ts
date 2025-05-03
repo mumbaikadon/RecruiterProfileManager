@@ -1182,7 +1182,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("- clientNames:", JSON.stringify(matchResult.clientNames || []));
       console.log("- jobTitles:", JSON.stringify(matchResult.jobTitles || []));
       console.log("- relevantDates:", JSON.stringify(matchResult.relevantDates || []));
-
+      
+      // If we have a valid candidateId in the request, save the employment history to the database
+      if (req.body.candidateId) {
+        try {
+          const candidateId = parseInt(req.body.candidateId);
+          if (!isNaN(candidateId)) {
+            // First check if this candidate exists
+            const candidate = await storage.getCandidate(candidateId);
+            
+            if (candidate) {
+              console.log(`Saving extracted employment history data for candidate ID ${candidateId}`);
+              
+              // Prepare resume data payload with employment history
+              const resumeDataPayload = {
+                candidateId,
+                clientNames: matchResult.clientNames || [],
+                jobTitles: matchResult.jobTitles || [],
+                relevantDates: matchResult.relevantDates || [],
+                // Maintain any existing skills or other resume data fields
+                skills: matchResult.skillsGapAnalysis?.matchingSkills || [],
+              };
+              
+              // Save the resume data to the database
+              const existingResumeData = await storage.getResumeData(candidateId);
+              
+              if (existingResumeData) {
+                // Update existing resume data
+                console.log(`Updating existing resume data for candidate ID ${candidateId}`);
+                await storage.updateResumeData(candidateId, resumeDataPayload);
+              } else {
+                // Create new resume data record
+                console.log(`Creating new resume data for candidate ID ${candidateId}`);
+                await storage.createResumeData(resumeDataPayload);
+              }
+              
+              console.log(`Successfully saved employment history data for candidate ID ${candidateId}`);
+            } else {
+              console.warn(`Cannot save resume data: Candidate ID ${candidateId} not found`);
+            }
+          } else {
+            console.warn(`Cannot save resume data: Invalid candidate ID format ${req.body.candidateId}`);
+          }
+        } catch (dbError) {
+          console.error("Error saving employment history to database:", dbError);
+          // Continue with the API response even if database update fails
+        }
+      }
+      
       // Ensure we return a properly structured response even if the matching service fails
       const response = {
         score: typeof matchResult.score === "number" ? matchResult.score : 0,
