@@ -120,61 +120,30 @@ export async function matchResumeToJob(
 }
 
 /**
- * Process a resume file and extract text for analysis using the server's document parser
+ * Process a resume file and extract text for analysis
  */
+import { extractDocumentText } from './documentUtils';
+
 export async function analyzeResume(file: File): Promise<{
   analysis: ResumeAnalysisResult;
   text: string;
 }> {
   try {
-    // Create a FormData object for file upload
-    const formData = new FormData();
-    formData.append("file", file);
+    console.log(`Processing resume file: ${file.name} (${Math.round(file.size / 1024)} KB)`);
     
-    console.log(`Uploading resume file: ${file.name} (${Math.round(file.size / 1024)} KB) for parsing`);
-
-    // Use the server's document parsing API to extract text
-    console.log("Sending document to server for parsing...");
-    const response = await fetch('/api/parse-document', {
-      method: 'POST',
-      body: formData,
-    });
-
-    console.log("Document parsing response status:", response.status);
+    // Use our document utils to extract text - this will handle different file types
+    // and fall back to server extraction when needed
+    const extractedText = await extractDocumentText(file);
     
-    // Try to parse response even if the status indicates an error
-    let parseResult;
-    try {
-      const responseText = await response.text();
-      console.log("Response text preview:", responseText.substring(0, 100));
-      
-      try {
-        parseResult = JSON.parse(responseText);
-      } catch (jsonError) {
-        console.error("Failed to parse response as JSON:", jsonError);
-        throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}...`);
-      }
-    } catch (textError) {
-      console.error("Failed to read response text:", textError);
-      throw new Error("Failed to read server response");
+    console.log(`Successfully extracted ${extractedText.length} characters from ${file.name}`);
+    console.log("First 200 characters of resume:", extractedText.substring(0, 200));
+    
+    if (extractedText.length < 100) {
+      console.warn("Extracted text is very short, parsing may be incomplete");
     }
-    
-    if (!response.ok) {
-      throw new Error(parseResult?.message || `Server error: ${response.status}`);
-    }
-    
-    if (!parseResult?.success || !parseResult?.text) {
-      console.error("Document parsing failed:", parseResult);
-      throw new Error("Document parsing failed on server");
-    }
-    
-    // Log the extraction success
-    console.log(`Successfully extracted ${parseResult.text.length} characters from ${file.name}`);
-    
-    // Use the extracted text from the server
-    const extractedText = parseResult.text;
     
     // Return the extracted text along with basic analysis structure
+    // The actual analysis of the resume content will be done when matching against job description
     return {
       analysis: {
         clientNames: [],
