@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +10,12 @@ interface ResumeAnalyzerProps {
   onAnalysisComplete: (resumeData: any, matchResults: any) => void;
 }
 
+/**
+ * Simplified Resume Uploader Component
+ * 
+ * Analysis features have been removed, this is now just a basic file uploader
+ * that passes minimal metadata to the parent component
+ */
 const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({ 
   jobDescription, 
   onAnalysisComplete 
@@ -35,20 +40,21 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
       return;
     }
 
-    // Clear previous resume data in parent
-    onAnalysisComplete(null, null);
     setIsUploading(true);
 
     try {
+      // Process the resume file
       const result = await analyzeResume(file);
-
+      
+      // Job description must be provided
       if (!jobDescription || jobDescription.trim().length < 10) {
         toast({
           title: "Missing Job Description",
           description: "Job description is required for resume matching.",
           variant: "destructive",
         });
-
+        
+        // Provide empty match result if no job description
         const emptyMatchResult = {
           score: 0,
           strengths: [],
@@ -58,25 +64,33 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
           matchingSkills: [],
           missingSkills: [],
           clientExperience: "",
-          confidence: 0,
-          clientNames: [],
-          jobTitles: [],
-          relevantDates: []
+          confidence: 0
         };
-
+        
         onAnalysisComplete(result.analysis, emptyMatchResult);
         return;
       }
-
+      
+      // Match resume against job description
+      console.log("Matching resume against job description...");
+      console.log("Resume text:", result.text.substring(0, 100) + "...");
+      console.log("Job description:", jobDescription.substring(0, 100) + "...");
+      
       const matchResult = await matchResumeToJob(result.text, jobDescription);
-
+      
+      console.log("Match result:", matchResult);
+      
+      // Update the analysis object with the structured employment history from the match result
       const updatedAnalysis = {
         ...result.analysis,
-        clientNames: matchResult.clientNames ?? [],
-        jobTitles: matchResult.jobTitles ?? [],
-        relevantDates: matchResult.relevantDates ?? []
+        clientNames: matchResult.clientNames || [],
+        jobTitles: matchResult.jobTitles || [],
+        relevantDates: matchResult.relevantDates || []
       };
+      
+      console.log("Complete resume analysis with employment history:", updatedAnalysis);
 
+      // Pass updated results to parent component
       onAnalysisComplete(updatedAnalysis, matchResult);
 
       toast({
@@ -90,33 +104,34 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
         description: error instanceof Error ? error.message : "Failed to analyze the resume. Please try again.",
         variant: "destructive",
       });
-
-      const fallbackResult = {
+      
+      // Provide error match result
+      const errorMatchResult = {
         score: 0,
         strengths: [],
-        weaknesses: ["Analysis failed"],
+        weaknesses: [error instanceof Error ? error.message : "Analysis failed"],
         suggestions: ["Try with a different resume or job description"],
         technicalGaps: [],
         matchingSkills: [],
         missingSkills: [],
         clientExperience: "",
-        confidence: 0,
-        clientNames: [],
-        jobTitles: [],
-        relevantDates: []
+        confidence: 0
       };
-
-      const fallbackResume = {
-        clientNames: [],
-        jobTitles: [],
-        relevantDates: [],
-        skills: [],
-        education: [],
-        extractedText: file.name,
-        fileName: file.name
-      };
-
-      onAnalysisComplete(fallbackResume, fallbackResult);
+      
+      // If resume was successfully processed but matching failed, still pass the resume data
+      if (file) {
+        const basicInfo = {
+          clientNames: [],
+          jobTitles: [],
+          relevantDates: [],
+          skills: [],
+          education: [],
+          extractedText: `Resume file: ${file.name}`,
+          fileName: file.name
+        };
+        
+        onAnalysisComplete(basicInfo, errorMatchResult);
+      }
     } finally {
       setIsUploading(false);
     }
@@ -159,6 +174,42 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
           </div>
         </CardContent>
       </Card>
+      
+      {file && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Resume File</CardTitle>
+            <CardDescription>
+              Basic information about the uploaded file
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm font-medium">File Name:</p>
+                <p className="text-sm text-gray-600">{file.name}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">File Size:</p>
+                <p className="text-sm text-gray-600">{Math.round(file.size / 1024)} KB</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">File Type:</p>
+                <p className="text-sm text-gray-600">
+                  {file.name.toLowerCase().endsWith('.pdf') ? 'PDF Document' : 
+                   file.name.toLowerCase().endsWith('.docx') ? 'Word Document (DOCX)' :
+                   file.name.toLowerCase().endsWith('.doc') ? 'Word Document (DOC)' : 
+                   'Document'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Last Modified:</p>
+                <p className="text-sm text-gray-600">{new Date(file.lastModified).toLocaleString()}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
