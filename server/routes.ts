@@ -989,14 +989,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { resumeText, jobDescription } = req.body;
       
+      console.log("==== RESUME ANALYSIS REQUEST RECEIVED ====");
+      console.log("Resume text length:", resumeText?.length || 0);
+      console.log("Job description length:", jobDescription?.length || 0);
+      
       // Validate input
       if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 50) {
+        console.log("ERROR: Invalid resume text provided");
         return res.status(400).json({ 
           error: "Invalid resume text. Please provide a valid resume with sufficient content." 
         });
       }
       
       if (!jobDescription || typeof jobDescription !== 'string' || jobDescription.trim().length < 50) {
+        console.log("ERROR: Invalid job description provided");
         return res.status(400).json({ 
           error: "Invalid job description. Please provide a valid job description with sufficient content." 
         });
@@ -1004,7 +1010,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Use the advanced OpenAI-powered analyzer
       console.log("Analyzing resume against job description with OpenAI...");
+      console.log("Resume text preview:", resumeText.substring(0, 100) + "...");
+      console.log("Job description preview:", jobDescription.substring(0, 100) + "...");
+      
       const analysisResult = await analyzeResume(resumeText, jobDescription);
+      console.log("RECEIVED OpenAI ANALYSIS RESULT:", JSON.stringify(analysisResult, null, 2));
       
       // Convert the analysis result to the expected format
       const matchResult = {
@@ -1024,9 +1034,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       console.log("Resume analysis complete with score:", matchResult.score);
+      console.log("Match result:", JSON.stringify(matchResult, null, 2));
       res.json(matchResult);
     } catch (error) {
       console.error("Error during resume matching:", error);
+      console.error("Error details:", error instanceof Error ? error.stack : String(error));
       res.status(500).json({ 
         error: "Error analyzing resume", 
         message: error instanceof Error ? error.message : String(error)
