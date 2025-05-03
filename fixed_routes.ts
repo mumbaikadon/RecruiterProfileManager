@@ -930,106 +930,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // New endpoint for document parsing that extracts text from uploaded files
-  app.post("/api/parse-document", async (req: Request, res: Response) => {
+  // Fixed document parsing endpoint using reusable multer setup
+  const multerStorage = multer.memoryStorage();
+  const fileUpload = multer({ storage: multerStorage });
+  
+  app.post("/api/parse-document", fileUpload.single('file'), async (req: Request, res: Response) => {
+    console.log("Document parsing request received");
+    
     try {
-      const multer = require('multer');
-      const upload = multer({ storage: multer.memoryStorage() });
+      if (!req.file) {
+        console.error("No file in the request");
+        return res.status(400).json({ 
+          success: false, 
+          error: "No file uploaded",
+          message: "Please attach a file with the key 'file'"
+        });
+      }
+
+      console.log(`File received: ${req.file.originalname}, ${Math.round(req.file.size / 1024)}KB`);
       
-      // Use multer middleware to handle file upload
-      const uploadMiddleware = upload.single('file');
+      const fileBuffer = req.file.buffer;
+      const fileName = req.file.originalname.toLowerCase();
+      const fileType = fileName.endsWith('.pdf') ? 'pdf' : 
+                     fileName.endsWith('.docx') ? 'docx' : 
+                     fileName.endsWith('.txt') ? 'txt' : 'unknown';
       
-      uploadMiddleware(req, res, async (err: any) => {
-        if (err) {
-          return res.status(400).json({ error: "File upload error", message: err.message });
-        }
-        
-        if (!req.file) {
-          return res.status(400).json({ error: "No file uploaded" });
-        }
-        
-        const fileBuffer = req.file.buffer;
-        const fileType = req.file.originalname.toLowerCase().endsWith('.pdf') ? 'pdf' : 
-                        req.file.originalname.toLowerCase().endsWith('.docx') ? 'docx' : 'txt';
-        
+      console.log(`Processing ${fileType.toUpperCase()} document: ${req.file.originalname} (${fileBuffer.length} bytes)`);
+      
+      // Extract text based on file type
+      let extractedText = '';
+      
+      if (fileType === 'docx') {
+        // For DOCX files, use mammoth
         try {
-          console.log(`Processing ${fileType} document: ${req.file.originalname} (${fileBuffer.length} bytes)`);
-          
-          // For docx files, use mammoth directly here for better error handling
-          if (fileType === 'docx') {
-            try {
-              const mammoth = require('mammoth');
-              console.log("Using mammoth to extract DOCX content");
-              
-              const result = await mammoth.extractRawText({ buffer: fileBuffer });
-              const extractedText = result.value || "";
-              
-              console.log(`Successfully extracted ${extractedText.length} characters from DOCX`);
-              console.log("First 100 characters:", extractedText.substring(0, 100));
-              
-              // Return the extracted text
-              return res.json({ 
-                success: true, 
-                text: extractedText,
-                fileType,
-                fileName: req.file.originalname
-              });
-            } catch (docxError) {
-              console.error("DOCX parsing error:", docxError);
-              return res.status(500).json({
-                success: false,
-                error: "Failed to parse DOCX document",
-                message: docxError instanceof Error ? docxError.message : "Unknown error"
-              });
-            }
-          }
-          
-          // For PDF files, use pdf-parse
-          if (fileType === 'pdf') {
-            try {
-              const pdfParse = require('pdf-parse');
-              console.log("Using pdf-parse to extract PDF content");
-              
-              const data = await pdfParse(fileBuffer);
-              const extractedText = data.text || "";
-              
-              console.log(`Successfully extracted ${extractedText.length} characters from PDF`);
-              console.log("First 100 characters:", extractedText.substring(0, 100));
-              
-              // Return the extracted text
-              return res.json({ 
-                success: true, 
-                text: extractedText,
-                fileType,
-                fileName: req.file.originalname
-              });
-            } catch (pdfError) {
-              console.error("PDF parsing error:", pdfError);
-              return res.status(500).json({
-                success: false,
-                error: "Failed to parse PDF document",
-                message: pdfError instanceof Error ? pdfError.message : "Unknown error"
-              });
-            }
-          }
-          
-          // For unsupported file types
-          return res.status(400).json({
+          console.log("Using mammoth for DOCX extraction");
+          const mammoth = require('mammoth');
+          const result = await mammoth.extractRawText({ buffer: fileBuffer });
+          extractedText = result.value || "";
+        } catch (docxError) {
+          console.error("DOCX extraction error:", docxError);
+          return res.status(500).json({
             success: false,
-            error: "Unsupported file type",
-            message: `File type '${fileType}' is not supported. Please upload a PDF or DOCX file.`
-          });
-        } catch (parseError) {
-          console.error("Document parsing error:", parseError);
-          res.status(500).json({ 
-            error: "Document parsing failed", 
-            message: parseError instanceof Error ? parseError.message : "Unknown error" 
+            error: "DOCX parsing failed",
+            message: docxError instanceof Error ? docxError.message : "Unknown error"
           });
         }
+      } 
+      else if (fileType === 'pdf') {
+        // For PDF files, use pdf-parse
+        try {
+          console.log("Using pdf-parse for PDF extraction");
+          const pdfParse = require('pdf-parse');
+          const data = await pdfParse(fileBuffer);
+          extractedText = data.text || "";
+        } catch (pdfError) {
+          console.error("PDF extraction error:", pdfError);
+          return res.status(500).json({
+            success: false,
+            error: "PDF parsing failed",
+            message: pdfError instanceof Error ? pdfError.message : "Unknown error"
+          });
+        }
+      }
+      else if (fileType === 'txt') {
+        // For TXT files, just convert buffer to string
+        extractedText = fileBuffer.toString('utf8');
+      }
+      else {
+        // Unsupported file type
+        console.error(`Unsupported file type: ${fileType}`);
+        return res.status(400).json({
+          success: false,
+          error: "Unsupported file type",
+          message: `File type '${fileType}' is not supported. Please upload a PDF, DOCX, or TXT file.`
+        });
+      }
+      
+      // Check if extraction was successful
+      if (!extractedText || extractedText.length === 0) {
+        console.error("Extraction resulted in empty text");
+        return res.status(500).json({
+          success: false,
+          error: "Empty content", 
+          message: "Extracted text is empty. The file may be corrupted or password-protected."
+        });
+      }
+      
+      // Log the extraction results
+      console.log(`Successfully extracted ${extractedText.length} characters from ${fileType.toUpperCase()}`);
+      console.log("Text preview:", extractedText.substring(0, 200) + "...");
+      
+      // Return success response
+      return res.json({
+        success: true,
+        text: extractedText,
+        fileType,
+        fileName: req.file.originalname,
+        textLength: extractedText.length
       });
+      
     } catch (error) {
+      // Handle any unexpected errors
       console.error("Document parsing error:", error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
+        success: false,
         error: "Document parsing failed", 
         message: error instanceof Error ? error.message : "Unknown error" 
       });
