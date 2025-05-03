@@ -44,24 +44,29 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
     
     // Use OpenAI to analyze the resume against the job description
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    // Enhanced debugging for resume text
     console.log("Sending OpenAI request with resume length:", resumeText.length, "and job description length:", jobDescription.length);
+    
+    // Log a preview of the resume text to debug content issues
+    const resumePreview = resumeText.substring(0, 300) + "...";
+    console.log("Resume text preview for analysis:", resumePreview);
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
           content: 
-            "You are an expert resume analyzer that compares resumes to job descriptions and provides detailed feedback. " +
-            "Analyze the resume against the job description and provide a comprehensive assessment. " +
-            "Focus on identifying matching skills, missing skills, and areas for improvement. " +
-            "Be constructive and thorough in your analysis. " +
-            "Additionally, extract structured employment history data including client names/companies, job titles, and dates. " +
-            "Respond with a JSON structure containing all analysis results."
+            "You are an expert resume analyzer specializing in extracting accurate employment history from resumes. " +
+            "Your primary task is to extract REAL employment data from the resume - never generate fake or generic data. " +
+            "If you cannot find clear employment history, respond with empty arrays rather than making up placeholder data. " +
+            "Extract exact company names, job titles, and employment dates directly from the resume text. " +
+            "Be precise, accurate, and only use information actually present in the resume."
         },
         {
           role: "user",
           content: 
-            `Please analyze this resume for compatibility with the following job description. 
+            `I need you to analyze this resume for compatibility with the following job description.
             
             Resume:
             ${resumeText}
@@ -69,24 +74,27 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
             Job Description:
             ${jobDescription}
             
-            1. First, extract the following structured data from the resume:
-            - clientNames: Array of company names/employers the candidate has worked for, ordered from most recent to oldest
-            - jobTitles: Array of job titles held by the candidate, ordered from most recent to oldest
-            - relevantDates: Array of employment date ranges (e.g., "April 2023 - Present"), ordered from most recent to oldest
+            IMPORTANT - EMPLOYMENT HISTORY EXTRACTION INSTRUCTIONS:
+            1. Carefully read the entire resume text
+            2. Search for sections labeled "Experience", "Work Experience", "Professional Experience", "Employment History", etc.
+            3. Extract the following from these sections EXACTLY as they appear in the resume - do not generate or fabricate data:
+               - clientNames: Array of company/employer names the candidate worked for (most recent first)
+               - jobTitles: Array of job titles/positions held by the candidate (most recent first)
+               - relevantDates: Array of employment periods (most recent first)
             
             2. Then analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
             
             Return your analysis in a structured JSON format with the following fields:
-            - clientNames (array of strings: company/employer names from most recent to oldest)
-            - jobTitles (array of strings: job title positions from most recent to oldest)
-            - relevantDates (array of strings: employment periods from most recent to oldest)
+            - clientNames (array of strings: extract EXACT company names from the resume)
+            - jobTitles (array of strings: extract EXACT job titles from the resume)
+            - relevantDates (array of strings: extract EXACT date ranges from the resume)
             - skillsGapAnalysis: { missingSkills (array), matchingSkills (array), suggestedTraining (array) }
             - relevantExperience (array of relevant experiences from the resume)
             - improvements: { content (array), formatting (array), language (array) }
             - overallScore (number 0-100)
             - confidenceScore (number 0-1)
             
-            Focus on technical and soft skills, relevant experience, and overall fit. Ensure the clientNames, jobTitles, and relevantDates arrays have the same length and corresponding indexes (e.g., clientNames[0], jobTitles[0], and relevantDates[0] should all refer to the same job).`
+            NOTICE: It is critical that you extract only actual employment data from the resume. NEVER invent company names, job titles, or dates. If you cannot find employment history, return empty arrays.`
         }
       ],
       response_format: { type: "json_object" },
