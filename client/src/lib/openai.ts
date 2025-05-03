@@ -58,13 +58,11 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
  * Match a resume to a job description using AI analysis
  * @param resumeText The extracted resume text
  * @param jobDescription The job description to match against
- * @param candidateId Optional candidate ID to update resume data
  * @returns Match result with score and insights
  */
 export async function matchResumeToJob(
   resumeText: string, 
-  jobDescription: string,
-  candidateId?: number
+  jobDescription: string
 ): Promise<MatchScoreResult> {
   try {
     // Basic validation
@@ -82,8 +80,7 @@ export async function matchResumeToJob(
       '/api/openai/match-resume',
       {
         resumeText,
-        jobDescription,
-        candidateId: candidateId || undefined // Only include if provided
+        jobDescription
       }
     );
     
