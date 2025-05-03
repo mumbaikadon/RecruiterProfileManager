@@ -1,4 +1,4 @@
-import { apiRequest } from "./queryClient";
+import { apiRequest, apiRequestWithJson } from "./queryClient";
 
 /**
  * Simple interface for resume data - analysis features removed
@@ -65,16 +65,14 @@ export async function matchResumeToJob(
     }
     
     // Call the server-side endpoint to match the resume
-    const response = await apiRequest<MatchScoreResult>('/api/openai/match-resume', {
-      method: 'POST',
-      body: JSON.stringify({
+    const response = await apiRequestWithJson<MatchScoreResult>(
+      'POST', 
+      '/api/openai/match-resume',
+      {
         resumeText,
         jobDescription
-      }),
-      headers: {
-        'Content-Type': 'application/json'
       }
-    });
+    );
     
     return response;
   } catch (error) {
@@ -96,34 +94,76 @@ export async function matchResumeToJob(
 }
 
 /**
- * Process a resume file - simplified version with analysis features removed
+ * Process a resume file and extract text for analysis
  */
 export async function analyzeResume(file: File): Promise<{
   analysis: ResumeAnalysisResult;
   text: string;
 }> {
-  return new Promise((resolve) => {
+  try {
+    // Create a FormData object
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    // Extract basic file information
     const fileName = file.name.toLowerCase();
     const fileSize = Math.round(file.size / 1024);
     const lastModified = new Date(file.lastModified).toLocaleString();
     
-    // Basic file information
+    // Basic file information as fallback
     const basicFileInfo = `Resume file: ${file.name} (${fileSize} KB)
 Type: ${fileName.endsWith('.pdf') ? 'PDF Document' : fileName.endsWith('.docx') ? 'Word Document' : 'Text Document'}
 Last Modified: ${lastModified}`;
 
-    // Return minimal data structure with file information
-    resolve({
+    // Read the file to extract text
+    let extractedText = '';
+    
+    // Use FileReader to read the file content for text extraction
+    // Note: This is a basic extraction and won't work well for PDFs or complex DOCXs
+    // The server handles proper extraction
+    if (fileName.endsWith('.txt')) {
+      // For text files, read directly
+      extractedText = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string || '');
+        reader.readAsText(file);
+      });
+    } else {
+      // For PDFs and Word docs, we'll use the file info as the text and
+      // the server will handle proper extraction
+      extractedText = basicFileInfo;
+    }
+    
+    // The server would normally extract and analyze the resume
+    // We'll return basic data here and rely on the matchResumeToJob function
+    // to do the actual analysis against a job description
+    return {
       analysis: {
         clientNames: [],
         jobTitles: [],
         relevantDates: [],
         skills: [],
         education: [],
-        extractedText: basicFileInfo,
+        extractedText: extractedText,
         fileName: file.name
       },
-      text: basicFileInfo
-    });
-  });
+      text: extractedText
+    };
+  } catch (error) {
+    console.error("Error processing resume file:", error);
+    
+    // Return minimal data structure if there's an error
+    return {
+      analysis: {
+        clientNames: [],
+        jobTitles: [],
+        relevantDates: [],
+        skills: [],
+        education: [],
+        extractedText: `Error analyzing resume: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        fileName: file.name
+      },
+      text: `Error analyzing resume: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
+  }
 }
