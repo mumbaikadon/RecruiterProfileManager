@@ -868,6 +868,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         console.log("Resume analysis completed successfully");
+        console.log("Final response including employment history data:", 
+                   JSON.stringify({
+                     clientNames: response.clientNames, 
+                     jobTitles: response.jobTitles, 
+                     relevantDates: response.relevantDates
+                   }, null, 2));
         res.json(response);
       } catch (analysisError) {
         console.error("Resume analysis error:", analysisError);
@@ -1026,6 +1032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Convert the analysis result to the expected format
       const matchResult = {
+        // Match metrics
         score: analysisResult.overallScore,
         strengths: analysisResult.relevantExperience.slice(0, 5), // Top relevant experiences as strengths
         weaknesses: analysisResult.skillsGapAnalysis.missingSkills,
@@ -1037,6 +1044,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ),
         matchingSkills: analysisResult.skillsGapAnalysis.matchingSkills,
         missingSkills: analysisResult.skillsGapAnalysis.missingSkills,
+        
+        // Employment history data
+        clientNames: Array.isArray(analysisResult.clientNames) ? analysisResult.clientNames : [],
+        jobTitles: Array.isArray(analysisResult.jobTitles) ? analysisResult.jobTitles : [],
+        relevantDates: Array.isArray(analysisResult.relevantDates) ? analysisResult.relevantDates : [],
+        
+        // Legacy fields
         clientExperience: "", // This is not provided by our analysis
         confidence: analysisResult.confidenceScore
       };
