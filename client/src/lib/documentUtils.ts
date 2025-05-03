@@ -140,21 +140,54 @@ async function callServerExtraction(file: File): Promise<string> {
     formData.append("file", file);
     
     // Call the server API
+    console.log("Sending file to server for extraction...");
     const response = await fetch('/api/parse-document', {
       method: 'POST',
       body: formData,
     });
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Server extraction failed: ${errorText}`);
+    // Get the response text first, regardless of status code
+    let responseText;
+    try {
+      responseText = await response.text();
+      console.log("Response received, length:", responseText.length);
+      
+      // Check if it looks like JSON (starts with { or [)
+      if (responseText.trim()[0] !== '{' && responseText.trim()[0] !== '[') {
+        console.error("Response is not JSON:", responseText.substring(0, 100));
+        throw new Error("Server returned non-JSON response");
+      }
+    } catch (error) {
+      console.error("Error reading response text:", error);
+      throw new Error("Failed to read server response");
     }
     
-    // Extract text from the server's response
-    const result = await response.json();
+    // Try to parse the response as JSON
+    let result;
+    try {
+      result = JSON.parse(responseText);
+      console.log("Response parsed successfully:", result);
+    } catch (error) {
+      console.error("Error parsing JSON:", error);
+      console.error("Raw response:", responseText.substring(0, 200));
+      throw new Error("Server returned invalid JSON");
+    }
     
+    // Check response status
+    if (!response.ok) {
+      console.error("Server returned error status:", response.status);
+      throw new Error(result.message || result.error || `Server error: ${response.status}`);
+    }
+    
+    // Validate the parsed result
     if (!result.success || !result.text) {
-      throw new Error("Document parsing failed on server");
+      console.error("Server response missing success or text field:", result);
+      throw new Error("Document parsing failed on server: missing required fields");
+    }
+    
+    // Verify text content
+    if (result.text.length < 100) {
+      console.warn("Extracted text is very short, possibly incomplete:", result.text);
     }
     
     console.log(`Server extracted ${result.text.length} characters`);
