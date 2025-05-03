@@ -390,6 +390,21 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         // Set the real analysis results
         setMatchResults(matchResult);
         
+        // Update resumeData with employment history from the match results
+        setResumeData(prevData => ({
+          ...prevData,
+          clientNames: matchResult.clientNames || prevData.clientNames,
+          jobTitles: matchResult.jobTitles || prevData.jobTitles,
+          relevantDates: matchResult.relevantDates || prevData.relevantDates
+        }));
+        
+        // Log the updated data for debugging
+        console.log("Updated resume data with employment history:", {
+          clientNames: matchResult.clientNames || [],
+          jobTitles: matchResult.jobTitles || [],
+          relevantDates: matchResult.relevantDates || []
+        });
+        
         toast({
           title: "Resume Analysis Complete",
           description: `Match score: ${matchResult.score}%`,
