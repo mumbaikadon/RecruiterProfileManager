@@ -1,118 +1,77 @@
 /**
- * Document processing module
- * 
- * This module provides basic document parsing functionality for resume uploads.
- * All AI-based analysis and matching functions have been removed.
+ * Document parser utility for handling different document formats
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-
-console.log("Document processing module loaded - analysis features removed");
-
-// Basic interface for resume data structure when storing resumes
-export interface ResumeAnalysisResult {
-  clientNames: string[];
-  jobTitles: string[];
-  relevantDates: string[];
-  skills: string[];
-  education: string[];
-  extractedText: string;
-  fileName?: string;
-}
-
-// Interface for API response when only basic info is needed
-export interface MatchScoreResult {
-  score: number;
-  strengths: string[];
-  weaknesses: string[];
-  suggestions: string[];
-  technicalGaps?: string[];
-  matchingSkills?: string[];
-  missingSkills?: string[];
-  clientExperience?: string;
-  confidence?: number;
-}
+import type { Buffer } from 'node:buffer';
 
 /**
- * Document parser with robust PDF and DOCX handling
- * Simplified to handle basic resume file parsing
+ * Extract text from a PDF file using pdf-parse library
+ * @param buffer PDF file buffer
+ * @returns Extracted text
  */
-export async function parseDocument(buffer: Buffer, fileType: string): Promise<string> {
+export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
-    console.log(`Parsing document of type: ${fileType}, buffer size: ${buffer.length} bytes`);
-
-    if (fileType === 'pdf') {
-      try {
-        const pdfParse = require('pdf-parse');
-        const data = await pdfParse(buffer);
-        return data.text || "";
-      } catch (error) {
-        console.error("Failed to parse PDF:", error);
-        throw new Error("PDF parsing failed");
-      }
-    } else if (fileType === 'docx') {
-      try {
-        const mammoth = require('mammoth');
-        const result = await mammoth.extractRawText({ buffer });
-        return result.value || "";
-      } catch (error) {
-        console.error("Failed to parse DOCX:", error);
-        throw new Error("DOCX parsing failed");
-      }
-    } else {
-      throw new Error(`Unsupported file type: ${fileType}`);
-    }
+    // Import the PDF parse library dynamically
+    const pdf = await import('pdf-parse/lib/pdf-parse.js');
+    // Use the default export (function)
+    const pdfParse = pdf.default;
+    
+    // Parse the PDF buffer
+    const data = await pdfParse(buffer);
+    return data.text || "";
   } catch (error) {
-    console.error("Document parsing error:", error);
-    throw error;
+    console.error("PDF extraction error:", error);
+    throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
 /**
- * Simple resume text extraction - returns minimal placeholder data
- * This replaces the AI-powered analysis with a basic function that just
- * provides the minimal required structure without actual analysis
+ * Extract text from a DOCX file using mammoth library
+ * @param buffer DOCX file buffer
+ * @returns Extracted text
  */
-export async function analyzeResumeText(resumeText: string): Promise<ResumeAnalysisResult> {
-  const { sanitizeHtml } = await import('./utils');
-  
-  // Remove HTML/XML content if present
-  if (resumeText.trim().startsWith('<!DOCTYPE') || resumeText.includes('<?xml')) {
-    resumeText = resumeText.replace(/<!DOCTYPE[^>]*>/gi, '')
-                      .replace(/<\?xml[^>]*\?>/gi, '')
-                      .replace(/<!--[\s\S]*?-->/g, '')
-                      .replace(/<[^>]*>?/g, ' ');
+export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
+  try {
+    // Import mammoth dynamically
+    const mammoth = await import('mammoth');
+    
+    // Extract text from the DOCX buffer
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value || "";
+  } catch (error) {
+    console.error("DOCX extraction error:", error);
+    throw new Error(`Failed to extract text from DOCX: ${error instanceof Error ? error.message : String(error)}`);
   }
-  
-  // Sanitize and truncate text
-  const sanitizedText = sanitizeHtml(resumeText).substring(0, 5000);
-  
-  // Return a basic structure with empty fields
-  return {
-    clientNames: [],
-    jobTitles: [],
-    relevantDates: [],
-    skills: [],
-    education: [],
-    extractedText: sanitizedText
-  };
 }
 
 /**
- * Simple job match function that returns default values
- * This replaces the AI-powered matching with a placeholder
+ * Extract text from a text file
+ * @param buffer Text file buffer
+ * @returns Extracted text
  */
-export function matchResumeToJob(resumeText: string, jobDescription: string): MatchScoreResult {
-  return {
-    score: 0, // No score since analysis is disabled
-    strengths: [],
-    weaknesses: ["Resume analysis is disabled"],
-    suggestions: ["Manual evaluation required"],
-    technicalGaps: [],
-    matchingSkills: [],
-    missingSkills: [],
-    clientExperience: "",
-    confidence: 0
-  };
+export function extractTextFromTxt(buffer: Buffer): string {
+  return buffer.toString('utf8');
+}
+
+/**
+ * Extract text from a document file
+ * @param buffer Document file buffer
+ * @param fileType File type (pdf, docx, txt)
+ * @returns Extracted text
+ */
+export async function extractTextFromDocument(buffer: Buffer, fileType: string): Promise<string> {
+  // Convert file type to lowercase for consistency
+  const type = fileType.toLowerCase();
+  
+  // Extract text based on file type
+  switch (type) {
+    case 'pdf':
+      return extractTextFromPdf(buffer);
+    case 'docx':
+      return extractTextFromDocx(buffer);
+    case 'txt':
+      return extractTextFromTxt(buffer);
+    default:
+      throw new Error(`Unsupported file type: ${fileType}`);
+  }
 }
