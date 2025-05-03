@@ -35,18 +35,18 @@ try {
 function cosineSimilarity(tokensA: string[], tokensB: string[]): number {
   // Create a set of all unique tokens
   const uniqueTokens = Array.from(new Set([...tokensA, ...tokensB]));
-  
+
   // Create vectors for each set of tokens
   const vecA = uniqueTokens.map(token => tokensA.filter(t => t === token).length);
   const vecB = uniqueTokens.map(token => tokensB.filter(t => t === token).length);
-  
+
   // Calculate dot product
   const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
-  
+
   // Calculate magnitudes
   const magA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
   const magB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
-  
+
   // Calculate cosine similarity
   return dotProduct / (magA * magB) || 0;
 }
@@ -61,7 +61,7 @@ function extractTerms(text: string): string[] {
     .replace(/[^\w\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  
+
   // Tokenize and stem words 
   const tokens = tokenizer.tokenize(cleanText);
   return tokens
@@ -134,10 +134,10 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
         extractedText: "No resume text provided"
       };
     }
-    
+
     // Import the sanitization utility
     const { sanitizeHtml } = await import('./utils');
-    
+
     // Check for common problematic patterns in file content that cause parsing issues
     if (resumeText.trim().startsWith('<!DOCTYPE') || resumeText.includes('<?xml')) {
       console.warn("Detected DOCTYPE/XML content in resume text - cleaning");
@@ -146,7 +146,7 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
                         .replace(/<!--[\s\S]*?-->/g, '')
                         .replace(/<[^>]*>?/g, ' ');
     }
-    
+
     // If text is too short after cleanup or clearly not a text document, return minimal data
     if (resumeText.trim().length < 50) {
       console.warn("Resume text is too short after cleaning (<50 chars)");
@@ -159,33 +159,33 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
         extractedText: resumeText.trim()
       };
     }
-    
+
     // Further sanitize the text to prevent encoding issues (double sanitization for safety)
     resumeText = sanitizeHtml(resumeText);
-    
+
     try {
       console.log("Analyzing resume text with NLP...");
-      
+
       // Prepare text for analysis
       const lines = resumeText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-      
+
       // Extract client names
       const clientNames = extractClientNames(resumeText);
-      
+
       // Extract job titles
       const jobTitles = extractJobTitles(resumeText);
-      
+
       // Extract dates
       const relevantDates = extractDates(resumeText);
-      
+
       // Extract skills
       const skills = extractSkills(resumeText);
-      
+
       // Extract education
       const education = extractEducation(resumeText);
-      
+
       console.log("NLP analysis completed successfully");
-      
+
       // Ensure we have the expected structure
       const resumeSchema = z.object({
         clientNames: z.array(z.string()).default([]),
@@ -242,12 +242,12 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
 export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedResumeAnalysis> {
   // First get the basic NLP analysis as fallback
   const basicAnalysis = await analyzeResumeText(resumeText);
-  
+
   // If OpenAI is not available, return basic analysis with dummy quality metrics
   if (!openai) {
     console.log("OpenAI client not available, returning basic analysis only");
     const readabilityScore = calculateReadabilityScore(resumeText);
-    
+
     return {
       ...basicAnalysis,
       qualityScore: 70, // Default score
@@ -260,11 +260,11 @@ export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedR
       workExperience: [] // Empty array as fallback
     };
   }
-  
+
   try {
     // Perform enhanced structured analysis with OpenAI
     console.log("Performing enhanced resume analysis with OpenAI...");
-    
+
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -274,31 +274,31 @@ export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedR
           content: `You are an expert resume analyzer for IT staffing industry. Extract structured information from resumes with 100% accuracy.
 
           First, extract ALL structured resume information:
-          
+
           1. clientNames: Array of all companies/clients the candidate worked for. Each entry should include ONLY the company name (e.g., "Acme Inc.", "Google", "Microsoft")
-          
+
           2. jobTitles: Array of all job titles held (e.g., "Senior Java Developer", "DevOps Engineer", "Software Architect")
-          
+
           3. workExperience: Array of detailed work experiences, each containing:
              - company: The company/client name
              - title: Job title at this company
              - startDate: Start date (MM/YYYY format if available)
              - endDate: End date (MM/YYYY format, or "Present" if current)
              - responsibilities: Array of key responsibilities/achievements (3-8 bullet points)
-          
+
           4. skills: Array of ALL technical skills mentioned (programming languages, frameworks, tools, etc.), be comprehensive
-          
+
           5. education: Array of all education entries, properly formatted
 
           Then include quality assessment metrics:
-          
+
           1. qualityScore: A number between 0 and 100 indicating overall resume quality
           2. contentSuggestions: Array of 3-5 specific suggestions for improving content
           3. formattingSuggestions: Array of 2-3 suggestions for improving formatting
           4. languageSuggestions: Array of 2-3 suggestions for improving language
           5. keywordScore: A number between 0 and 100 indicating how well the resume contains relevant IT industry keywords
           6. readabilityScore: A number between 0 and 100 indicating how readable the resume is
-          
+
           Ensure you extract EVERY client name, job title, date, responsibility and skill mentioned in the resume.
           If certain information is not present, use empty arrays rather than making up information.
           Output structured JSON exactly matching the fields above.`
@@ -312,28 +312,28 @@ export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedR
       max_tokens: 3000,
       temperature: 0.3 // Lower temperature for more accurate extraction
     });
-    
+
     const content = response.choices[0].message.content;
     if (!content) {
       throw new Error("Empty response from OpenAI");
     }
-    
+
     console.log("OpenAI enhanced analysis completed successfully");
-    
+
     // Parse the response
     const enhancedAnalysis = JSON.parse(content);
-    
+
     // Extract structured data from the enhanced analysis
     const structuredClientNames = enhancedAnalysis.clientNames || [];
     const structuredJobTitles = enhancedAnalysis.jobTitles || [];
     const workExperience = enhancedAnalysis.workExperience || [] as WorkExperience[];
-    
+
     // Extract relevant dates from work experience
     const structuredDates: string[] = [];
     workExperience.forEach((exp: WorkExperience) => {
       if (exp.startDate) structuredDates.push(`${exp.startDate} - ${exp.endDate || 'Present'}`);
     });
-    
+
     // Merge the structured data with the basic NLP analysis
     return {
       clientNames: structuredClientNames.length > 0 ? structuredClientNames : basicAnalysis.clientNames,
@@ -354,10 +354,10 @@ export async function analyzeResumeWithAI(resumeText: string): Promise<EnhancedR
     };
   } catch (error) {
     console.error("Error in AI-enhanced resume analysis:", error);
-    
+
     // Fall back to basic analysis with calculated metrics
     const readabilityScore = calculateReadabilityScore(resumeText);
-    
+
     return {
       ...basicAnalysis,
       qualityScore: 70, // Default fallback score
@@ -379,24 +379,24 @@ function calculateReadabilityScore(text: string): number {
   // Calculate average sentence length
   const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
   const totalWords = text.split(/\s+/).filter(w => w.length > 0).length;
-  
+
   if (sentences.length === 0) return 50; // Default score
-  
+
   const avgSentenceLength = totalWords / sentences.length;
-  
+
   // Calculate average word length
   const totalChars = text.replace(/\s+/g, '').length;
   const avgWordLength = totalWords > 0 ? totalChars / totalWords : 5;
-  
+
   // Ideally we would use a proper readability formula like Flesch-Kincaid
   // But for simplicity, we'll use a basic model:
   // - Penalize very long sentences (over 25 words)
   // - Penalize very long words (over 8 chars)
   // - Score between 0-100
-  
+
   const sentencePenalty = Math.max(0, Math.min(30, (avgSentenceLength - 15) * 2));
   const wordPenalty = Math.max(0, Math.min(30, (avgWordLength - 5) * 6));
-  
+
   // Start with 100 and subtract penalties
   return Math.max(0, Math.min(100, 100 - sentencePenalty - wordPenalty));
 }
@@ -406,14 +406,14 @@ function calculateReadabilityScore(text: string): number {
  */
 function extractClientNames(text: string): string[] {
   const clientNames: string[] = [];
-  
+
   // Look for common client indicators
   const clientPatterns = [
     /client\s*:\s*([^,.\n]+)/gi,
     /(?:worked for|at)\s+([^,.\n]+?)\s+(?:as|from|through)/gi,
     /(?:project|engagement|assignment)(?:\s+at|\s+with|\s+for)\s+([^,.\n]+)/gi
   ];
-  
+
   // Apply each pattern and collect results
   clientPatterns.forEach(pattern => {
     let match;
@@ -424,7 +424,7 @@ function extractClientNames(text: string): string[] {
           .replace(/\s+/g, ' ')  // Normalize whitespace
           .replace(/\([^)]*\)/g, '') // Remove parenthetical information
           .trim();
-        
+
         // Don't add if it's suspiciously short or has invalid characters
         if (company.length > 2 && !company.match(/^[0-9.]+$/)) {
           clientNames.push(company);
@@ -432,13 +432,13 @@ function extractClientNames(text: string): string[] {
       }
     }
   });
-  
+
   // Look for company names with Inc., Corp., LLC, etc.
   const companyFormPatterns = [
     /([A-Z][A-Za-z0-9\s&]+)(?:\s+Inc\.|\s+Corp\.|\s+LLC|\s+Ltd\.)/g,
     /([A-Z][A-Za-z0-9\s&]+)(?:\s+Corporation|\s+Company|\s+Technologies)/g
   ];
-  
+
   companyFormPatterns.forEach(pattern => {
     let match;
     while ((match = pattern.exec(text)) !== null) {
@@ -448,7 +448,7 @@ function extractClientNames(text: string): string[] {
       }
     }
   });
-  
+
   // Deduplicate and sort by length (longer names first which are usually more complete)
   return Array.from(new Set(clientNames))
     .filter(name => 
@@ -464,14 +464,14 @@ function extractClientNames(text: string): string[] {
  */
 function extractJobTitles(text: string): string[] {
   const titles: string[] = [];
-  
+
   // Common job title patterns
   const titlePatterns = [
     /(?:^|\n)([A-Z][A-Za-z\s]+(?:Developer|Engineer|Architect|Designer|Consultant|Manager|Lead|Analyst|Specialist))(?:$|,|\n| -)/gm,
     /(?:Title|Position|Role):\s*([^\n,.]+)/gi,
     /(?:as\s+a|as\s+an)\s+([^,.\n]{3,50}?)(?:\s+at|\s+for|\s+with|,|\.|$)/gi
   ];
-  
+
   // Apply each pattern and collect results
   titlePatterns.forEach(pattern => {
     let match;
@@ -481,7 +481,7 @@ function extractJobTitles(text: string): string[] {
         const title = match[1].trim()
           .replace(/\s+/g, ' ') // Normalize whitespace
           .trim();
-        
+
         // Don't add if it's suspiciously generic or has invalid patterns
         if (title.length > 3 && 
             !title.match(/^(From|To|About|Contact|Summary|Resume)$/i)) {
@@ -490,7 +490,7 @@ function extractJobTitles(text: string): string[] {
       }
     }
   });
-  
+
   // Common IT job titles
   const commonTitles = [
     'Software Engineer', 'Software Developer', 'Frontend Developer', 'Backend Developer',
@@ -499,14 +499,14 @@ function extractJobTitles(text: string): string[] {
     'Engineering Manager', 'Project Manager', 'Product Manager', 'Scrum Master',
     'QA Engineer', 'Test Engineer', 'UX Designer', 'UI Developer', 'System Administrator'
   ];
-  
+
   // Check for these common titles
   commonTitles.forEach(title => {
     if (text.includes(title)) {
       titles.push(title);
     }
   });
-  
+
   // Deduplicate and return
   return Array.from(new Set(titles));
 }
@@ -516,28 +516,28 @@ function extractJobTitles(text: string): string[] {
  */
 function extractDates(text: string): string[] {
   const dates: string[] = [];
-  
+
   // Date patterns (with various formats)
   const datePatterns = [
     // MM/YYYY - MM/YYYY
     /(\d{1,2}\/\d{4})\s*[-–—]\s*(\d{1,2}\/\d{4}|Present|Current|Now)/gi,
-    
+
     // Month YYYY - Month YYYY
     /([A-Z][a-z]{2,8}\.?\s+\d{4})\s*[-–—]\s*([A-Z][a-z]{2,8}\.?\s+\d{4}|Present|Current|Now)/gi,
-    
+
     // YYYY - YYYY
     /(\d{4})\s*[-–—]\s*(\d{4}|Present|Current|Now)/gi,
-    
+
     // MM/YYYY - Present
     /(\d{1,2}\/\d{4})\s*[-–—]\s*(Present|Current|Now)/gi,
-    
+
     // Abbreviated month formats
     /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{4}\s*[-–—]\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{4}/gi,
-    
+
     // Abbreviated to present
     /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{4}\s*[-–—]\s*(Present|Current|Now)/gi
   ];
-  
+
   // Apply each pattern and collect results
   datePatterns.forEach(pattern => {
     let match;
@@ -549,7 +549,7 @@ function extractDates(text: string): string[] {
       }
     }
   });
-  
+
   // Deduplicate and return
   return Array.from(new Set(dates));
 }
@@ -564,56 +564,56 @@ function extractSkills(text: string): string[] {
     'Java', 'Python', 'JavaScript', 'TypeScript', 'C#', 'C++', 'C', 'PHP', 'Ruby', 'Go', 
     'Golang', 'Swift', 'Kotlin', 'Scala', 'Rust', 'Perl', 'Shell', 'Bash', 'PowerShell',
     'Groovy', 'R', 'Dart', 'Clojure', 'Elixir', 'Erlang', 'F#', 'Haskell', 'Julia',
-    
+
     // Web/Frontend
     'HTML', 'CSS', 'SCSS', 'SASS', 'LESS', 'Angular', 'React', 'Vue', 'Svelte', 'jQuery', 
     'Bootstrap', 'Tailwind', 'Material UI', 'Chakra UI', 'Redux', 'NextJS', 'NuxtJS', 
     'Gatsby', 'WebAssembly', 'Web Components', 'Shadow DOM',
-    
+
     // Backend
     'Node.js', 'Express', 'NestJS', 'Spring', 'Spring Boot', 'Django', 'Flask', 'Laravel',
     'Rails', 'ASP.NET', '.NET Core', '.NET', 'FastAPI', 'Symfony', 'CodeIgniter', 'Play',
     'Ktor', 'Echo', 'Gin', 'Rocket', 'Actix',
-    
+
     // Databases
     'SQL', 'MySQL', 'PostgreSQL', 'Oracle', 'SQLite', 'MongoDB', 'DynamoDB', 'Cassandra',
     'Redis', 'ElasticSearch', 'Neo4j', 'CosmosDB', 'Firebase', 'Firestore', 'CouchDB',
     'MariaDB', 'Snowflake', 'BigQuery', 'Redshift', 'SQL Server', 'Supabase',
-    
+
     // Cloud
     'AWS', 'Azure', 'GCP', 'Google Cloud', 'Heroku', 'DigitalOcean', 'Linode', 'Netlify',
     'Vercel', 'Firebase', 'CloudFlare', 'S3', 'EC2', 'Lambda', 'ECS', 'EKS', 'Route 53',
     'CloudFront', 'IAM', 'VPC', 'RDS', 'DynamoDB', 'SNS', 'SQS', 'Step Functions',
-    
+
     // DevOps
     'Docker', 'Kubernetes', 'Jenkins', 'GitHub Actions', 'CircleCI', 'TravisCI', 'ArgoCD',
     'Terraform', 'Ansible', 'Puppet', 'Chef', 'Prometheus', 'Grafana', 'ELK Stack', 
     'Nginx', 'Apache', 'CI/CD', 'Git', 'GitHub', 'GitLab', 'Bitbucket',
-    
+
     // Testing
     'Jest', 'Mocha', 'Chai', 'Cypress', 'Selenium', 'JUnit', 'TestNG', 'PyTest', 'RSpec',
     'PHPUnit', 'XUnit', 'NUnit', 'Jasmine', 'Karma', 'WebdriverIO', 'Postman',
-    
+
     // Mobile
     'Android', 'iOS', 'React Native', 'Flutter', 'Xamarin', 'Ionic', 'Cordova', 
     'SwiftUI', 'UIKit', 'Kotlin Multiplatform', 'NativeScript', 'PhoneGap',
-    
+
     // AI/ML/Data
     'Machine Learning', 'Deep Learning', 'TensorFlow', 'PyTorch', 'Keras', 'scikit-learn',
     'Pandas', 'NumPy', 'Jupyter', 'NLTK', 'spaCy', 'OpenCV', 'Hadoop', 'Spark', 'Kafka',
     'Airflow', 'Databricks', 'Tableau', 'Power BI', 'Looker',
-    
+
     // Other
     'GraphQL', 'REST API', 'SOAP', 'gRPC', 'WebSockets', 'Microservices', 'Serverless',
     'Blockchain', 'Ethereum', 'Solidity', 'WebRTC', 'PWA'
   ];
-  
+
   // Feature version specific skills (Add version numbers if found)
   const versionedSkills: string[] = [];
-  
+
   // Convert text to lowercase for case-insensitive matching
   const lowerText = text.toLowerCase();
-  
+
   // Find skills mentioned in the resume
   const foundSkills = technicalSkills.filter(skill => {
     // Check for standalone mentions of the skill (word boundaries)
@@ -628,7 +628,7 @@ function extractSkills(text: string): string[] {
       return lowerText.includes(skill.toLowerCase());
     }
   });
-  
+
   // Also check for versioned mentions (e.g., "Java 8" or "Angular 10")
   technicalSkills.forEach(skill => {
     try {
@@ -644,7 +644,7 @@ function extractSkills(text: string): string[] {
       console.log(`Regex error for versioned skill "${skill}", skipping version detection`);
     }
   });
-  
+
   // Additional pattern-based skill extraction (e.g., AWS services)
   const awsServicePattern = /\b(S3|EC2|Lambda|ECS|EKS|Route 53|CloudFront|IAM|VPC|RDS|DynamoDB|SNS|SQS|Step Functions)\b/g;
   let match;
@@ -654,7 +654,7 @@ function extractSkills(text: string): string[] {
       awsServices.push(`AWS ${match[1]}`);
     }
   }
-  
+
   // Combine all skills and deduplicate
   const allSkills = [...foundSkills, ...versionedSkills, ...awsServices];
   return Array.from(new Set(allSkills)).sort();
@@ -665,13 +665,13 @@ function extractSkills(text: string): string[] {
  */
 function extractEducation(text: string): string[] {
   const education: string[] = [];
-  
+
   // Pattern for common degrees
   const degreePatterns = [
     /(?:Bachelor|Master|PhD|Doctorate|B\.S\.|M\.S\.|M\.A\.|B\.A\.|MBA|Ph\.D\.|B\.E\.|M\.E\.)(?:\s+(?:of|in|degree))?\s+([^,.\n]+)/gi,
     /(?:^|\n)([A-Z][A-Za-z\s]+(?:University|College|Institute|School))(?:$|,|\n| -)/gm
   ];
-  
+
   // Apply each pattern and collect results
   degreePatterns.forEach(pattern => {
     let match;
@@ -682,13 +682,13 @@ function extractEducation(text: string): string[] {
       }
     }
   });
-  
+
   // Look for certification patterns
   const certPatterns = [
     /\b(?:Certified|Certificate|Certification)\s+([^,.\n]{5,100})/gi,
     /\b([A-Z]{2,}(?:-[A-Z]+)*)(?:\s+certification)?\b/g // Acronym-based certifications like AWS-SAA, MCSD
   ];
-  
+
   certPatterns.forEach(pattern => {
     let match;
     while ((match = pattern.exec(text)) !== null) {
@@ -698,7 +698,7 @@ function extractEducation(text: string): string[] {
       }
     }
   });
-  
+
   // Deduplicate and return
   return Array.from(new Set(education));
 }
@@ -710,12 +710,12 @@ function extractEducation(text: string): string[] {
 async function parseDocument(buffer: Buffer, fileType: string): Promise<string> {
   try {
     console.log(`Parsing document of type: ${fileType}, buffer size: ${buffer.length} bytes`);
-    
+
     if (fileType === 'pdf') {
       // Enhanced PDF parsing with multiple fallback strategies
       try {
         const pdfParse = require('pdf-parse');
-        
+
         // Try standard parsing first
         let pdfText = "";
         try {
@@ -727,7 +727,7 @@ async function parseDocument(buffer: Buffer, fileType: string): Promise<string> 
           const basicError = error as Error;
           console.warn("Standard PDF parsing failed:", basicError.message);
         }
-        
+
         // If standard parsing produced little text, try with custom options
         if (!pdfText || pdfText.length < 500) {
           try {
@@ -752,9 +752,9 @@ async function parseDocument(buffer: Buffer, fileType: string): Promise<string> 
                 });
               }
             };
-            
+
             const enhancedData = await pdfParse(buffer, options);
-            
+
             // Use the enhanced result if it's better than the standard one
             if (enhancedData.text && enhancedData.text.length > pdfText.length) {
               console.log(`Enhanced PDF parsing extracted ${enhancedData.text.length} characters (better than standard)`);
@@ -765,27 +765,27 @@ async function parseDocument(buffer: Buffer, fileType: string): Promise<string> 
             console.warn("Enhanced PDF parsing failed:", enhancedError.message);
           }
         }
-        
+
         // If we still have little text, try a different approach with PDF.js-like extraction
         if (!pdfText || pdfText.length < 500) {
           console.log("Still insufficient text, trying basic buffer extraction");
           // Attempt to find text sections in the raw buffer
           const rawContent = buffer.toString('utf8');
           const textMatches = rawContent.match(/\(([^)]{3,1000})\)/g) || [];
-          
+
           if (textMatches.length > 0) {
             const extractedTexts = textMatches
               .map(match => match.substring(1, match.length - 1))
               .filter(text => text.length > 5 && /[a-zA-Z]/.test(text))
               .join(' ');
-              
+
             if (extractedTexts.length > pdfText.length) {
               console.log(`Raw buffer extraction found ${extractedTexts.length} characters of text`);
               pdfText = extractedTexts;
             }
           }
         }
-        
+
         // If we have text at this point, return it
         if (pdfText && pdfText.length > 100) {
           // Perform some extra cleaning on the extracted text
@@ -794,11 +794,11 @@ async function parseDocument(buffer: Buffer, fileType: string): Promise<string> 
             .replace(/[\r\n]+/g, '\n')       // Normalize line breaks
             .replace(/\n\s*\n\s*\n/g, '\n\n') // Remove excessive line breaks
             .trim();
-            
+
           console.log(`Final PDF text length: ${pdfText.length} characters`);
           return pdfText;
         }
-        
+
         // If we reach here, extraction was poor
         return "This PDF could not be properly parsed. The file may be scanned, image-based, or protected.";
       } catch (pdfError) {
@@ -808,17 +808,17 @@ async function parseDocument(buffer: Buffer, fileType: string): Promise<string> 
     } else if (fileType === 'docx') {
       // Significantly enhanced DOCX parsing with multiple approaches
       let docxText = "";
-      
+
       // Try mammoth.js extraction first - this is typically the best for DOCX
       try {
         console.log("Attempting DOCX parsing with mammoth.js...");
         const mammoth = require('mammoth');
-        
+
         // Try with default options first
         const result = await mammoth.extractRawText({ buffer });
         docxText = result.value || "";
         console.log(`Mammoth.js extracted ${docxText.length} characters from DOCX`);
-        
+
         // If we got little text, try with different options
         if (docxText.length < 500) {
           console.log("Initial DOCX extraction produced little text, trying with alternate options");
@@ -828,13 +828,13 @@ async function parseDocument(buffer: Buffer, fileType: string): Promise<string> 
             includeEmbeddedStyleMap: true,
             convertImage: mammoth.images.imgElement // Try to extract image descriptions
           });
-          
+
           if (alternateResult.value && alternateResult.value.length > docxText.length) {
             console.log(`Alternate DOCX options extracted ${alternateResult.value.length} characters (better than standard)`);
             docxText = alternateResult.value;
           }
         }
-        
+
         // If we have good text at this point, return it
         if (docxText && docxText.length > 200) {
           // Clean up the text
@@ -843,7 +843,7 @@ async function parseDocument(buffer: Buffer, fileType: string): Promise<string> 
             .replace(/[\r\n]+/g, '\n')      // Normalize line breaks
             .replace(/\n\s*\n\s*\n/g, '\n\n') // Remove excessive line breaks
             .trim();
-            
+
           console.log(`Final DOCX text length: ${docxText.length} characters`);
           return docxText;
         }
@@ -851,30 +851,30 @@ async function parseDocument(buffer: Buffer, fileType: string): Promise<string> 
         const mammothError = error as Error;
         console.warn("Mammoth.js DOCX parsing failed:", mammothError.message);
       }
-      
+
       // If mammoth failed or produced little text, try a more basic approach
       if (!docxText || docxText.length < 200) {
         try {
           console.log("Attempting basic DOCX extraction by searching for text in the buffer...");
-          
+
           // DOCX files are ZIP files with XML content - try to find text content in the raw buffer
           const content = buffer.toString('utf8');
-          
+
           // Look for text between XML tags in the document
           const textMatches = content.match(/>([^<]{3,1000})</g) || [];
-          
+
           if (textMatches.length > 0) {
             const extractedTexts = textMatches
               .map(match => match.substring(1, match.length - 1))
               .filter(text => text.length > 3 && /[a-zA-Z]/.test(text))
               .join(' ');
-              
+
             if (extractedTexts.length > docxText.length) {
               console.log(`Raw XML extraction found ${extractedTexts.length} characters of text`);
               docxText = extractedTexts;
             }
           }
-          
+
           if (docxText && docxText.length > 100) {
             return docxText;
           }
@@ -883,7 +883,7 @@ async function parseDocument(buffer: Buffer, fileType: string): Promise<string> 
           console.warn("Basic DOCX extraction failed:", basicError.message);
         }
       }
-      
+
       // If we still don't have good text, return an error message
       return "Unable to extract content from this Word document. The file may be corrupt or password protected.";
     } else {
@@ -891,26 +891,26 @@ async function parseDocument(buffer: Buffer, fileType: string): Promise<string> 
       try {
         // First try UTF-8, which is most common
         const utf8Text = buffer.toString('utf8');
-        
+
         // Check if the text seems valid (has a reasonable proportion of printable ASCII characters)
         const printableChars = utf8Text.match(/[\x20-\x7E]/g) || [];
         const printableRatio = printableChars.length / utf8Text.length;
-        
+
         if (printableRatio > 0.7) {
           console.log(`Text file parsed as UTF-8 with ${utf8Text.length} characters`);
           return utf8Text;
         } 
-        
+
         // If UTF-8 looks wrong, try latin1 (a more permissive encoding)
         const latin1Text = buffer.toString('latin1');
         const latin1PrintableChars = latin1Text.match(/[\x20-\x7E]/g) || [];
         const latin1PrintableRatio = latin1PrintableChars.length / latin1Text.length;
-        
+
         if (latin1PrintableRatio > 0.7) {
           console.log(`Text file parsed as Latin1 with ${latin1Text.length} characters`);
           return latin1Text;
         }
-        
+
         // If both encodings look poor, use UTF-8 but clean it up
         console.log("Text file has encoding issues, using UTF-8 with cleanup");
         return utf8Text
@@ -944,38 +944,38 @@ function simpleResumeJobMatcher(resumeText: string, jobDescription: string): Mat
     'javascript', 'typescript', 'react', 'angular', 'vue', 'nextjs', 'nuxt', 'svelte', 
     'redux', 'jquery', 'html5', 'css3', 'sass', 'less', 'tailwind', 'bootstrap', 'material-ui',
     'webpack', 'babel', 'eslint', 'prettier', 'storybook', 'responsive', 'mobile-first',
-    
+
     // Backend
     'node', 'express', 'nestjs', 'python', 'django', 'flask', 'fastapi', 'java', 'spring', 
     'c#', '.net', 'asp.net', 'ruby', 'rails', 'php', 'laravel', 'symfony', 'go', 'golang',
     'rust', 'scala', 'kotlin', 'deno',
-    
+
     // Database
     'sql', 'mysql', 'postgresql', 'sqlite', 'oracle', 'nosql', 'mongodb', 'dynamodb', 
     'firebase', 'cassandra', 'redis', 'elasticsearch', 'neo4j', 'couchdb', 'mariadb',
     'orm', 'sequelize', 'mongoose', 'typeorm', 'prisma', 'drizzle',
-    
+
     // Cloud & DevOps
     'aws', 'ec2', 's3', 'lambda', 'azure', 'gcp', 'cloud', 'serverless', 'docker', 'kubernetes', 
     'ci/cd', 'jenkins', 'github actions', 'travis', 'gitlab', 'terraform', 'ansible', 'chef', 'puppet',
     'nginx', 'apache', 'load balancing', 'monitoring', 'prometheus', 'grafana', 'elk',
-    
+
     // Methodologies & Practices
     'agile', 'scrum', 'kanban', 'tdd', 'bdd', 'devops', 'microservices', 'rest', 'graphql', 
     'soap', 'grpc', 'oauth', 'jwt', 'security', 'testing', 'unit testing', 'integration testing',
     'e2e testing', 'cypress', 'jest', 'mocha', 'chai', 'selenium',
-    
+
     // Version Control
     'git', 'github', 'gitlab', 'bitbucket', 'svn', 'mercurial',
-    
+
     // Mobile
     'ios', 'android', 'swift', 'objective-c', 'kotlin', 'java', 'react native', 'flutter', 
     'xamarin', 'ionic', 'cordova', 'mobile',
-    
+
     // Big Data & ML
     'hadoop', 'spark', 'kafka', 'airflow', 'machine learning', 'deep learning', 'ai', 
     'tensorflow', 'pytorch', 'scikit-learn', 'nlp', 'computer vision', 'data science',
-    
+
     // Specific tools & frameworks
     'jira', 'confluence', 'slack', 'figma', 'sketch', 'adobe xd', 'photoshop', 'illustrator',
     'webpack', 'parcel', 'rollup', 'vite', 'babel', 'moleculer'
@@ -986,7 +986,7 @@ function simpleResumeJobMatcher(resumeText: string, jobDescription: string): Mat
     // Look for text that might be a technology (e.g., capitalized words, words with numbers, hyphenated words)
     const technicalPattern = /\b([A-Z][a-z0-9]+(?:\.[A-Za-z0-9]+)*|\w+\.\w+|\w+-\w+)\b/g;
     const potentialTerms = text.match(technicalPattern) || [];
-    
+
     // Filter out common English words and keep only likely technical terms
     return potentialTerms
       .filter(term => term.length > 2) // Avoid short words
@@ -1003,7 +1003,7 @@ function simpleResumeJobMatcher(resumeText: string, jobDescription: string): Mat
   const matchingSkills = allSkills.filter(skill => 
     resumeLower.includes(skill) && jobLower.includes(skill)
   );
-  
+
   // Skills in job but not in resume
   const missingSkills = allSkills.filter(skill => 
     !resumeLower.includes(skill) && jobLower.includes(skill)
@@ -1018,9 +1018,9 @@ function simpleResumeJobMatcher(resumeText: string, jobDescription: string): Mat
       /skilled (?:with|in) ([^.]+)/gi,
       /knowledge of ([^.]+)/gi
     ];
-    
+
     let strengths: string[] = [];
-    
+
     strengthPatterns.forEach(pattern => {
       let match;
       while ((match = pattern.exec(text)) !== null) {
@@ -1029,7 +1029,7 @@ function simpleResumeJobMatcher(resumeText: string, jobDescription: string): Mat
         }
       }
     });
-    
+
     // Create a Set and convert back to array to get unique strengths
     const uniqueStrengths = new Set(strengths);
     return Array.from(uniqueStrengths).slice(0, 5); // Limit to 5 unique strengths
@@ -1039,29 +1039,29 @@ function simpleResumeJobMatcher(resumeText: string, jobDescription: string): Mat
 
   // Calculate a more nuanced score based on matching skills and job requirements
   const jobSkillsCount = allSkills.filter(skill => jobLower.includes(skill)).length;
-  
+
   // If no skills are found in job description, use a more basic approach
   if (jobSkillsCount === 0) {
     // Calculate the percentage of common words between resume and job description
     const resumeWordsArray = resumeLower.split(/\s+/).filter(w => w.length > 3);
     const jobWordsArray = jobLower.split(/\s+/).filter(w => w.length > 3);
-    
+
     // Convert to Sets
     const resumeWords = new Set(resumeWordsArray);
     const jobWords = new Set(jobWordsArray);
-    
+
     // Convert back to array to use filter
     const resumeWordsUnique = Array.from(resumeWords);
     const commonWordsCount = resumeWordsUnique.filter(word => jobWords.has(word)).length;
-    
+
     // Adjusted scoring algorithm to prefer the 75-95% range as requested
     // Start with a base score then adjust up
     let baseScore = Math.min(100, Math.round((commonWordsCount / jobWords.size) * 100));
     let score = Math.max(75, baseScore); // Minimum 75% for any reasonable match
-    
+
     // Cap at 95% to leave room for "perfect" matches
     score = Math.min(95, score);
-    
+
     return {
       score: score,
       strengths: candidateStrengths.length > 0 ? candidateStrengths : ["Suitable skill profile for this role"],
@@ -1069,25 +1069,25 @@ function simpleResumeJobMatcher(resumeText: string, jobDescription: string): Mat
       suggestions: ["Consider highlighting more technical skills in the resume"]
     };
   }
-  
+
   // Normal scoring based on technical skills - adjusted to match industry standards
   // We're using a more generous scoring algorithm that starts at 75% and goes up to 95%
   // This matches real-world recruiting where most qualified candidates get 75-95%
   const matchRate = matchingSkills.length / jobSkillsCount;
-  
+
   // Base score, minimum 75% (if we have any matches at all)
   let score = 75;
-  
+
   if (matchRate > 0.25) score = 80;  // >25% match rate
   if (matchRate > 0.5) score = 85;   // >50% match rate
   if (matchRate > 0.7) score = 90;   // >70% match rate
   if (matchRate > 0.9) score = 95;   // >90% match rate
-  
+
   // Generate specific missing technology gaps
   const technicalGaps = missingSkills.map(skill => 
     `Missing technology: ${skill.charAt(0).toUpperCase() + skill.slice(1)}`
   );
-  
+
   return {
     score,
     strengths: matchingSkills.length > 0 
@@ -1115,11 +1115,11 @@ export async function matchResumeToJob(
     console.warn("Resume or job description too short, using fallback matcher");
     return simpleResumeJobMatcher(resumeText || "", jobDescription || "");
   }
-  
+
   try {
     // Import the sanitization utility
     const { sanitizeHtml } = await import('./utils');
-    
+
     // Check for problematic patterns in file content that cause parsing issues
     if (resumeText.trim().startsWith('<!DOCTYPE') || resumeText.includes('<?xml')) {
       console.warn("Detected DOCTYPE/XML content in resume text - cleaning");
@@ -1128,27 +1128,27 @@ export async function matchResumeToJob(
                       .replace(/<!--[\s\S]*?-->/g, '')
                       .replace(/<[^>]*>?/g, ' ');
     }
-    
+
     // Sanitize both the resume text and job description to remove any HTML tags
     resumeText = sanitizeHtml(resumeText);
     jobDescription = sanitizeHtml(jobDescription);
-    
+
     // First, get the NLP-based match result as a fallback
     const nlpResult = simpleResumeJobMatcher(resumeText, jobDescription);
-    
+
     // If OpenAI is not available, return the NLP result
     if (!openai) {
       console.log("OpenAI not available, using NLP-only matching");
       return nlpResult;
     }
-    
+
     try {
       console.log("Using OpenAI for enhanced resume-job matching...");
-      
+
       // Prepare a shortened version of both texts to fit within token limits
       const resumeExcerpt = resumeText.substring(0, 2500); // Limit resume to 2500 chars
       const jobExcerpt = jobDescription.substring(0, 1500); // Limit job to 1500 chars
-      
+
       // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -1157,7 +1157,7 @@ export async function matchResumeToJob(
             role: "system",
             content: `You are an expert IT recruiter specializing in matching candidates to job descriptions.
             Analyze the resume and job description to provide a detailed match assessment.
-            
+
             Return a JSON object with the following fields:
             1. score: A number between 0 and 100 indicating the overall match (higher is better)
             2. strengths: An array of 3-5 specific candidate strengths relevant to this job
@@ -1168,30 +1168,30 @@ export async function matchResumeToJob(
             7. missingSkills: An array of skills required by the job but not found in the resume
             8. clientExperience: A string analyzing how the candidate's client experience relates to the job requirements
             9. confidence: A number between 0 and 100 indicating confidence in this analysis
-            
+
             Be specific, insightful, and fair in your assessment.`
           },
           {
             role: "user",
             content: `Resume: ${resumeExcerpt}
-            
+
             Job Description: ${jobExcerpt}`
           }
         ],
         response_format: { type: "json_object" },
         max_tokens: 1500
       });
-      
+
       const content = response.choices[0].message.content;
       if (!content) {
         throw new Error("Empty response from OpenAI");
       }
-      
+
       console.log("OpenAI resume-job match analysis completed");
-      
+
       // Parse the response
       const aiResult = JSON.parse(content);
-      
+
       // Merge with NLP results taking the best parts of each
       return {
         score: aiResult.score || nlpResult.score,
@@ -1221,13 +1221,13 @@ export async function matchResumeToJob(
  */
 function extractCandidateStrengths(text: string, matchingSkills: string[]): string[] {
   const strengths: string[] = [];
-  
+
   // Check for years of experience mentions
   const experiencePatterns = [
     /(\d+)\+?\s+years?\s+(?:of\s+)?experience/gi,
     /experience\s+(?:of|with)\s+(\d+)\+?\s+years?/gi
   ];
-  
+
   experiencePatterns.forEach(pattern => {
     let match;
     while ((match = pattern.exec(text)) !== null) {
@@ -1237,31 +1237,31 @@ function extractCandidateStrengths(text: string, matchingSkills: string[]): stri
       }
     }
   });
-  
+
   // Check for leadership/senior role mentions
   const leadershipPatterns = [
     /\b(?:lead|senior|principal|architect|manager|supervisor|head)\b/gi
   ];
-  
+
   leadershipPatterns.forEach(pattern => {
     if (pattern.test(text)) {
       strengths.push("Leadership or senior-level experience");
       return; // Only add this once
     }
   });
-  
+
   // Add top matching skills as strengths
   const topSkills = matchingSkills.slice(0, 3);
   topSkills.forEach(skill => {
     strengths.push(`Proficiency with ${skill}`);
   });
-  
+
   // Look for education/certification strengths
   const educationPatterns = [
     /\b(?:Master|PhD|MBA|Doctorate)\b/gi,
     /\bcertified\b/gi
   ];
-  
+
   educationPatterns.forEach((pattern, index) => {
     if (pattern.test(text)) {
       strengths.push(index === 0 
@@ -1269,7 +1269,7 @@ function extractCandidateStrengths(text: string, matchingSkills: string[]): stri
         : "Relevant professional certifications");
     }
   });
-  
+
   // Deduplicate and limit to 5 strengths
   return Array.from(new Set(strengths)).slice(0, 5);
 }
