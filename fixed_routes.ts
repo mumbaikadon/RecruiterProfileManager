@@ -930,6 +930,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // New endpoint for document parsing that extracts text from uploaded files
+  app.post("/api/parse-document", async (req: Request, res: Response) => {
+    try {
+      const multer = require('multer');
+      const upload = multer({ storage: multer.memoryStorage() });
+      
+      // Use multer middleware to handle file upload
+      const uploadMiddleware = upload.single('file');
+      
+      uploadMiddleware(req, res, async (err: any) => {
+        if (err) {
+          return res.status(400).json({ error: "File upload error", message: err.message });
+        }
+        
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+        
+        const fileBuffer = req.file.buffer;
+        const fileType = req.file.originalname.toLowerCase().endsWith('.pdf') ? 'pdf' : 
+                        req.file.originalname.toLowerCase().endsWith('.docx') ? 'docx' : 'txt';
+        
+        try {
+          // Import document parser utility
+          const { parseDocument } = await import('./document-parser');
+          
+          // Extract text from the document
+          const extractedText = await parseDocument(fileBuffer, fileType);
+          console.log(`Successfully parsed ${fileType} document, extracted ${extractedText.length} characters`);
+          
+          // Return the extracted text
+          res.json({ 
+            success: true, 
+            text: extractedText,
+            fileType,
+            fileName: req.file.originalname
+          });
+        } catch (parseError) {
+          console.error("Document parsing error:", parseError);
+          res.status(500).json({ 
+            error: "Document parsing failed", 
+            message: parseError instanceof Error ? parseError.message : "Unknown error" 
+          });
+        }
+      });
+    } catch (error) {
+      console.error("Document parsing error:", error);
+      res.status(500).json({ 
+        error: "Document parsing failed", 
+        message: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
   app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
     try {
       const { resumeText, jobDescription } = req.body;

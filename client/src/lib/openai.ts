@@ -120,49 +120,44 @@ export async function matchResumeToJob(
 }
 
 /**
- * Process a resume file and extract text for analysis
+ * Process a resume file and extract text for analysis using the server's document parser
  */
 export async function analyzeResume(file: File): Promise<{
   analysis: ResumeAnalysisResult;
   text: string;
 }> {
   try {
-    // Create a FormData object
+    // Create a FormData object for file upload
     const formData = new FormData();
     formData.append("file", file);
     
-    // Extract basic file information
-    const fileName = file.name.toLowerCase();
-    const fileSize = Math.round(file.size / 1024);
-    const lastModified = new Date(file.lastModified).toLocaleString();
-    
-    // Basic file information as fallback
-    const basicFileInfo = `Resume file: ${file.name} (${fileSize} KB)
-Type: ${fileName.endsWith('.pdf') ? 'PDF Document' : fileName.endsWith('.docx') ? 'Word Document' : 'Text Document'}
-Last Modified: ${lastModified}`;
+    console.log(`Uploading resume file: ${file.name} (${Math.round(file.size / 1024)} KB) for parsing`);
 
-    // Read the file to extract text
-    let extractedText = '';
+    // Use the server's document parsing API to extract text
+    const response = await fetch('/api/parse-document', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to process document");
+    }
+
+    // Extract text from the server's response
+    const parseResult = await response.json();
     
-    // Use FileReader to read the file content for text extraction
-    // Note: This is a basic extraction and won't work well for PDFs or complex DOCXs
-    // The server handles proper extraction
-    if (fileName.endsWith('.txt')) {
-      // For text files, read directly
-      extractedText = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target?.result as string || '');
-        reader.readAsText(file);
-      });
-    } else {
-      // For PDFs and Word docs, we'll use the file info as the text and
-      // the server will handle proper extraction
-      extractedText = basicFileInfo;
+    if (!parseResult.success || !parseResult.text) {
+      throw new Error("Document parsing failed on server");
     }
     
-    // The server would normally extract and analyze the resume
-    // We'll return basic data here and rely on the matchResumeToJob function
-    // to do the actual analysis against a job description
+    // Log the extraction success
+    console.log(`Successfully extracted ${parseResult.text.length} characters from ${file.name}`);
+    
+    // Use the extracted text from the server
+    const extractedText = parseResult.text;
+    
+    // Return the extracted text along with basic analysis structure
     return {
       analysis: {
         clientNames: [],
