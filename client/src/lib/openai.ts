@@ -84,6 +84,14 @@ export async function matchResumeToJob(
       }
     );
     
+    // Log detailed response for debugging
+    console.log("Received matchResumeToJob response:", response);
+    console.log("Employment history data in response:", {
+      clientNames: response.clientNames || [],
+      jobTitles: response.jobTitles || [],
+      relevantDates: response.relevantDates || []
+    });
+    
     return response;
   } catch (error) {
     console.error("Error matching resume to job:", error);

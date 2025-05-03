@@ -869,39 +869,59 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                   <div>
                     <h5 className="text-sm font-medium text-gray-700 mb-3">Extracted Employment History:</h5>
                     
-                    {resumeData.clientNames && resumeData.jobTitles && resumeData.clientNames.length > 0 ? (
-                      <div className="space-y-3">
-                        <div className="mb-2">
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                            {resumeData.clientNames.length} positions found
-                          </span>
-                        </div>
-                        
-                        {/* Employment history list */}
-                        {resumeData.clientNames.map((client: string, index: number) => (
-                          <div key={index} className="border-l-2 border-blue-200 pl-3 py-1">
-                            <div className="flex justify-between items-start">
-                              <p className="text-sm font-medium text-gray-800">
-                                {resumeData.jobTitles[index] || "Unknown Position"}
-                              </p>
-                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                                {resumeData.relevantDates[index] || "No date"}
+                    {/* Try to get employment history from either resumeData or matchResults */}
+                    {(() => {
+                      // First try resumeData
+                      let clientNames = resumeData.clientNames;
+                      let jobTitles = resumeData.jobTitles;
+                      let relevantDates = resumeData.relevantDates;
+                      
+                      // If not available in resumeData, try matchResults
+                      if ((!clientNames || clientNames.length === 0) && matchResults?.clientNames) {
+                        console.log("Using employment history from matchResults instead of resumeData");
+                        clientNames = matchResults.clientNames;
+                        jobTitles = matchResults.jobTitles;
+                        relevantDates = matchResults.relevantDates;
+                      }
+                      
+                      if (clientNames && clientNames.length > 0) {
+                        return (
+                          <div className="space-y-3">
+                            <div className="mb-2">
+                              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                {clientNames.length} positions found
                               </span>
                             </div>
-                            <p className="text-sm text-gray-600">{client}</p>
+                            
+                            {/* Employment history list */}
+                            {clientNames.map((client: string, index: number) => (
+                              <div key={index} className="border-l-2 border-blue-200 pl-3 py-1">
+                                <div className="flex justify-between items-start">
+                                  <p className="text-sm font-medium text-gray-800">
+                                    {jobTitles && jobTitles[index] ? jobTitles[index] : "Unknown Position"}
+                                  </p>
+                                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                    {relevantDates && relevantDates[index] ? relevantDates[index] : "No date"}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600">{client}</p>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="text-sm text-gray-500 italic mb-2">No employment history detected</div>
-                        <div className="text-xs text-gray-400">
-                          Debug info: clientNames={JSON.stringify(resumeData.clientNames)}, 
-                          jobTitles={JSON.stringify(resumeData.jobTitles)}, 
-                          relevantDates={JSON.stringify(resumeData.relevantDates)}
-                        </div>
-                      </div>
-                    )}
+                        );
+                      } else {
+                        return (
+                          <div>
+                            <div className="text-sm text-gray-500 italic mb-2">No employment history detected</div>
+                            <div className="text-xs text-gray-400">
+                              Debug info: <br/>
+                              resumeData.clientNames={JSON.stringify(resumeData.clientNames)}<br/>
+                              matchResults.clientNames={JSON.stringify(matchResults?.clientNames)}
+                            </div>
+                          </div>
+                        );
+                      }
+                    })()}
                     
                     {/* Skills overview */}
                     {resumeData.skills && resumeData.skills.length > 0 && (
