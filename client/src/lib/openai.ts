@@ -1,12 +1,15 @@
 import { apiRequest, apiRequestWithJson } from "./queryClient";
 
 /**
- * Simple interface for resume data - analysis features removed
+ * Enhanced interface for resume data with structured employment history
  */
 export interface ResumeAnalysisResult {
-  clientNames: string[];
-  jobTitles: string[];
-  relevantDates: string[];
+  // Structured employment history data
+  clientNames: string[]; // Company names/employers
+  jobTitles: string[];   // Job positions/titles
+  relevantDates: string[]; // Employment periods
+  
+  // Original fields
   skills: string[];
   education: string[];
   extractedText: string;
@@ -14,7 +17,7 @@ export interface ResumeAnalysisResult {
 }
 
 /**
- * Simple interface for job match results - analysis features removed
+ * Enhanced interface for job match results including structured employment history
  */
 export interface MatchScoreResult {
   score: number;
@@ -24,6 +27,13 @@ export interface MatchScoreResult {
   technicalGaps?: string[];
   matchingSkills?: string[];
   missingSkills?: string[];
+  
+  // Structured employment history data
+  clientNames?: string[];
+  jobTitles?: string[];
+  relevantDates?: string[];
+  
+  // Legacy fields
   clientExperience?: string;
   confidence?: number;
 }
@@ -80,6 +90,7 @@ export async function matchResumeToJob(
     
     // Return a fallback response in case of error
     return {
+      // Basic match result
       score: 0,
       strengths: [],
       weaknesses: [error instanceof Error ? error.message : "Failed to analyze resume"],
@@ -87,6 +98,13 @@ export async function matchResumeToJob(
       technicalGaps: [],
       matchingSkills: [],
       missingSkills: [],
+      
+      // Include empty structured employment history data
+      clientNames: [],
+      jobTitles: [],
+      relevantDates: [],
+      
+      // Legacy fields
       clientExperience: "",
       confidence: 0
     };
