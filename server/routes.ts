@@ -845,8 +845,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Analyze the resume against the job description
         const analysisResult = await analyzeResume(sanitizedResumeText, sanitizedJobDescription);
         
-        // Format the response to match the expected structure
+        // Format the response to match the expected structure, including employment history data
         const response = {
+          // Core match scores and analysis
           score: analysisResult.overallScore,
           strengths: analysisResult.relevantExperience,
           weaknesses: analysisResult.improvements.content,
@@ -854,6 +855,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           technicalGaps: analysisResult.skillsGapAnalysis.missingSkills,
           matchingSkills: analysisResult.skillsGapAnalysis.matchingSkills,
           missingSkills: analysisResult.skillsGapAnalysis.missingSkills,
+          
+          // Include employment history
+          clientNames: Array.isArray(analysisResult.clientNames) ? analysisResult.clientNames : [],
+          jobTitles: Array.isArray(analysisResult.jobTitles) ? analysisResult.jobTitles : [],
+          relevantDates: Array.isArray(analysisResult.relevantDates) ? analysisResult.relevantDates : [],
+          
+          // Legacy fields maintained for backward compatibility
           clientExperience: analysisResult.relevantExperience.join(", "),
           confidence: analysisResult.confidenceScore,
           suggestedTraining: analysisResult.skillsGapAnalysis.suggestedTraining

@@ -867,17 +867,42 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
 
                 {resumeData && (
                   <div>
-                    <h5 className="text-sm font-medium text-gray-700 mb-2">Extracted Resume Data:</h5>
-                    <div className="grid grid-cols-1 gap-y-2 gap-x-4 sm:grid-cols-2">
-                      <div className="sm:col-span-1">
-                        <p className="text-xs text-gray-500">Client History:</p>
-                        <p className="text-sm text-gray-700">{resumeData.clientNames.join(", ") || "None detected"}</p>
+                    <h5 className="text-sm font-medium text-gray-700 mb-3">Extracted Employment History:</h5>
+                    
+                    {resumeData.clientNames && resumeData.jobTitles && resumeData.clientNames.length > 0 ? (
+                      <div className="space-y-3">
+                        {/* Employment history list */}
+                        {resumeData.clientNames.map((client, index) => (
+                          <div key={index} className="border-l-2 border-blue-200 pl-3 py-1">
+                            <div className="flex justify-between items-start">
+                              <p className="text-sm font-medium text-gray-800">
+                                {resumeData.jobTitles[index] || "Unknown Position"}
+                              </p>
+                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                {resumeData.relevantDates[index] || "No date"}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600">{client}</p>
+                          </div>
+                        ))}
                       </div>
-                      <div className="sm:col-span-1">
-                        <p className="text-xs text-gray-500">Recent Job Title:</p>
-                        <p className="text-sm text-gray-700">{resumeData.jobTitles[0] || "None detected"}</p>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic">No employment history detected</div>
+                    )}
+                    
+                    {/* Skills overview */}
+                    {resumeData.skills && resumeData.skills.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-xs text-gray-500 mb-1">Skills:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {resumeData.skills.map((skill, index) => (
+                            <span key={index} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </CardContent>
