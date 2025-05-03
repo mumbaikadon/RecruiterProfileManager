@@ -810,53 +810,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // New simplified endpoint for extracting text from DOCX files
-  app.post("/api/extract-docx", async (req: Request, res: Response) => {
-    try {
-      const { fileName, fileData } = req.body;
-      
-      if (!fileData || typeof fileData !== "string") {
-        return res.status(400).json({ 
-          text: "No file data provided",
-          error: "File data is required" 
-        });
-      }
-      
-      console.log(`Processing DOCX file, data size: ${fileData.length} characters`);
-      
-      // Convert base64 back to binary
-      const binaryData = Buffer.from(fileData, 'base64');
-      console.log(`Binary data buffer size: ${binaryData.length} bytes`);
-      
-      // Use our document extractor
-      const docExtractor = require('./document-extractor');
-      console.log("Using document extractor to extract text from buffer...");
-      
-      const extractedText = await docExtractor.extractTextFromDocxBuffer(binaryData);
-      console.log(`Successfully extracted ${extractedText.length} characters from DOCX file`);
-      
-      if (extractedText.length > 0) {
-        console.log(`First 200 chars: ${extractedText.substring(0, 200)}`);
-        // Return the extracted text
-        res.json({ text: extractedText });
-      } else {
-        // Provide empty text with a message so client continues
-        console.log("No text was extracted from the document");
-        res.json({ 
-          text: "Resume file: This document appears to be empty or could not be read properly. Please upload a different document.",
-          error: "No text content extracted" 
-        });
-      }
-    } catch (error) {
-      console.error("Error extracting DOCX:", error);
-      res.status(200).json({ 
-        // Return 200 with empty text so the client can continue
-        text: `Error processing document. Please try a different format or contact support.`,
-        error: error instanceof Error ? error.message : "Unknown error" 
-      });
-    }
-  });
-  
   app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
     try {
       const { resumeText, jobDescription } = req.body;

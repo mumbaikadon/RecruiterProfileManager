@@ -145,6 +145,8 @@ Last Modified: ${lastModified}`;
     let extractedText = '';
     
     // Use FileReader to read the file content for text extraction
+    // Note: This is a basic extraction and won't work well for PDFs or complex DOCXs
+    // The server handles proper extraction
     if (fileName.endsWith('.txt')) {
       // For text files, read directly
       extractedText = await new Promise<string>((resolve) => {
@@ -152,43 +154,8 @@ Last Modified: ${lastModified}`;
         reader.onload = (e) => resolve(e.target?.result as string || '');
         reader.readAsText(file);
       });
-    } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
-      // For Word docs, use ArrayBuffer to send the binary file to the server for extraction
-      // We'll include metadata in the text so we have some content to show
-      const arrayBuffer = await new Promise<ArrayBuffer>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target?.result as ArrayBuffer);
-        reader.readAsArrayBuffer(file);
-      });
-      
-      // Convert to Base64 for server processing
-      const uint8Array = new Uint8Array(arrayBuffer);
-      let binary = '';
-      for (let i = 0; i < uint8Array.length; i++) {
-        binary += String.fromCharCode(uint8Array[i]);
-      }
-      const base64String = btoa(binary);
-      
-      try {
-        // Send the docx file to server for proper extraction
-        const response = await apiRequestWithJson<{text: string}>(
-          'POST',
-          '/api/extract-docx',
-          {
-            fileName: file.name,
-            fileData: base64String
-          }
-        );
-        
-        extractedText = response.text;
-        console.log("Extracted DOCX text length:", extractedText.length);
-      } catch (error) {
-        console.error("Error extracting DOCX content:", error);
-        // Fallback to basic info
-        extractedText = basicFileInfo + "\n\nError extracting document content. Analysis may be limited.";
-      }
     } else {
-      // For PDFs and other formats, we'll use the file info as the text and
+      // For PDFs and Word docs, we'll use the file info as the text and
       // the server will handle proper extraction
       extractedText = basicFileInfo;
     }
