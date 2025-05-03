@@ -872,7 +872,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                     {resumeData.clientNames && resumeData.jobTitles && resumeData.clientNames.length > 0 ? (
                       <div className="space-y-3">
                         {/* Employment history list */}
-                        {resumeData.clientNames.map((client, index) => (
+                        {resumeData.clientNames.map((client: string, index: number) => (
                           <div key={index} className="border-l-2 border-blue-200 pl-3 py-1">
                             <div className="flex justify-between items-start">
                               <p className="text-sm font-medium text-gray-800">
@@ -895,7 +895,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                       <div className="mt-4">
                         <p className="text-xs text-gray-500 mb-1">Skills:</p>
                         <div className="flex flex-wrap gap-1">
-                          {resumeData.skills.map((skill, index) => (
+                          {resumeData.skills.map((skill: string, index: number) => (
                             <span key={index} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
                               {skill}
                             </span>
