@@ -230,7 +230,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             setValidationData({
               candidateId: data.candidateId,
               candidateName,
-              resumeFileName: values.resumeFile?.name,
+              resumeFileName: values.resumeData?.fileName || "Resume",
               existingResumeData: {
                 id: existingResumeData.id || 0,
                 clientNames: existingResumeData.clientNames || [],
@@ -343,58 +343,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
     }
   };
 
-  // Handle validation result when the dialog is closed
-  const handleValidationResult = async (validationData: {
-    candidateId: number;
-    jobId: number;
-    validationType: string;
-    validationResult: "matching" | "unreal";
-    previousClientNames: string[];
-    previousJobTitles: string[];
-    previousDates: string[];
-    newClientNames: string[];
-    newJobTitles: string[];
-    newDates: string[];
-    resumeFileName?: string;
-    reason?: string;
-  }) => {
-    if (validationData.validationResult === "matching") {
-      // If candidate validated as matching, proceed with submission
-      createSubmission({
-        jobId: validationData.jobId,
-        candidateId: validationData.candidateId,
-        recruiterId,
-        status: "New",
-        agreedRate: 0, // This should be replaced with the actual value from the form
-        matchScore: null,
-        notes: "",
-      }, {
-        onSuccess: () => {
-          toast({
-            title: "Submission successful",
-            description: `Candidate was validated and submitted for ${jobTitle}`,
-          });
-          if (onSuccess) onSuccess();
-          onClose();
-        },
-        onError: (error) => {
-          setSubmissionError(error.message);
-          toast({
-            title: "Submission failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        },
-      });
-    } else {
-      // If marked as unreal, just close the dialog - the validation API will mark them in the system
-      toast({
-        title: "Candidate marked as unreal",
-        description: "The candidate has been flagged as potentially fraudulent in the system.",
-      });
-      onClose();
-    }
-  };
+  // The validation result is now handled directly in the validateCandidate wrapper
 
   return (
     <>
@@ -462,7 +411,10 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
       {validationDialogOpen && validationData && (
         <CandidateValidationDialog
           isOpen={validationDialogOpen}
-          onClose={() => setValidationDialogOpen(false)}
+          onClose={() => {
+            setValidationDialogOpen(false);
+            // No need to create a submission here - the validateCandidate function takes care of it
+          }}
           candidateId={validationData.candidateId}
           candidateName={validationData.candidateName}
           jobId={jobId}
@@ -471,7 +423,60 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           newResumeData={validationData.newResumeData}
           validationType="resubmission"
           resumeFileName={validationData.resumeFileName}
-          validateCandidate={(data) => validateCandidate({...data, validatedBy: recruiterId})}
+          validateCandidate={(data) => {
+            return new Promise((resolve, reject) => {
+              validateCandidate({...data, validatedBy: recruiterId}, {
+                onSuccess: () => {
+                  // If validation was successful and candidate is matching, create a submission
+                  if (data.validationResult === "matching") {
+                    createSubmission({
+                      jobId,
+                      candidateId: data.candidateId,
+                      recruiterId,
+                      status: "New",
+                      agreedRate: 0, // For now, using a placeholder value
+                      matchScore: null,
+                      notes: "",
+                    }, {
+                      onSuccess: () => {
+                        toast({
+                          title: "Submission successful",
+                          description: `${data.candidateId ? "Candidate" : ""} was validated and submitted for ${jobTitle}`,
+                        });
+                        if (onSuccess) onSuccess();
+                        resolve(true);
+                      },
+                      onError: (error) => {
+                        setSubmissionError(error.message);
+                        toast({
+                          title: "Submission failed",
+                          description: error.message,
+                          variant: "destructive",
+                        });
+                        reject(error);
+                      }
+                    });
+                  } else {
+                    // Just show a toast for unreal candidates
+                    toast({
+                      title: "Candidate marked as unreal",
+                      description: "The candidate has been flagged as potentially fraudulent in the system.",
+                    });
+                    resolve(true);
+                  }
+                },
+                onError: (error) => {
+                  setSubmissionError(error.message);
+                  toast({
+                    title: "Validation failed",
+                    description: error.message,
+                    variant: "destructive",
+                  });
+                  reject(error);
+                }
+              });
+            });
+          }}
           validatedBy={recruiterId}
         />
       )}
