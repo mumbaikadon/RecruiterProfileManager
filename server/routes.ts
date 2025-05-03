@@ -962,55 +962,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Processing ${fileType.toUpperCase()} document: ${req.file.originalname} (${fileBuffer.length} bytes)`);
       
-      // Extract text based on file type
+      // Use our document parser utility for text extraction
       let extractedText = '';
       
-      if (fileType === 'docx') {
-        // For DOCX files, use mammoth
-        try {
-          console.log("Using mammoth for DOCX extraction");
-          // Import mammoth dynamically using ESM syntax
-          const mammoth = await import('mammoth');
-          const result = await mammoth.extractRawText({ buffer: fileBuffer });
-          extractedText = result.value || "";
-        } catch (docxError) {
-          console.error("DOCX extraction error:", docxError);
-          return res.status(500).json({
-            success: false,
-            error: "DOCX parsing failed",
-            message: docxError instanceof Error ? docxError.message : "Unknown error"
-          });
-        }
-      } 
-      else if (fileType === 'pdf') {
-        // For PDF files, use pdf-parse
-        try {
-          console.log("Using pdf-parse for PDF extraction");
-          // Import pdf-parse dynamically using ESM syntax
-          const pdfParseModule = await import('pdf-parse');
-          const pdfParse = pdfParseModule.default;
-          const data = await pdfParse(fileBuffer);
-          extractedText = data.text || "";
-        } catch (pdfError) {
-          console.error("PDF extraction error:", pdfError);
-          return res.status(500).json({
-            success: false,
-            error: "PDF parsing failed",
-            message: pdfError instanceof Error ? pdfError.message : "Unknown error"
-          });
-        }
-      }
-      else if (fileType === 'txt') {
-        // For TXT files, just convert buffer to string
-        extractedText = fileBuffer.toString('utf8');
-      }
-      else {
-        // Unsupported file type
-        console.error(`Unsupported file type: ${fileType}`);
-        return res.status(400).json({
+      try {
+        // Import the document parser
+        const { extractTextFromDocument } = await import('./document-parser');
+        
+        // Extract text based on file type
+        console.log(`Processing ${fileType.toUpperCase()} document using document-parser`);
+        extractedText = await extractTextFromDocument(fileBuffer, fileType);
+      } catch (extractionError) {
+        console.error(`${fileType.toUpperCase()} extraction error:`, extractionError);
+        return res.status(500).json({
           success: false,
-          error: "Unsupported file type",
-          message: `File type '${fileType}' is not supported. Please upload a PDF, DOCX, or TXT file.`
+          error: `${fileType.toUpperCase()} parsing failed`,
+          message: extractionError instanceof Error ? extractionError.message : "Unknown error"
         });
       }
       
