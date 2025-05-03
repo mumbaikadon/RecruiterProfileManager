@@ -1,17 +1,14 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { db } from "./db";
 import { 
   insertJobSchema, 
   insertCandidateSchema, 
   insertSubmissionSchema, 
   insertResumeDataSchema,
-  insertActivitySchema,
-  resumeData
+  insertActivitySchema
 } from "@shared/schema";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
 import fs from "fs";
 
@@ -815,7 +812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
     try {
-      const { resumeText, jobDescription, candidateId } = req.body;
+      const { resumeText, jobDescription } = req.body;
       
       if (!resumeText || typeof resumeText !== "string") {
         return res.status(200).json({ 
@@ -847,7 +844,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Match resume request received:");
       console.log("- Resume text length:", sanitizedResumeText.length);
       console.log("- Job description length:", sanitizedJobDescription.length);
-      console.log("- Candidate ID:", candidateId || "Not provided");
       
       console.log("Analyzing resume match...");
       const matchResult = await matchResumeToJob(sanitizedResumeText, sanitizedJobDescription);
@@ -870,55 +866,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         jobTitles: Array.isArray(matchResult.jobTitles) ? matchResult.jobTitles : [],
         relevantDates: Array.isArray(matchResult.relevantDates) ? matchResult.relevantDates : []
       };
-      
-      // Update the candidate's resume data if candidate ID is provided
-      if (candidateId && parseInt(candidateId) > 0) {
-        try {
-          const parsedCandidateId = parseInt(candidateId);
-          
-          // First check if resume data exists for this candidate
-          const existingResumeData = await storage.getResumeData(parsedCandidateId);
-          
-          if (existingResumeData) {
-            // Update the resume data with the extracted employment history
-            // Keep existing data if it's present and not empty
-            const updatedResumeData = {
-              candidateId: parsedCandidateId,
-              clientNames: response.clientNames.length > 0 ? response.clientNames : existingResumeData.clientNames,
-              jobTitles: response.jobTitles.length > 0 ? response.jobTitles : existingResumeData.jobTitles,
-              relevantDates: response.relevantDates.length > 0 ? response.relevantDates : existingResumeData.relevantDates,
-              skills: existingResumeData.skills || [],
-              education: existingResumeData.education || [],
-              extractedText: existingResumeData.extractedText || sanitizedResumeText.substring(0, 4000),
-              fileName: existingResumeData.fileName
-            };
-            
-            // Save the updated resume data
-            await db.update(resumeData)
-              .set(updatedResumeData)
-              .where(eq(resumeData.candidateId, parsedCandidateId));
-              
-            console.log(`Updated resume data for candidate ID ${parsedCandidateId} with employment history`);
-          } else {
-            // Create new resume data
-            const newResumeData = {
-              candidateId: parsedCandidateId,
-              clientNames: response.clientNames,
-              jobTitles: response.jobTitles,
-              relevantDates: response.relevantDates,
-              skills: [],
-              education: [],
-              extractedText: sanitizedResumeText.substring(0, 4000)
-            };
-            
-            await storage.createResumeData(newResumeData);
-            console.log(`Created new resume data for candidate ID ${parsedCandidateId}`);
-          }
-        } catch (dbError) {
-          console.error("Error updating resume data:", dbError);
-          // Continue with the response even if DB update fails
-        }
-      }
       
       console.log("Resume analysis completed successfully");
       console.log("Final response including employment history data:", JSON.stringify(response, null, 2));
