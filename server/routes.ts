@@ -20,6 +20,8 @@ import fs from "fs";
 import openaiRoutes from "./routes/openai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register modular OpenAI routes
+  app.use("/api/openai", openaiRoutes);
   // Jobs routes
   app.get("/api/jobs", async (req: Request, res: Response) => {
     try {
