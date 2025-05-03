@@ -17,6 +17,10 @@ function CandidateDetailPage() {
   
   const { data: candidate, isLoading, error } = useCandidate(candidateId);
   
+  // Log the candidate data for debugging
+  console.log("Candidate data:", candidate);
+  console.log("Resume data:", candidate?.resumeData);
+  
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
