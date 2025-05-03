@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateSubmission } from "@/hooks/use-submissions";
+import { useCandidateValidation } from "@/hooks/use-candidate-validation";
 import { sanitizeHtml } from "@/lib/utils";
 import {
   Dialog,
@@ -10,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import CandidateForm, { CandidateFormValues } from "@/components/candidate/candidate-form";
+import CandidateValidationDialog from "@/components/candidate/candidate-validation-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,12 +46,32 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
   onSuccess,
 }) => {
   const { mutate: createSubmission, isPending } = useCreateSubmission();
+  const { mutate: validateCandidate, isPending: isValidating } = useCandidateValidation();
   const { toast } = useToast();
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [existingCandidate, setExistingCandidate] = useState<{
     id: number;
     name: string;
     previousSubmissions?: PreviousSubmissionInfo[];
+  } | null>(null);
+  
+  // State for validation dialog
+  const [validationDialogOpen, setValidationDialogOpen] = useState(false);
+  const [validationData, setValidationData] = useState<{
+    candidateId: number;
+    candidateName: string;
+    resumeFileName?: string;
+    existingResumeData: {
+      id: number;
+      clientNames: string[];
+      jobTitles: string[];
+      relevantDates: string[];
+    };
+    newResumeData: {
+      clientNames: string[];
+      jobTitles: string[];
+      relevantDates: string[];
+    };
   } | null>(null);
 
   // Function to get previous submission info for a candidate
@@ -156,11 +178,13 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           // Get candidate details
           const candidateDetailsResponse = await fetch(`/api/candidates/${data.candidateId}`);
           let candidateName = "Existing Candidate";
+          let existingResumeData = null;
           
           if (candidateDetailsResponse.ok) {
             try {
               const candidateDetails = await candidateDetailsResponse.json();
               candidateName = `${candidateDetails.firstName} ${candidateDetails.lastName}`;
+              existingResumeData = candidateDetails.resumeData;
             } catch (error) {
               console.error("Error parsing candidate details:", error);
             }
@@ -191,7 +215,39 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             previousSubmissions: previousSubmissions
           });
           
-          // Proceed with submission for existing candidate
+          // Check if we need to validate the candidate's employment history
+          if (
+            existingResumeData && 
+            values.resumeData && 
+            existingResumeData.clientNames && 
+            existingResumeData.jobTitles && 
+            existingResumeData.relevantDates &&
+            values.resumeData.clientNames && 
+            values.resumeData.jobTitles && 
+            values.resumeData.relevantDates
+          ) {
+            // Open validation dialog if there's both existing and new resume data
+            setValidationData({
+              candidateId: data.candidateId,
+              candidateName,
+              resumeFileName: values.resumeFile?.name,
+              existingResumeData: {
+                id: existingResumeData.id || 0,
+                clientNames: existingResumeData.clientNames || [],
+                jobTitles: existingResumeData.jobTitles || [],
+                relevantDates: existingResumeData.relevantDates || []
+              },
+              newResumeData: {
+                clientNames: values.resumeData.clientNames || [],
+                jobTitles: values.resumeData.jobTitles || [],
+                relevantDates: values.resumeData.relevantDates || []
+              }
+            });
+            setValidationDialogOpen(true);
+            return;
+          }
+          
+          // If no validation needed, proceed with submission for existing candidate
           createSubmission({
             jobId,
             candidateId: data.candidateId,
@@ -287,66 +343,139 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
     }
   };
 
+  // Handle validation result when the dialog is closed
+  const handleValidationResult = async (validationData: {
+    candidateId: number;
+    jobId: number;
+    validationType: string;
+    validationResult: "matching" | "unreal";
+    previousClientNames: string[];
+    previousJobTitles: string[];
+    previousDates: string[];
+    newClientNames: string[];
+    newJobTitles: string[];
+    newDates: string[];
+    resumeFileName?: string;
+    reason?: string;
+  }) => {
+    if (validationData.validationResult === "matching") {
+      // If candidate validated as matching, proceed with submission
+      createSubmission({
+        jobId: validationData.jobId,
+        candidateId: validationData.candidateId,
+        recruiterId,
+        status: "New",
+        agreedRate: 0, // This should be replaced with the actual value from the form
+        matchScore: null,
+        notes: "",
+      }, {
+        onSuccess: () => {
+          toast({
+            title: "Submission successful",
+            description: `Candidate was validated and submitted for ${jobTitle}`,
+          });
+          if (onSuccess) onSuccess();
+          onClose();
+        },
+        onError: (error) => {
+          setSubmissionError(error.message);
+          toast({
+            title: "Submission failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        },
+      });
+    } else {
+      // If marked as unreal, just close the dialog - the validation API will mark them in the system
+      toast({
+        title: "Candidate marked as unreal",
+        description: "The candidate has been flagged as potentially fraudulent in the system.",
+      });
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Submit Candidate</DialogTitle>
-          <DialogDescription>
-            Submit a candidate for {jobTitle}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Submit Candidate</DialogTitle>
+            <DialogDescription>
+              Submit a candidate for {jobTitle}
+            </DialogDescription>
+          </DialogHeader>
 
-        {submissionError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-4">
-            {submissionError}
-          </div>
-        )}
+          {submissionError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-4">
+              {submissionError}
+            </div>
+          )}
 
-        {existingCandidate && existingCandidate.previousSubmissions && existingCandidate.previousSubmissions.length > 0 && (
-          <Card className="mb-4 bg-amber-50 border-amber-200">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Previous Submissions for {existingCandidate.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm space-y-3">
-                {existingCandidate.previousSubmissions.map((submission, index) => (
-                  <div key={index} className="border-b border-amber-200 pb-2 last:border-0">
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="font-medium">{submission.jobTitle || "Unknown Job"}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Submitted: {submission.submittedDate ? formatDate(submission.submittedDate) : "Unknown date"}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">{submission.agreedRate ? formatRate(submission.agreedRate) : "Rate N/A"}</p>
-                        <Badge variant={submission.status === "accepted" ? "success" : 
-                                      submission.status === "rejected" ? "destructive" : "secondary"} 
-                               className="text-xs">
-                          {submission.status || "Unknown"}
-                        </Badge>
+          {existingCandidate && existingCandidate.previousSubmissions && existingCandidate.previousSubmissions.length > 0 && (
+            <Card className="mb-4 bg-amber-50 border-amber-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Previous Submissions for {existingCandidate.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm space-y-3">
+                  {existingCandidate.previousSubmissions.map((submission, index) => (
+                    <div key={index} className="border-b border-amber-200 pb-2 last:border-0">
+                      <div className="flex justify-between">
+                        <div>
+                          <p className="font-medium">{submission.jobTitle || "Unknown Job"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Submitted: {submission.submittedDate ? formatDate(submission.submittedDate) : "Unknown date"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">{submission.agreedRate ? formatRate(submission.agreedRate) : "Rate N/A"}</p>
+                          <Badge variant={submission.status === "accepted" ? "success" : 
+                                        submission.status === "rejected" ? "destructive" : "secondary"} 
+                                className="text-xs">
+                            {submission.status || "Unknown"}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-amber-700 mt-3">
-                Consider using similar or higher rates from previous submissions when negotiating.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+                  ))}
+                </div>
+                <p className="text-xs text-amber-700 mt-3">
+                  Consider using similar or higher rates from previous submissions when negotiating.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
-        <CandidateForm
+          <CandidateForm
+            jobId={jobId}
+            jobTitle={jobTitle}
+            jobDescription={sanitizeHtml(jobDescription)}
+            onSubmit={handleSubmit}
+            isPending={isPending || isValidating}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Validation Dialog */}
+      {validationDialogOpen && validationData && (
+        <CandidateValidationDialog
+          isOpen={validationDialogOpen}
+          onClose={() => setValidationDialogOpen(false)}
+          candidateId={validationData.candidateId}
+          candidateName={validationData.candidateName}
           jobId={jobId}
           jobTitle={jobTitle}
-          jobDescription={sanitizeHtml(jobDescription)}
-          onSubmit={handleSubmit}
-          isPending={isPending}
+          existingResumeData={validationData.existingResumeData}
+          newResumeData={validationData.newResumeData}
+          validationType="resubmission"
+          resumeFileName={validationData.resumeFileName}
+          validateCandidate={(data) => validateCandidate({...data, validatedBy: recruiterId})}
+          validatedBy={recruiterId}
         />
-      </DialogContent>
-    </Dialog>
+      )}
+    </>
   );
 };
 
