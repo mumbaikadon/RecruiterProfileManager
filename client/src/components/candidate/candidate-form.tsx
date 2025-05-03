@@ -973,7 +973,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={isPending || isAnalyzing || candidateExists}
+              disabled={isPending || isAnalyzing}
             >
               {isPending ? "Submitting..." : "Submit Candidate"}
             </Button>
