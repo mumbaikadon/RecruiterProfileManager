@@ -810,6 +810,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // New endpoint for extracting text from DOCX files
+  app.post("/api/extract-docx", async (req: Request, res: Response) => {
+    try {
+      const { fileName, fileData } = req.body;
+      
+      if (!fileData || typeof fileData !== "string") {
+        return res.status(400).json({ message: "File data is required" });
+      }
+      
+      console.log(`Processing DOCX file: ${fileName}, data size: ${fileData.length} characters`);
+      
+      // Convert base64 back to binary
+      const binaryData = Buffer.from(fileData, 'base64');
+      
+      // Use mammoth to extract text from the DOCX buffer
+      const mammoth = require('mammoth');
+      const result = await mammoth.extractRawText({ buffer: binaryData });
+      
+      const extractedText = result.value || "";
+      console.log(`Successfully extracted ${extractedText.length} characters from DOCX file`);
+      
+      // Return the extracted text
+      res.json({ text: extractedText });
+    } catch (error) {
+      console.error("Error extracting DOCX:", error);
+      res.status(500).json({ 
+        message: "Failed to extract document content", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+  
   app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
     try {
       const { resumeText, jobDescription } = req.body;
