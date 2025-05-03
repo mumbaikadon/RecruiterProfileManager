@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { analyzeResume } from "@/lib/openai";
+import { analyzeResume, matchResumeToJob } from "@/lib/openai";
 import { useToast } from "@/hooks/use-toast";
 
 interface ResumeAnalyzerProps {
@@ -43,36 +43,85 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
     setIsUploading(true);
 
     try {
-      // Process the resume file (minimal processing only)
+      // Process the resume file
       const result = await analyzeResume(file);
       
-      // Create minimal match result
-      const matchResult = {
+      // Job description must be provided
+      if (!jobDescription || jobDescription.trim().length < 10) {
+        toast({
+          title: "Missing Job Description",
+          description: "Job description is required for resume matching.",
+          variant: "destructive",
+        });
+        
+        // Provide empty match result if no job description
+        const emptyMatchResult = {
+          score: 0,
+          strengths: [],
+          weaknesses: ["Job description is required for resume analysis"],
+          suggestions: ["Please provide a job description"],
+          technicalGaps: [],
+          matchingSkills: [],
+          missingSkills: [],
+          clientExperience: "",
+          confidence: 0
+        };
+        
+        onAnalysisComplete(result.analysis, emptyMatchResult);
+        return;
+      }
+      
+      // Match resume against job description
+      console.log("Matching resume against job description...");
+      console.log("Resume text:", result.text.substring(0, 100) + "...");
+      console.log("Job description:", jobDescription.substring(0, 100) + "...");
+      
+      const matchResult = await matchResumeToJob(result.text, jobDescription);
+      
+      console.log("Match result:", matchResult);
+
+      // Pass results to parent component
+      onAnalysisComplete(result.analysis, matchResult);
+
+      toast({
+        title: "Resume Analyzed",
+        description: `Resume analyzed with match score of ${matchResult.score}%.`,
+      });
+    } catch (error) {
+      console.error("Error processing resume:", error);
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : "Failed to analyze the resume. Please try again.",
+        variant: "destructive",
+      });
+      
+      // Provide error match result
+      const errorMatchResult = {
         score: 0,
         strengths: [],
-        weaknesses: ["Resume analysis feature has been removed"],
-        suggestions: ["Manual evaluation required"],
+        weaknesses: [error instanceof Error ? error.message : "Analysis failed"],
+        suggestions: ["Try with a different resume or job description"],
         technicalGaps: [],
         matchingSkills: [],
         missingSkills: [],
         clientExperience: "",
         confidence: 0
       };
-
-      // Pass results to parent component
-      onAnalysisComplete(result.analysis, matchResult);
-
-      toast({
-        title: "Resume Uploaded",
-        description: "Resume file has been uploaded successfully.",
-      });
-    } catch (error) {
-      console.error("Error processing resume:", error);
-      toast({
-        title: "Upload Failed",
-        description: "Failed to process the resume file. Please try again.",
-        variant: "destructive",
-      });
+      
+      // If resume was successfully processed but matching failed, still pass the resume data
+      if (file) {
+        const basicInfo = {
+          clientNames: [],
+          jobTitles: [],
+          relevantDates: [],
+          skills: [],
+          education: [],
+          extractedText: `Resume file: ${file.name}`,
+          fileName: file.name
+        };
+        
+        onAnalysisComplete(basicInfo, errorMatchResult);
+      }
     } finally {
       setIsUploading(false);
     }
