@@ -845,15 +845,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("- Resume text length:", sanitizedResumeText.length);
       console.log("- Job description length:", sanitizedJobDescription.length);
       
+      console.log("Analyzing resume match...");
       const matchResult = await matchResumeToJob(sanitizedResumeText, sanitizedJobDescription);
+      
+      // Log the employment history data
+      console.log("OpenAI extracted employment history data:");
+      console.log("- clientNames:", JSON.stringify(matchResult.clientNames || []));
+      console.log("- jobTitles:", JSON.stringify(matchResult.jobTitles || []));
+      console.log("- relevantDates:", JSON.stringify(matchResult.relevantDates || []));
       
       // Ensure we return a properly structured response even if the matching service fails
       const response = {
         score: typeof matchResult.score === 'number' ? matchResult.score : 0,
         strengths: Array.isArray(matchResult.strengths) ? matchResult.strengths : [],
         weaknesses: Array.isArray(matchResult.weaknesses) ? matchResult.weaknesses : [],
-        suggestions: Array.isArray(matchResult.suggestions) ? matchResult.suggestions : []
+        suggestions: Array.isArray(matchResult.suggestions) ? matchResult.suggestions : [],
+        
+        // Include employment history data
+        clientNames: Array.isArray(matchResult.clientNames) ? matchResult.clientNames : [],
+        jobTitles: Array.isArray(matchResult.jobTitles) ? matchResult.jobTitles : [],
+        relevantDates: Array.isArray(matchResult.relevantDates) ? matchResult.relevantDates : []
       };
+      
+      console.log("Resume analysis completed successfully");
+      console.log("Final response including employment history data:", JSON.stringify(response, null, 2));
       
       res.json(response);
     } catch (error) {
