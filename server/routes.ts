@@ -11,9 +11,8 @@ import {
 import { z } from "zod";
 import { 
   analyzeResumeText, 
-  analyzeResumeWithAI, 
   matchResumeToJob 
-} from "./openai";
+} from "./document-parser";
 import { syncCandidateToTalentStreamline } from "./talentStreamline";
 import fs from "fs";
 
@@ -776,7 +775,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // OpenAI integration routes
+  // Simple document processing endpoints
+  // Note: Resume analysis features have been removed - these endpoints
+  // now return minimal placeholder data to maintain API compatibility
+  
   app.post("/api/openai/analyze-resume", async (req: Request, res: Response) => {
     try {
       const { text } = req.body;
@@ -786,111 +788,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Import the sanitization utility
-      const { sanitizeHtml, isValidJson } = await import('./utils');
-
-      // Check if text contains XML/HTML-like content that might cause issues
-      if (text.includes('<!DOCTYPE') || text.includes('<?xml') || text.includes('<html')) {
-        console.log("Detected potentially problematic document format with XML/HTML tags");
-
-        // Special handling for Word documents or HTML content
-        // Remove all XML/HTML tags and normalize whitespace
-        let cleanedText = text.replace(/<[^>]*>?/g, ' ')
-                              .replace(/\s+/g, ' ')
-                              .trim();
-
-        // If text is still problematic, respond with a more specific error
-        if (cleanedText.length < 100) {
-          return res.status(200).json({
-            clientNames: [],
-            jobTitles: [],
-            relevantDates: [],
-            skills: [],
-            education: [],
-            extractedText: "",
-            message: "Unable to extract meaningful text from this document format. Please convert to plain text or a simpler format."
-          });
-        }
-
-        // Use the cleaned text instead
-        console.log("Using cleaned text from structured document, length:", cleanedText.length);
-
-        // Proceed with analyzing the cleaned text
-        try {
-          const analysis = await analyzeResumeText(cleanedText);
-
-          // Additional safety sanitization for extracted values
-          const safeAnalysis = {
-            clientNames: analysis.clientNames.map(client => sanitizeHtml(client)),
-            jobTitles: analysis.jobTitles.map(title => sanitizeHtml(title)),
-            relevantDates: analysis.relevantDates.map(date => sanitizeHtml(date)),
-            skills: analysis.skills.map(skill => sanitizeHtml(skill)), 
-            education: analysis.education.map(edu => sanitizeHtml(edu)),
-            // Truncate extractedText to ensure it doesn't exceed DB limits
-            extractedText: cleanedText.substring(0, 4000)
-          };
-
-          return res.json(safeAnalysis);
-        } catch (innerError) {
-          console.error("Failed to analyze cleaned document text:", innerError);
-          return res.status(200).json({
-            clientNames: [],
-            jobTitles: [],
-            relevantDates: [],
-            skills: [],
-            education: [],
-            extractedText: cleanedText.substring(0, 1000),
-            message: "Document was processed but couldn't be fully analyzed. Try a different format."
-          });
-        }
-      }
-
-      // For regular text content, proceed as normal
-      // Sanitize the text before passing to OpenAI
+      const { sanitizeHtml } = await import('./utils');
+      
+      // Sanitize the text 
       const sanitizedText = sanitizeHtml(text);
-
-      console.log("Sanitized text length:", sanitizedText.length);
-
-      // Try to use AI-enhanced analysis first, fall back to basic NLP
-      let analysis;
-      try {
-        console.log("Trying AI-enhanced resume analysis...");
-        analysis = await analyzeResumeWithAI(sanitizedText);
-        console.log("AI-enhanced analysis successful");
-      } catch (aiError) {
-        console.warn("AI-enhanced analysis failed, falling back to basic NLP:", aiError);
-        analysis = await analyzeResumeText(sanitizedText);
-      }
-
-      // Additional safety sanitization for extracted values
-      const baseAnalysis = {
-        clientNames: analysis.clientNames.map(client => sanitizeHtml(client)),
-        jobTitles: analysis.jobTitles.map(title => sanitizeHtml(title)),
-        relevantDates: analysis.relevantDates.map(date => sanitizeHtml(date)),
-        skills: analysis.skills.map(skill => sanitizeHtml(skill)), 
-        education: analysis.education.map(edu => sanitizeHtml(edu)),
-        // Truncate extractedText to ensure it doesn't exceed DB limits
-        extractedText: sanitizeHtml(analysis.extractedText).substring(0, 4000)
-      };
-
-      // Cast to access enhanced properties if they exist
-      const enhancedAnalysis = analysis as any;
-
-      // Combine base analysis with any enhanced metrics that may be available
-      const safeAnalysis = {
-        ...baseAnalysis,
-        // Include enhanced quality metrics if available
-        qualityScore: enhancedAnalysis.qualityScore,
-        contentSuggestions: enhancedAnalysis.contentSuggestions,
-        formattingSuggestions: enhancedAnalysis.formattingSuggestions,
-        languageSuggestions: enhancedAnalysis.languageSuggestions,
-        keywordScore: enhancedAnalysis.keywordScore,
-        readabilityScore: enhancedAnalysis.readabilityScore,
-        aiEnhanced: enhancedAnalysis.aiEnhanced || false
-      };
-
-      res.json(safeAnalysis);
+      
+      // Return minimal structure without actual analysis
+      res.json({
+        clientNames: [],
+        jobTitles: [],
+        relevantDates: [],
+        skills: [],
+        education: [],
+        extractedText: sanitizedText.substring(0, 4000)
+      });
     } catch (error) {
-      console.error("Resume analysis error:", error);
+      console.error("Resume processing error:", error);
       // Return a safe fallback response
       res.status(200).json({ 
         clientNames: [],
@@ -899,71 +812,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         skills: [],
         education: [],
         extractedText: "",
-        message: "Failed to analyze resume due to encoding issues. Please try a different file format."
+        message: "Resume analysis functionality has been removed"
       });
     }
   });
 
   app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
     try {
-      const { resumeText, jobDescription } = req.body;
-
-      if (!resumeText || typeof resumeText !== "string") {
-        return res.status(200).json({ 
-          message: "Resume text is required",
-          score: 0,
-          strengths: [],
-          weaknesses: ["Missing resume text"],
-          suggestions: ["Upload a resume to get a match score"]
-        });
-      }
-
-      if (!jobDescription || typeof jobDescription !== "string") {
-        return res.status(200).json({ 
-          message: "Job description is required",
-          score: 0,
-          strengths: [],
-          weaknesses: ["Missing job description"],
-          suggestions: ["Provide a job description to match against"]
-        });
-      }
-
-      // Import the sanitization utility
-      const { sanitizeHtml } = await import('./utils');
-
-      // Sanitize both the resume text and job description
-      const sanitizedResumeText = sanitizeHtml(resumeText);
-      const sanitizedJobDescription = sanitizeHtml(jobDescription);
-
-      console.log("Match resume request received:");
-      console.log("- Resume text length:", sanitizedResumeText.length);
-      console.log("- Job description length:", sanitizedJobDescription.length);
-
-      const matchResult = await matchResumeToJob(sanitizedResumeText, sanitizedJobDescription);
-
-      // Ensure we return a properly structured response even if the matching service fails
-      const response = {
-        score: typeof matchResult.score === 'number' ? matchResult.score : 0,
-        strengths: Array.isArray(matchResult.strengths) ? matchResult.strengths : [],
-        weaknesses: Array.isArray(matchResult.weaknesses) ? matchResult.weaknesses : [],
-        suggestions: Array.isArray(matchResult.suggestions) ? matchResult.suggestions : [],
-        technicalGaps: Array.isArray(matchResult.technicalGaps) ? matchResult.technicalGaps : [],
-        matchingSkills: Array.isArray(matchResult.matchingSkills) ? matchResult.matchingSkills : [],
-        missingSkills: Array.isArray(matchResult.missingSkills) ? matchResult.missingSkills : [],
-        clientExperience: matchResult.clientExperience || "",
-        confidence: typeof matchResult.confidence === 'number' ? matchResult.confidence : 0
-      };
-
-      res.json(response);
-    } catch (error) {
-      console.error("Resume matching error:", error);
-      // Return a structured error response with 0 score
-      res.status(200).json({ 
-        message: (error as Error).message,
+      // Return a placeholder response since matching is disabled
+      res.json({ 
         score: 0,
         strengths: [],
-        weaknesses: ["Error occurred during matching"],
-        suggestions: ["Try a different resume format or contact support"],
+        weaknesses: ["Resume analysis functionality has been removed"],
+        suggestions: ["Manual evaluation required"],
+        technicalGaps: [],
+        matchingSkills: [],
+        missingSkills: [],
+        clientExperience: "",
+        confidence: 0
+      });
+    } catch (error) {
+      console.error("Resume matching error:", error);
+      res.status(200).json({ 
+        message: "Resume analysis functionality has been removed",
+        score: 0,
+        strengths: [],
+        weaknesses: ["Resume analysis is disabled"],
+        suggestions: ["Manual evaluation required"],
         technicalGaps: [],
         matchingSkills: [],
         missingSkills: [],
