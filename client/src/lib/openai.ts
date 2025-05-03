@@ -45,25 +45,54 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
 }
 
 /**
- * Simplified match function - analysis features have been removed
- * Returns an empty structure to maintain API compatibility
+ * Match a resume to a job description using AI analysis
+ * @param resumeText The extracted resume text
+ * @param jobDescription The job description to match against
+ * @returns Match result with score and insights
  */
-export function matchResumeToJob(
+export async function matchResumeToJob(
   resumeText: string, 
   jobDescription: string
 ): Promise<MatchScoreResult> {
-  // Return a promise with minimal structure
-  return Promise.resolve({
-    score: 0,
-    strengths: [],
-    weaknesses: ["Resume analysis feature has been removed"],
-    suggestions: ["Manual evaluation required"],
-    technicalGaps: [],
-    matchingSkills: [],
-    missingSkills: [],
-    clientExperience: "",
-    confidence: 0
-  });
+  try {
+    // Basic validation
+    if (!resumeText || resumeText.trim().length < 50) {
+      throw new Error("Resume text is too short for meaningful analysis");
+    }
+    
+    if (!jobDescription || jobDescription.trim().length < 50) {
+      throw new Error("Job description is too short for meaningful analysis");
+    }
+    
+    // Call the server-side endpoint to match the resume
+    const response = await apiRequest<MatchScoreResult>('/api/openai/match-resume', {
+      method: 'POST',
+      body: JSON.stringify({
+        resumeText,
+        jobDescription
+      }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return response;
+  } catch (error) {
+    console.error("Error matching resume to job:", error);
+    
+    // Return a fallback response in case of error
+    return {
+      score: 0,
+      strengths: [],
+      weaknesses: [error instanceof Error ? error.message : "Failed to analyze resume"],
+      suggestions: ["Try again with a different resume or job description"],
+      technicalGaps: [],
+      matchingSkills: [],
+      missingSkills: [],
+      clientExperience: "",
+      confidence: 0
+    };
+  }
 }
 
 /**
