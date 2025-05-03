@@ -551,6 +551,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
 
+          // If the candidate exists but is marked as "unreal", we should notify the user
+          if (existingCandidate.isUnreal) {
+            return res.status(400).json({
+              message: "This candidate has been marked as unreal (potentially fraudulent). Review required before submission.",
+              candidateId: existingCandidate.id,
+              isUnreal: true,
+              unrealReason: existingCandidate.unrealReason,
+              requiresValidation: true,
+            });
+          }
+
+          // If candidate exists but hasn't been submitted to this job,
+          // they need validation if they have resume data that needs comparison
+          const existingResumeData = await storage.getResumeData(existingCandidate.id);
+          const hasNewResumeData = submissionData.resumeData && 
+            (submissionData.resumeData.clientNames?.length > 0 || submissionData.resumeData.jobTitles?.length > 0);
+          
+          if (existingResumeData && hasNewResumeData) {
+            // This candidate exists and has both existing and new resume data - needs validation
+            return res.status(202).json({
+              message: "This candidate exists in our system. Employment history validation required.",
+              candidateId: existingCandidate.id,
+              existingResumeData: {
+                id: existingResumeData.id,
+                clientNames: existingResumeData.clientNames || [],
+                jobTitles: existingResumeData.jobTitles || [],
+                relevantDates: existingResumeData.relevantDates || [],
+              },
+              newResumeData: {
+                clientNames: submissionData.resumeData.clientNames || [],
+                jobTitles: submissionData.resumeData.jobTitles || [],
+                relevantDates: submissionData.resumeData.relevantDates || [],
+              },
+              requiresValidation: true,
+              validationType: "resubmission"
+            });
+          }
+
           // Use the existing candidate if they haven't been submitted for this job yet
           candidateId = existingCandidate.id;
         } else {
@@ -802,6 +840,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Candidate validation endpoint
+  app.post(
+    "/api/candidates/validate", 
+    async (req: Request, res: Response) => {
+      try {
+        const { 
+          candidateId, 
+          jobId,
+          validationType, 
+          validationResult, 
+          previousClientNames,
+          previousJobTitles,
+          previousDates,
+          newClientNames,
+          newJobTitles, 
+          newDates,
+          resumeFileName,
+          reason,
+          validatedBy 
+        } = req.body;
+        
+        if (!candidateId || !validatedBy) {
+          return res.status(400).json({ 
+            message: "Candidate ID and validator ID are required" 
+          });
+        }
+        
+        // Get the candidate
+        const candidate = await storage.getCandidate(candidateId);
+        if (!candidate) {
+          return res.status(404).json({ message: "Candidate not found" });
+        }
+        
+        // Create validation record
+        const validationData = {
+          candidateId,
+          jobId: jobId || null,
+          validationType: validationType || "resubmission",
+          validationResult,
+          previousClientNames: previousClientNames || [],
+          previousJobTitles: previousJobTitles || [],
+          previousDates: previousDates || [],
+          newClientNames: newClientNames || [],
+          newJobTitles: newJobTitles || [],
+          newDates: newDates || [],
+          resumeFileName: resumeFileName || null,
+          reason: reason || null,
+          validatedBy
+        };
+        
+        const validation = await storage.createCandidateValidation(validationData);
+        
+        // If the candidate is marked as unreal, update the candidate record
+        if (validationResult === "unreal") {
+          await storage.updateCandidateValidation(
+            candidateId, 
+            true, 
+            reason || "Employment history discrepancy", 
+            validatedBy
+          );
+          
+          // Create activity for marking candidate as unreal
+          await storage.createActivity({
+            type: "candidate_validated",
+            userId: validatedBy,
+            candidateId: candidateId,
+            jobId: jobId || null,
+            message: `Candidate was marked as unreal: ${reason || "Employment history discrepancy"}`
+          });
+        } else if (validationResult === "matching") {
+          // If candidate was previously marked unreal but is now valid, update the record
+          if (candidate.isUnreal) {
+            await storage.updateCandidateValidation(
+              candidateId,
+              false, // not unreal
+              null,  // clear the reason
+              validatedBy
+            );
+          }
+          
+          // If there's new resume data, update it
+          if (newClientNames?.length > 0 || newJobTitles?.length > 0) {
+            const existingResumeData = await storage.getResumeData(candidateId);
+            if (existingResumeData) {
+              await storage.updateResumeData(existingResumeData.id, {
+                clientNames: newClientNames || existingResumeData.clientNames,
+                jobTitles: newJobTitles || existingResumeData.jobTitles,
+                relevantDates: newDates || existingResumeData.relevantDates
+              });
+            }
+          }
+          
+          // Create activity for validating candidate
+          await storage.createActivity({
+            type: "candidate_validated",
+            userId: validatedBy,
+            candidateId: candidateId,
+            jobId: jobId || null,
+            message: `Candidate employment history was validated as matching`
+          });
+        }
+        
+        const updatedCandidate = await storage.getCandidate(candidateId);
+        
+        res.status(200).json({
+          validation,
+          candidate: updatedCandidate,
+          message: `Candidate ${validationResult === "unreal" ? "marked as unreal" : "validated successfully"}`
+        });
+      } catch (error) {
+        console.error("Candidate validation error:", error);
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: error.errors });
+        }
+        res.status(500).json({ message: (error as Error).message });
+      }
+    }
+  );
+  
   // OpenAI integration routes
   app.post(
     "/api/openai/analyze-resume",
