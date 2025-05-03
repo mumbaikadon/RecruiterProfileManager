@@ -5,6 +5,9 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Interface for the analysis result
 interface AnalysisResult {
+  clientNames?: string[];
+  jobTitles?: string[];
+  relevantDates?: string[];
   skillsGapAnalysis: {
     missingSkills: string[];
     matchingSkills: string[];
@@ -51,7 +54,8 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
             "Analyze the resume against the job description and provide a comprehensive assessment. " +
             "Focus on identifying matching skills, missing skills, and areas for improvement. " +
             "Be constructive and thorough in your analysis. " +
-            "Respond with a JSON structure containing the analysis results."
+            "Additionally, extract structured employment history data including client names/companies, job titles, and dates. " +
+            "Respond with a JSON structure containing all analysis results."
         },
         {
           role: "user",
@@ -64,15 +68,24 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
             Job Description:
             ${jobDescription}
             
-            Analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
+            1. First, extract the following structured data from the resume:
+            - clientNames: Array of company names/employers the candidate has worked for, ordered from most recent to oldest
+            - jobTitles: Array of job titles held by the candidate, ordered from most recent to oldest
+            - relevantDates: Array of employment date ranges (e.g., "April 2023 - Present"), ordered from most recent to oldest
+            
+            2. Then analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
+            
             Return your analysis in a structured JSON format with the following fields:
+            - clientNames (array of strings: company/employer names from most recent to oldest)
+            - jobTitles (array of strings: job title positions from most recent to oldest)
+            - relevantDates (array of strings: employment periods from most recent to oldest)
             - skillsGapAnalysis: { missingSkills (array), matchingSkills (array), suggestedTraining (array) }
             - relevantExperience (array of relevant experiences from the resume)
             - improvements: { content (array), formatting (array), language (array) }
             - overallScore (number 0-100)
             - confidenceScore (number 0-1)
             
-            Focus on technical and soft skills, relevant experience, and overall fit.`
+            Focus on technical and soft skills, relevant experience, and overall fit. Ensure the clientNames, jobTitles, and relevantDates arrays have the same length and corresponding indexes (e.g., clientNames[0], jobTitles[0], and relevantDates[0] should all refer to the same job).`
         }
       ],
       response_format: { type: "json_object" },
