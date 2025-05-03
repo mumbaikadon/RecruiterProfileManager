@@ -79,9 +79,19 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
       const matchResult = await matchResumeToJob(result.text, jobDescription);
       
       console.log("Match result:", matchResult);
+      
+      // Update the analysis object with the structured employment history from the match result
+      const updatedAnalysis = {
+        ...result.analysis,
+        clientNames: matchResult.clientNames || [],
+        jobTitles: matchResult.jobTitles || [],
+        relevantDates: matchResult.relevantDates || []
+      };
+      
+      console.log("Complete resume analysis with employment history:", updatedAnalysis);
 
-      // Pass results to parent component
-      onAnalysisComplete(result.analysis, matchResult);
+      // Pass updated results to parent component
+      onAnalysisComplete(updatedAnalysis, matchResult);
 
       toast({
         title: "Resume Analyzed",
