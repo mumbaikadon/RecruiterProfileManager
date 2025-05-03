@@ -384,7 +384,17 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       try {
         // Use OpenAI to match resume against job description
         console.log("Starting resume matching with OpenAI...");
-        const matchResult = await matchResumeToJob(result.text, jobDescription);
+        
+        // Get candidateId if available from the form values (for existing candidates)
+        const candidateId = formValues.id;
+        
+        // Include candidateId when matched, to store employment history in the database
+        const matchResult = await matchResumeToJob(
+          result.text, 
+          jobDescription,
+          candidateId ? parseInt(candidateId.toString()) : undefined
+        );
+        
         console.log("Resume match results:", matchResult);
         
         // Set the real analysis results

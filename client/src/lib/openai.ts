@@ -58,11 +58,13 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
  * Match a resume to a job description using AI analysis
  * @param resumeText The extracted resume text
  * @param jobDescription The job description to match against
+ * @param candidateId Optional candidate ID to associate the analysis with
  * @returns Match result with score and insights
  */
 export async function matchResumeToJob(
   resumeText: string, 
-  jobDescription: string
+  jobDescription: string,
+  candidateId?: number
 ): Promise<MatchScoreResult> {
   try {
     // Basic validation
@@ -74,14 +76,27 @@ export async function matchResumeToJob(
       throw new Error("Job description is too short for meaningful analysis");
     }
     
+    // Prepare request payload
+    const payload: {
+      resumeText: string;
+      jobDescription: string;
+      candidateId?: number;
+    } = {
+      resumeText,
+      jobDescription
+    };
+    
+    // Add candidateId if provided
+    if (candidateId && candidateId > 0) {
+      console.log(`Including candidateId ${candidateId} in resume match request`);
+      payload.candidateId = candidateId;
+    }
+    
     // Call the server-side endpoint to match the resume
     const response = await apiRequestWithJson<MatchScoreResult>(
       'POST', 
       '/api/openai/match-resume',
-      {
-        resumeText,
-        jobDescription
-      }
+      payload
     );
     
     // Log detailed response for debugging
