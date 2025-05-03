@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface ResumeAnalyzerProps {
   jobDescription: string;
+  candidateId?: number; // Optional, but passed when updating an existing candidate
   onAnalysisComplete: (resumeData: any, matchResults: any) => void;
 }
 
@@ -17,7 +18,8 @@ interface ResumeAnalyzerProps {
  * that passes minimal metadata to the parent component
  */
 const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({ 
-  jobDescription, 
+  jobDescription,
+  candidateId,
   onAnalysisComplete 
 }) => {
   const [file, setFile] = useState<File | null>(null);
@@ -75,8 +77,9 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
       console.log("Matching resume against job description...");
       console.log("Resume text:", result.text.substring(0, 100) + "...");
       console.log("Job description:", jobDescription.substring(0, 100) + "...");
+      console.log("Candidate ID (if any):", candidateId);
       
-      const matchResult = await matchResumeToJob(result.text, jobDescription);
+      const matchResult = await matchResumeToJob(result.text, jobDescription, candidateId);
       
       console.log("Match result:", matchResult);
       
