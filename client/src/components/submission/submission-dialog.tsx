@@ -215,75 +215,36 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             previousSubmissions: previousSubmissions
           });
           
-          // Check if we need to validate the candidate's employment history
-          if (
-            existingResumeData && 
-            values.resumeData && 
-            existingResumeData.clientNames && 
-            existingResumeData.jobTitles && 
-            existingResumeData.relevantDates &&
-            values.resumeData.clientNames && 
-            values.resumeData.jobTitles && 
-            values.resumeData.relevantDates
-          ) {
-            // Open validation dialog if there's both existing and new resume data
-            setValidationData({
-              candidateId: data.candidateId,
-              candidateName,
-              resumeFileName: values.resumeData?.fileName || "Resume",
-              existingResumeData: {
-                id: existingResumeData.id || 0,
-                clientNames: existingResumeData.clientNames || [],
-                jobTitles: existingResumeData.jobTitles || [],
-                relevantDates: existingResumeData.relevantDates || []
-              },
-              newResumeData: {
-                clientNames: values.resumeData.clientNames || [],
-                jobTitles: values.resumeData.jobTitles || [],
-                relevantDates: values.resumeData.relevantDates || []
-              }
-            });
-            setValidationDialogOpen(true);
-            return;
-          }
+          // Always open validation dialog for duplicate candidates
+          // First prepare the existing and new resume data
+          const existingData = {
+            id: existingResumeData?.id || 0,
+            clientNames: existingResumeData?.clientNames || [],
+            jobTitles: existingResumeData?.jobTitles || [],
+            relevantDates: existingResumeData?.relevantDates || []
+          };
           
-          // If no validation needed, proceed with submission for existing candidate
-          createSubmission({
-            jobId,
-            candidateId: data.candidateId,
-            recruiterId,
-            status: "New",
-            agreedRate: values.agreedRate,
-            matchScore: values.matchResults?.score || null,
-            notes: "",
-          }, {
-            onSuccess: () => {
-              toast({
-                title: "Submission successful",
-                description: `${candidateName} has been submitted for ${jobTitle}`,
-              });
-              if (onSuccess) onSuccess();
-              onClose();
-            },
-            onError: (error) => {
-              // Handle specific error for duplicate submission
-              if (error.message.includes("already been submitted")) {
-                setSubmissionError(`${candidateName} has already been submitted for this job.`);
-                toast({
-                  title: "Duplicate submission",
-                  description: "This candidate has already been submitted for this job.",
-                  variant: "destructive",
-                });
-              } else {
-                setSubmissionError(error.message);
-                toast({
-                  title: "Submission failed",
-                  description: error.message,
-                  variant: "destructive",
-                });
-              }
-            },
+          const newData = {
+            clientNames: values.resumeData?.clientNames || [],
+            jobTitles: values.resumeData?.jobTitles || [],
+            relevantDates: values.resumeData?.relevantDates || []
+          };
+          
+          // Log validation data for debugging
+          console.log("Opening validation dialog with data:", {
+            existingData,
+            newData
           });
+          
+          // Open validation dialog for the duplicate candidate
+          setValidationData({
+            candidateId: data.candidateId,
+            candidateName,
+            resumeFileName: values.resumeData?.fileName || "Resume",
+            existingResumeData: existingData,
+            newResumeData: newData
+          });
+          setValidationDialogOpen(true);
           return;
         }
       } else if (!candidateResponse.ok) {
