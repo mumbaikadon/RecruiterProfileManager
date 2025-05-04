@@ -476,14 +476,16 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         ssn4: values.ssn4
       });
 
+      // If candidate exists, set the state but continue with submission
       if (result.exists) {
+        console.log("Candidate exists, but continuing with submission for validation");
         setCandidateExists(true);
+        
+        // Notify user that candidate exists but continuing
         toast({
-          title: "Candidate Already Exists",
-          description: "This candidate already exists in the system.",
-          variant: "destructive",
+          title: "Candidate Found",
+          description: "This candidate exists in the system. Processing for validation.",
         });
-        return;
       }
 
       // If work authorization is "other" without custom input, show error
@@ -497,6 +499,9 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       }
 
       // Include resume data and match results if available
+      console.log("Submitting candidate data with resume:", 
+        resumeData ? `Resume data present (${resumeData.clientNames?.length || 0} companies)` : "No resume data");
+      
       onSubmit({
         ...values,
         resumeData: resumeData,
