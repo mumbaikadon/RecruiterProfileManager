@@ -259,101 +259,112 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           try {
             data = JSON.parse(responseText);
             console.log("Parsed validation data:", data);
-          } catch (parseError) {
+          } catch (parseError: any) {
             console.error("JSON parse error:", parseError);
-            throw new Error("Failed to parse validation data: " + parseError.message);
+            throw new Error("Failed to parse validation data: " + parseError.toString());
           }
-        } catch (error) {
-          console.error("Error getting 202 response text:", error);
-          throw new Error("Failed to retrieve validation data. Please try again.");
+          
+          // Check if there was a parse error but we got a parseable response
+          if (!data || typeof data !== 'object') {
+            console.error("Invalid data structure in 202 response:", data);
+            throw new Error("Invalid validation data structure received from server");
+          }
+          
+        } catch (error: any) {
+          console.error("Error handling 202 response:", error);
+          setSubmissionError("Error processing validation data: " + error.toString());
+          toast({
+            title: "Validation Error",
+            description: "Failed to process validation data. Please try again.",
+            variant: "destructive",
+          });
+          return;
         }
         
-        if (data.candidateId) {
-          console.log("Validation candidate ID found:", data.candidateId);
-          
-          // Get candidate name
-          const candidateDetailsResponse = await fetch(`/api/candidates/${data.candidateId}`);
-          let candidateName = "Existing Candidate";
-          
-          if (candidateDetailsResponse.ok) {
-            try {
-              const details = await candidateDetailsResponse.json();
-              candidateName = `${details.firstName} ${details.lastName}`;
-              console.log("Got candidate name:", candidateName);
-            } catch (error) {
-              console.error("Error getting candidate details:", error);
-            }
-          } else {
-            console.error("Failed to get candidate details:", candidateDetailsResponse.status);
-          }
-          
-          // Check that we have all the necessary data for validation
-          if (data.existingResumeData && data.newResumeData) {
-            console.log("Opening validation dialog with data:", {
-              candidateId: data.candidateId,
-              candidateName,
-              existingResume: {
-                clientNames: data.existingResumeData.clientNames?.length || 0,
-                jobTitles: data.existingResumeData.jobTitles?.length || 0
-              },
-              newResume: {
-                clientNames: data.newResumeData.clientNames?.length || 0,
-                jobTitles: data.newResumeData.jobTitles?.length || 0
-              }
-            });
-            
-            // Open validation dialog with the data
-            setValidationData({
-              candidateId: data.candidateId,
-              candidateName,
-              resumeFileName: values.resumeData?.fileName || "Resume",
-              existingResumeData: data.existingResumeData,
-              newResumeData: data.newResumeData
-            });
-            
-            // Important: Set dialog state to open AFTER setting the data
-            setValidationDialogOpen(true);
-            return;
-          } else {
-            console.warn("Validation required but missing resume data fields:", data);
-            
-            // Handle case where we have candidateId but not complete resume data
-            // Try to use the new resume data we have as a fallback
-            if (values.resumeData && (values.resumeData.clientNames?.length > 0 || values.resumeData.jobTitles?.length > 0)) {
-              console.log("Using fallback resume data from form values");
-              
-              // Create empty data structures for the missing pieces
-              const existingData = data.existingResumeData || {
-                id: 0,
-                clientNames: [],
-                jobTitles: [],
-                relevantDates: []
-              };
-              
-              const newData = data.newResumeData || {
-                clientNames: values.resumeData.clientNames || [],
-                jobTitles: values.resumeData.jobTitles || [],
-                relevantDates: values.resumeData.relevantDates || []
-              };
-              
-              // Open validation dialog with best-effort data
-              setValidationData({
-                candidateId: data.candidateId,
-                candidateName,
-                resumeFileName: values.resumeData?.fileName || "Resume",
-                existingResumeData: existingData,
-                newResumeData: newData
-              });
-              setValidationDialogOpen(true);
-              return;
-            }
+        if (!data.candidateId) {
+          console.error("Missing candidate ID in validation data:", data);
+          setSubmissionError("Missing candidate ID in validation response");
+          toast({
+            title: "Validation Error",
+            description: "The validation response is missing required data. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log("Validation candidate ID found:", data.candidateId);
+        
+        // Get candidate name
+        const candidateDetailsResponse = await fetch(`/api/candidates/${data.candidateId}`);
+        let candidateName = "Existing Candidate";
+        
+        if (candidateDetailsResponse.ok) {
+          try {
+            const details = await candidateDetailsResponse.json();
+            candidateName = `${details.firstName} ${details.lastName}`;
+            console.log("Got candidate name:", candidateName);
+          } catch (error) {
+            console.error("Error getting candidate details:", error);
           }
         } else {
-          console.error("Validation response missing candidateId:", data);
+          console.error("Failed to get candidate details:", candidateDetailsResponse.status);
         }
         
-        // If we couldn't handle the validation properly, show a generic error
-        throw new Error(data.message || "Candidate exists but validation data is incomplete");
+        // Always ensure we have data structures to work with - create defaults if missing
+        const existingData = data.existingResumeData || {
+          id: 0,
+          clientNames: [],
+          jobTitles: [],
+          relevantDates: []
+        };
+        
+        // Create a safe version of existing data with arrays
+        const safeExistingData = {
+          id: existingData.id || 0,
+          clientNames: Array.isArray(existingData.clientNames) ? existingData.clientNames : [],
+          jobTitles: Array.isArray(existingData.jobTitles) ? existingData.jobTitles : [],
+          relevantDates: Array.isArray(existingData.relevantDates) ? existingData.relevantDates : []
+        };
+        
+        // Use form resume data if server didn't provide new resume data
+        const sourceNewData = data.newResumeData || values.resumeData || {};
+        
+        // Create a safe version of new data with arrays
+        const safeNewData = {
+          clientNames: Array.isArray(sourceNewData.clientNames) ? sourceNewData.clientNames : [],
+          jobTitles: Array.isArray(sourceNewData.jobTitles) ? sourceNewData.jobTitles : [],
+          relevantDates: Array.isArray(sourceNewData.relevantDates) ? sourceNewData.relevantDates : []
+        };
+        
+        console.log("Opening validation dialog with processed data:", {
+          candidateId: data.candidateId,
+          candidateName,
+          existingData: {
+            id: safeExistingData.id,
+            clientNames: safeExistingData.clientNames.length,
+            jobTitles: safeExistingData.jobTitles.length,
+            relevantDates: safeExistingData.relevantDates.length
+          },
+          newData: {
+            clientNames: safeNewData.clientNames.length,
+            jobTitles: safeNewData.jobTitles.length,
+            relevantDates: safeNewData.relevantDates.length
+          }
+        });
+        
+        // Open validation dialog with the safe data
+        setValidationData({
+          candidateId: data.candidateId,
+          candidateName,
+          resumeFileName: values.resumeData?.fileName || "Resume",
+          existingResumeData: safeExistingData,
+          newResumeData: safeNewData
+        });
+        
+        // Important: Set dialog state to open AFTER setting the data
+        console.log("Opening validation dialog");
+        setValidationDialogOpen(true);
+        return;
       } else if (!candidateResponse.ok) {
         // Handle other errors
         try {
