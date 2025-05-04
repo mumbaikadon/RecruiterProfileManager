@@ -299,32 +299,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validatedData.ssn4,
       );
 
-      // Only count as duplicate if already submitted to the same job
-      if (existingCandidate && req.body.jobId) {
-        try {
-          // Check if candidate is already submitted to this job
-          const existingSubmission =
-            await storage.getSubmissionByJobAndCandidate(
+      // If candidate exists, check for validation requirements
+      if (existingCandidate) {
+        console.log(`Candidate exists: ID ${existingCandidate.id}, checking for validation needs`);
+        
+        // Check if candidate is already submitted to this job (if jobId provided)
+        if (req.body.jobId) {
+          try {
+            const existingSubmission = await storage.getSubmissionByJobAndCandidate(
               parseInt(req.body.jobId),
               existingCandidate.id,
             );
 
-          if (existingSubmission) {
-            return res.status(409).json({
-              message:
-                "This candidate is already in our past submitted list for this job",
-              candidateId: existingCandidate.id,
-              submissionId: existingSubmission.id,
-            });
+            if (existingSubmission) {
+              console.log(`Candidate already submitted to job ${req.body.jobId}, returning 409 error`);
+              return res.status(409).json({
+                message: "This candidate is already in our past submitted list for this job",
+                candidateId: existingCandidate.id,
+                submissionId: existingSubmission.id,
+              });
+            }
+          } catch (error) {
+            console.error("Error checking for duplicate submission:", error);
           }
-        } catch (error) {
-          console.error("Error checking for duplicate submission:", error);
         }
-
-        // Candidate exists but has not been submitted to this job
+        
+        // If the candidate exists but is marked as "unreal", we should notify the user
+        if (existingCandidate.isUnreal) {
+          console.log(`Candidate is marked as "unreal", returning validation requirement`);
+          return res.status(202).json({
+            message: "This candidate has been marked as unreal (potentially fraudulent). Review required before submission.",
+            candidateId: existingCandidate.id,
+            isUnreal: true,
+            unrealReason: existingCandidate.unrealReason,
+            requiresValidation: true,
+          });
+        }
+        
+        // Check for resume data differences requiring validation
+        const existingResumeData = await storage.getResumeData(existingCandidate.id);
+        const hasNewResumeData = req.body.resumeData && 
+          (req.body.resumeData.clientNames?.length > 0 || req.body.resumeData.jobTitles?.length > 0);
+        
+        console.log(`Validation check: hasExistingData=${!!existingResumeData}, hasNewData=${hasNewResumeData}`);
+          
+        if (existingResumeData && hasNewResumeData) {
+          // This candidate exists and has both existing and new resume data - needs validation
+          console.log("Candidate requires employment history validation, returning 202");
+          return res.status(202).json({
+            message: "This candidate exists in our system. Employment history validation required.",
+            candidateId: existingCandidate.id,
+            existingResumeData: {
+              id: existingResumeData.id,
+              clientNames: existingResumeData.clientNames || [],
+              jobTitles: existingResumeData.jobTitles || [],
+              relevantDates: existingResumeData.relevantDates || [],
+            },
+            newResumeData: {
+              clientNames: req.body.resumeData.clientNames || [],
+              jobTitles: req.body.resumeData.jobTitles || [],
+              relevantDates: req.body.resumeData.relevantDates || [],
+            },
+            requiresValidation: true,
+            validationType: "resubmission"
+          });
+        }
+        
+        // Candidate exists but doesn't need validation
+        console.log("Candidate exists but doesn't need validation, returning 409");
         return res.status(409).json({
-          message:
-            "Existing candidate found, proceed with submission to this job",
+          message: "Existing candidate found, proceed with submission to this job",
           candidateId: existingCandidate.id,
         });
       }
