@@ -342,27 +342,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (req.body.resumeData.clientNames?.length > 0 || req.body.resumeData.jobTitles?.length > 0);
         
         console.log(`Validation check: hasExistingData=${!!existingResumeData}, hasNewData=${hasNewResumeData}`);
+        console.log("Existing resume data:", existingResumeData ? {
+          id: existingResumeData.id,
+          clientNames: existingResumeData.clientNames?.length || 0,
+          jobTitles: existingResumeData.jobTitles?.length || 0,
+          relevantDates: existingResumeData.relevantDates?.length || 0
+        } : "None");
+        
+        console.log("New resume data:", req.body.resumeData ? {
+          clientNames: req.body.resumeData.clientNames?.length || 0,
+          jobTitles: req.body.resumeData.jobTitles?.length || 0,
+          relevantDates: req.body.resumeData.relevantDates?.length || 0
+        } : "None");
           
+        // First check if we have any resume data at all - create empty arrays to avoid null/undefined issues
+        const safeExistingResumeData = {
+          id: existingResumeData?.id || 0,
+          clientNames: existingResumeData?.clientNames || [],
+          jobTitles: existingResumeData?.jobTitles || [],
+          relevantDates: existingResumeData?.relevantDates || []
+        };
+        
+        const safeNewResumeData = {
+          clientNames: req.body.resumeData?.clientNames || [],
+          jobTitles: req.body.resumeData?.jobTitles || [],
+          relevantDates: req.body.resumeData?.relevantDates || []
+        };
+        
         if (existingResumeData && hasNewResumeData) {
           // This candidate exists and has both existing and new resume data - needs validation
           console.log("Candidate requires employment history validation, returning 202");
-          return res.status(202).json({
+          
+          const validationResponse = {
             message: "This candidate exists in our system. Employment history validation required.",
             candidateId: existingCandidate.id,
-            existingResumeData: {
-              id: existingResumeData.id,
-              clientNames: existingResumeData.clientNames || [],
-              jobTitles: existingResumeData.jobTitles || [],
-              relevantDates: existingResumeData.relevantDates || [],
-            },
-            newResumeData: {
-              clientNames: req.body.resumeData.clientNames || [],
-              jobTitles: req.body.resumeData.jobTitles || [],
-              relevantDates: req.body.resumeData.relevantDates || [],
-            },
+            existingResumeData: safeExistingResumeData,
+            newResumeData: safeNewResumeData,
             requiresValidation: true,
             validationType: "resubmission"
+          };
+          
+          console.log("Sending validation response:", {
+            status: 202,
+            candidateId: validationResponse.candidateId,
+            existingResumeData: {
+              clientNames: validationResponse.existingResumeData.clientNames.length,
+              jobTitles: validationResponse.existingResumeData.jobTitles.length
+            },
+            newResumeData: {
+              clientNames: validationResponse.newResumeData.clientNames.length,
+              jobTitles: validationResponse.newResumeData.jobTitles.length
+            }
           });
+          
+          return res.status(202).json(validationResponse);
         }
         
         // Candidate exists but doesn't need validation
