@@ -29,22 +29,22 @@
   }
   .dark {
       --background: 222 47% 15%; /* Dark blue-gray background - easier on eyes */
---foreground: 214 50% 90%; /* Light blue-gray text */
+--foreground: 214 30% 95%; /* Light blue-gray text with increased brightness for better readability */
 --muted: 222 47% 20%;
---muted-foreground: 214 50% 70%;
+--muted-foreground: 214 25% 75%; /* Increased contrast for secondary text */
 --popover: 222 47% 15%;
---popover-foreground: 214 50% 90%;
+--popover-foreground: 214 30% 95%;
 --card: 217 33% 17%; /* Slightly lighter card background */
---card-foreground: 214 50% 90%;
---border: 217 33% 25%;
+--card-foreground: 214 30% 95%; /* Increased brightness for card text */
+--border: 217 33% 30%; /* Slightly more visible borders */
 --input: 217 33% 25%;
---primary: 210 100% 66%; /* Brighter blue for primary elements in dark mode */
+--primary: 210 100% 70%; /* Brighter blue for primary elements in dark mode */
 --primary-foreground: 222 47% 10%;
 --secondary: 217 33% 20%;
---secondary-foreground: 214 50% 90%;
---accent: 215 25% 26%;
---accent-foreground: 214 50% 90%;
---destructive: 0 63% 45%; /* Brighter red for better visibility */
+--secondary-foreground: 214 30% 95%;
+--accent: 215 25% 30%; /* Slightly lighter accent for better contrast */
+--accent-foreground: 214 30% 95%;
+--destructive: 0 70% 50%; /* Brighter red for better visibility */
 --destructive-foreground: 210 40% 98%;
 --ring: 217 33% 33%;
 --radius: 0.5rem;

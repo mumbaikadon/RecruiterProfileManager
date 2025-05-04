@@ -150,8 +150,8 @@ const JobDetailPage: React.FC = () => {
   if (!job) {
     return (
       <div className="text-center py-12">
-        <h3 className="text-xl font-medium text-gray-900">Job not found</h3>
-        <p className="mt-2 text-gray-500">The job you're looking for does not exist.</p>
+        <h3 className="text-xl font-medium text-foreground">Job not found</h3>
+        <p className="mt-2 text-muted-foreground">The job you're looking for does not exist.</p>
         <Button variant="outline" className="mt-4" onClick={handleBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Jobs
@@ -173,10 +173,10 @@ const JobDetailPage: React.FC = () => {
           </Button>
           <div>
             <div className="flex items-center space-x-3">
-              <h2 className="text-2xl font-semibold text-gray-900">{job.title}</h2>
+              <h2 className="text-2xl font-semibold text-foreground">{job.title}</h2>
               <StatusBadge status={job.status} size="md" />
             </div>
-            <p className="mt-1 text-sm text-gray-500">{job.jobId}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{job.jobId}</p>
           </div>
         </div>
         <div className="flex space-x-2">
@@ -209,25 +209,25 @@ const JobDetailPage: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h4 className="text-sm font-medium text-gray-500">Created On</h4>
-                <p className="flex items-center mt-1 text-sm text-gray-700">
-                  <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                <h4 className="text-sm font-medium text-muted-foreground">Created On</h4>
+                <p className="flex items-center mt-1 text-sm text-foreground">
+                  <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
                   {formatDate(job.createdAt)}
                 </p>
               </div>
               
               <div>
-                <h4 className="text-sm font-medium text-gray-500">Submissions</h4>
-                <p className="flex items-center mt-1 text-sm text-gray-700">
-                  <Users className="h-4 w-4 mr-2 text-gray-400" />
+                <h4 className="text-sm font-medium text-muted-foreground">Submissions</h4>
+                <p className="flex items-center mt-1 text-sm text-foreground">
+                  <Users className="h-4 w-4 mr-2 text-muted-foreground" />
                   {submissions?.length || 0} candidates
                 </p>
               </div>
               
               <div>
-                <h4 className="text-sm font-medium text-gray-500">Status</h4>
-                <p className="flex items-center mt-1 text-sm text-gray-700">
-                  <Clock className="h-4 w-4 mr-2 text-gray-400" />
+                <h4 className="text-sm font-medium text-muted-foreground">Status</h4>
+                <p className="flex items-center mt-1 text-sm text-foreground">
+                  <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
                   {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                 </p>
               </div>
@@ -235,7 +235,7 @@ const JobDetailPage: React.FC = () => {
               <Separator />
               
               <div>
-                <h4 className="text-sm font-medium text-gray-500">Assigned Recruiters</h4>
+                <h4 className="text-sm font-medium text-muted-foreground">Assigned Recruiters</h4>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {job.assignedRecruiters && job.assignedRecruiters.length > 0 ? (
                     job.assignedRecruiters.map((recruiter) => (
@@ -244,13 +244,13 @@ const JobDetailPage: React.FC = () => {
                       </Badge>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">No recruiters assigned</p>
+                    <p className="text-sm text-muted-foreground">No recruiters assigned</p>
                   )}
                 </div>
               </div>
               
               <div>
-                <h4 className="text-sm font-medium text-gray-500">Assign Recruiters</h4>
+                <h4 className="text-sm font-medium text-muted-foreground">Assign Recruiters</h4>
                 <div className="mt-2 flex flex-col space-y-3">
                   <Select onValueChange={handleRecruiterSelection}>
                     <SelectTrigger>
@@ -307,8 +307,8 @@ const JobDetailPage: React.FC = () => {
             <TabsContent value="description" className="mt-4">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="prose max-w-none">
-                    <p className="whitespace-pre-line">{sanitizeHtml(job.description)}</p>
+                  <div className="prose dark:prose-invert max-w-none">
+                    <p className="whitespace-pre-line text-foreground">{sanitizeHtml(job.description)}</p>
                   </div>
                 </CardContent>
               </Card>
