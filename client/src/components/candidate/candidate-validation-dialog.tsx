@@ -124,6 +124,8 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
   const hasDiscrepancies = discrepancyScore > 10; // More than 10% changes is considered significant
 
   const handleValidate = async (result: "matching" | "unreal") => {
+    console.log("Validation dialog: handleValidate called with result:", result);
+    
     if (result === "unreal" && !reason.trim()) {
       toast({
         title: "Reason required",
@@ -138,7 +140,25 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
     setValidationError(null);
 
     try {
-      await validateCandidate({
+      console.log("Sending validation data:", {
+        candidateId,
+        jobId,
+        validationType,
+        validationResult: result,
+        previousData: {
+          clientNames: existingResumeData.clientNames.length,
+          jobTitles: existingResumeData.jobTitles.length,
+          dates: existingResumeData.relevantDates.length
+        },
+        newData: {
+          clientNames: newResumeData.clientNames.length,
+          jobTitles: newResumeData.jobTitles.length,
+          dates: newResumeData.relevantDates.length
+        },
+        reason: result === "unreal" ? reason : undefined
+      });
+      
+      const validationData = {
         candidateId,
         jobId,
         validationType,
@@ -151,9 +171,13 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         newDates: newResumeData.relevantDates,
         resumeFileName,
         reason: result === "unreal" ? reason : undefined
-      });
+      };
+      
+      await validateCandidate(validationData);
+      console.log("Validation successful, result:", result);
 
       // Invalidate relevant queries
+      console.log("Invalidating related queries for candidateId:", candidateId);
       queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
       queryClient.invalidateQueries({ queryKey: [`/api/candidates/${candidateId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });

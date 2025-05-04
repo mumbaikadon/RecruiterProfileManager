@@ -889,6 +889,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/candidates/validate", 
     async (req: Request, res: Response) => {
       try {
+        console.log("Candidate validation API called with data:", { 
+          candidateId: req.body.candidateId,
+          jobId: req.body.jobId,
+          validationType: req.body.validationType,
+          validationResult: req.body.validationResult,
+          hasNewData: req.body.newClientNames?.length > 0 || req.body.newJobTitles?.length > 0,
+        });
+        
         const { 
           candidateId, 
           jobId,
@@ -906,6 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } = req.body;
         
         if (!candidateId || !validatedBy) {
+          console.log("Validation error: missing candidateId or validatedBy");
           return res.status(400).json({ 
             message: "Candidate ID and validator ID are required" 
           });
@@ -914,8 +923,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get the candidate
         const candidate = await storage.getCandidate(candidateId);
         if (!candidate) {
+          console.log(`Validation error: Candidate ${candidateId} not found`);
           return res.status(404).json({ message: "Candidate not found" });
         }
+        
+        console.log(`Processing validation for candidate ${candidateId} (${candidate.firstName} ${candidate.lastName}), result: ${validationResult}`);
         
         // Create validation record
         const validationData = {
@@ -935,9 +947,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         const validation = await storage.createCandidateValidation(validationData);
+        console.log(`Validation record created with ID: ${validation.id}`);
         
         // If the candidate is marked as unreal, update the candidate record
         if (validationResult === "unreal") {
+          console.log(`Marking candidate ${candidateId} as unreal with reason: ${reason || "Employment history discrepancy"}`);
           await storage.updateCandidateValidation(
             candidateId, 
             true, 
@@ -953,19 +967,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             jobId: jobId || null,
             message: `Candidate was marked as unreal: ${reason || "Employment history discrepancy"}`
           });
+          console.log("Activity record created for unreal validation");
         } else if (validationResult === "matching") {
+          console.log(`Validating candidate ${candidateId} as matching`);
+          
           // If candidate was previously marked unreal but is now valid, update the record
           if (candidate.isUnreal) {
+            console.log(`Clearing unreal flag for previously flagged candidate ${candidateId}`);
             await storage.updateCandidateValidation(
               candidateId,
               false, // not unreal
-              null,  // clear the reason
+              "", // Use empty string instead of null to avoid SQL issues
               validatedBy
             );
           }
           
           // If there's new resume data, update it
           if (newClientNames?.length > 0 || newJobTitles?.length > 0) {
+            console.log(`Updating resume data for candidate ${candidateId}`);
             const existingResumeData = await storage.getResumeData(candidateId);
             if (existingResumeData) {
               await storage.updateResumeData(existingResumeData.id, {
@@ -973,7 +992,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 jobTitles: newJobTitles || existingResumeData.jobTitles,
                 relevantDates: newDates || existingResumeData.relevantDates
               });
+              console.log(`Resume data updated for candidate ${candidateId}`);
+            } else {
+              console.log(`No existing resume data found for candidate ${candidateId}`);
             }
+          } else {
+            console.log(`No new resume data to update for candidate ${candidateId}`);
           }
           
           // Create activity for validating candidate
@@ -984,10 +1008,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             jobId: jobId || null,
             message: `Candidate employment history was validated as matching`
           });
+          console.log("Activity record created for matching validation");
         }
         
         const updatedCandidate = await storage.getCandidate(candidateId);
         
+        console.log(`Validation completed for candidate ${candidateId}, returning success response`);
         res.status(200).json({
           validation,
           candidate: updatedCandidate,
