@@ -6,10 +6,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { formatDate, formatDateTime, formatRate } from "@/lib/date-utils";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, DollarSign, Mail, MapPin, Phone, User } from "lucide-react";
+import { AlertTriangle, Calendar, DollarSign, Mail, MapPin, Phone, User } from "lucide-react";
 import { CircularProgress } from "@/components/ui/progress";
 import WorkExperienceCard from "@/components/candidate/work-experience-card";
 import { EmploymentHistoryCard } from "@/components/candidate/employment-history-card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 function CandidateDetailPage() {
   const { id } = useParams();
@@ -55,9 +61,38 @@ function CandidateDetailPage() {
     <div className="container mx-auto py-6 space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {candidate.firstName} {candidate.middleName ? candidate.middleName + " " : ""}{candidate.lastName}
-          </h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold tracking-tight">
+              {candidate.firstName} {candidate.middleName ? candidate.middleName + " " : ""}{candidate.lastName}
+            </h1>
+            
+            {candidate.isUnreal && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="destructive" className="flex items-center gap-1.5 px-3 py-1 text-sm">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span>UNREAL CANDIDATE</span>
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[350px] p-4">
+                    <h4 className="font-semibold mb-2">Potentially Fraudulent Candidate</h4>
+                    <p className="mb-2">This candidate has been flagged as potentially unreal due to inconsistencies in employment history.</p>
+                    {candidate.unrealReason && (
+                      <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <span className="font-medium">Reason:</span> {candidate.unrealReason}
+                      </div>
+                    )}
+                    {candidate.lastValidated && (
+                      <div className="mt-2 text-xs text-slate-500">
+                        Flagged on {formatDate(candidate.lastValidated)}
+                      </div>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
           <p className="text-muted-foreground">
             {candidate.workAuthorization} • Added on {formatDate(candidate.createdAt)}
           </p>
