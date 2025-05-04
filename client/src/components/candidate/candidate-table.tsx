@@ -11,8 +11,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Eye, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CandidateTableProps {
   candidates: Candidate[];
@@ -82,7 +89,30 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
               onClick={() => handleViewCandidate(candidate.id)}
             >
               <TableCell className="font-medium">
-                {candidate.firstName} {candidate.middleName ? `${candidate.middleName} ` : ''}{candidate.lastName}
+                <div className="flex items-center gap-2">
+                  {candidate.firstName} {candidate.middleName ? `${candidate.middleName} ` : ''}{candidate.lastName}
+                  
+                  {candidate.isUnreal && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="destructive" className="ml-1.5 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            <span>UNREAL</span>
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[300px]">
+                          <p>This candidate has been flagged as potentially unreal due to inconsistencies in employment history.</p>
+                          {candidate.unrealReason && (
+                            <div className="mt-1 pt-1 border-t border-slate-200 dark:border-slate-700">
+                              <span className="font-medium">Reason:</span> {candidate.unrealReason}
+                            </div>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               </TableCell>
               <TableCell className="hidden sm:table-cell">
                 {formatDob(candidate.dobMonth, candidate.dobDay)}
