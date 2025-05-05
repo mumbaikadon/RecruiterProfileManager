@@ -271,8 +271,8 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                   </ul>
                 </div>
                 <div>
-                  <h4 className="font-medium text-sm mb-1">Job Titles:</h4>
-                  <ul className="list-disc pl-5 text-sm">
+                  <h4 className="font-medium text-sm mb-1 dark:text-blue-200">Job Titles:</h4>
+                  <ul className="list-disc pl-5 text-sm dark:text-slate-200">
                     {existingResumeData.jobTitles.length > 0 ? (
                       existingResumeData.jobTitles.map((title, idx) => (
                         <li key={`prev-title-${idx}`} className="mb-1">
@@ -285,8 +285,8 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                   </ul>
                 </div>
                 <div>
-                  <h4 className="font-medium text-sm mb-1">Employment Dates:</h4>
-                  <ul className="list-disc pl-5 text-sm">
+                  <h4 className="font-medium text-sm mb-1 dark:text-blue-200">Employment Dates:</h4>
+                  <ul className="list-disc pl-5 text-sm dark:text-slate-200">
                     {existingResumeData.relevantDates.length > 0 ? (
                       existingResumeData.relevantDates.map((date, idx) => (
                         <li key={`prev-date-${idx}`} className="mb-1">
@@ -302,22 +302,22 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
             </Card>
 
             {/* New Employment Data */}
-            <Card className="border-amber-200 bg-amber-50">
+            <Card className="border-amber-200 bg-amber-50 dark:bg-slate-800 dark:border-slate-700">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base text-amber-700">Current Submission Data</CardTitle>
+                <CardTitle className="text-base text-amber-700 dark:text-amber-300">Current Submission Data</CardTitle>
                 <CardDescription>Data from candidate's new resume</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h4 className="font-medium text-sm mb-1">Companies/Clients:</h4>
-                  <ul className="list-disc pl-5 text-sm">
+                  <h4 className="font-medium text-sm mb-1 dark:text-amber-200">Companies/Clients:</h4>
+                  <ul className="list-disc pl-5 text-sm dark:text-slate-200">
                     {newResumeData.clientNames.length > 0 ? (
                       newResumeData.clientNames.map((name, idx) => (
                         <li 
                           key={`new-company-${idx}`} 
                           className={cn(
                             "mb-1",
-                            comparisonData.companies.added.includes(name) && "text-green-600 font-medium"
+                            comparisonData.companies.added.includes(name) && "text-green-600 dark:text-green-400 font-medium"
                           )}
                         >
                           {name}
@@ -330,15 +330,15 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                   </ul>
                 </div>
                 <div>
-                  <h4 className="font-medium text-sm mb-1">Job Titles:</h4>
-                  <ul className="list-disc pl-5 text-sm">
+                  <h4 className="font-medium text-sm mb-1 dark:text-amber-200">Job Titles:</h4>
+                  <ul className="list-disc pl-5 text-sm dark:text-slate-200">
                     {newResumeData.jobTitles.length > 0 ? (
                       newResumeData.jobTitles.map((title, idx) => (
                         <li 
                           key={`new-title-${idx}`} 
                           className={cn(
                             "mb-1",
-                            comparisonData.titles.added.includes(title) && "text-green-600 font-medium"
+                            comparisonData.titles.added.includes(title) && "text-green-600 dark:text-green-400 font-medium"
                           )}
                         >
                           {title}
@@ -351,15 +351,15 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                   </ul>
                 </div>
                 <div>
-                  <h4 className="font-medium text-sm mb-1">Employment Dates:</h4>
-                  <ul className="list-disc pl-5 text-sm">
+                  <h4 className="font-medium text-sm mb-1 dark:text-amber-200">Employment Dates:</h4>
+                  <ul className="list-disc pl-5 text-sm dark:text-slate-200">
                     {newResumeData.relevantDates.length > 0 ? (
                       newResumeData.relevantDates.map((date, idx) => (
                         <li 
                           key={`new-date-${idx}`} 
                           className={cn(
                             "mb-1",
-                            comparisonData.dates.added.includes(date) && "text-green-600 font-medium"
+                            comparisonData.dates.added.includes(date) && "text-green-600 dark:text-green-400 font-medium"
                           )}
                         >
                           {date}
@@ -379,9 +379,9 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
           {(comparisonData.companies.removed.length > 0 || 
             comparisonData.titles.removed.length > 0 || 
             comparisonData.dates.removed.length > 0) && (
-            <Card className="border-red-200 bg-red-50">
+            <Card className="border-red-200 bg-red-50 dark:bg-slate-800 dark:border-slate-700">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base text-red-700 flex items-center">
+                <CardTitle className="text-base text-red-700 dark:text-red-400 flex items-center">
                   <AlertCircle className="h-4 w-4 mr-2" />
                   Missing Information
                 </CardTitle>
@@ -390,10 +390,10 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
               <CardContent className="space-y-4">
                 {comparisonData.companies.removed.length > 0 && (
                   <div>
-                    <h4 className="font-medium text-sm mb-1">Missing Companies/Clients:</h4>
-                    <ul className="list-disc pl-5 text-sm">
+                    <h4 className="font-medium text-sm mb-1 dark:text-red-300">Missing Companies/Clients:</h4>
+                    <ul className="list-disc pl-5 text-sm dark:text-slate-200">
                       {comparisonData.companies.removed.map((name, idx) => (
-                        <li key={`missing-company-${idx}`} className="mb-1 text-red-600">
+                        <li key={`missing-company-${idx}`} className="mb-1 text-red-600 dark:text-red-400">
                           {name}
                         </li>
                       ))}
@@ -403,10 +403,10 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                 
                 {comparisonData.titles.removed.length > 0 && (
                   <div>
-                    <h4 className="font-medium text-sm mb-1">Missing Job Titles:</h4>
-                    <ul className="list-disc pl-5 text-sm">
+                    <h4 className="font-medium text-sm mb-1 dark:text-red-300">Missing Job Titles:</h4>
+                    <ul className="list-disc pl-5 text-sm dark:text-slate-200">
                       {comparisonData.titles.removed.map((title, idx) => (
-                        <li key={`missing-title-${idx}`} className="mb-1 text-red-600">
+                        <li key={`missing-title-${idx}`} className="mb-1 text-red-600 dark:text-red-400">
                           {title}
                         </li>
                       ))}
@@ -416,10 +416,10 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                 
                 {comparisonData.dates.removed.length > 0 && (
                   <div>
-                    <h4 className="font-medium text-sm mb-1">Missing Employment Dates:</h4>
-                    <ul className="list-disc pl-5 text-sm">
+                    <h4 className="font-medium text-sm mb-1 dark:text-red-300">Missing Employment Dates:</h4>
+                    <ul className="list-disc pl-5 text-sm dark:text-slate-200">
                       {comparisonData.dates.removed.map((date, idx) => (
-                        <li key={`missing-date-${idx}`} className="mb-1 text-red-600">
+                        <li key={`missing-date-${idx}`} className="mb-1 text-red-600 dark:text-red-400">
                           {date}
                         </li>
                       ))}
