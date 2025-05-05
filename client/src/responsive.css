@@ -1,86 +1,199 @@
-/* Responsive and visual improvements for TalentPipeline application */
+/* Modern UI styling and responsive improvements for TalentPipeline application */
 
-/* Enhance UI component aesthetics */
+/* ======== Card & Container Styling ======== */
 .card, 
 .dialog-content,
 .alert-dialog-content,
 .popover-content {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-  transition: box-shadow 0.3s ease, transform 0.2s ease !important;
+  /* Softer shadows with more depth */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03), 
+              0 1px 2px rgba(0, 0, 0, 0.02) !important;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  /* Ensure rounded corners match theme */
+  border-radius: var(--radius) !important;
 }
 
-/* Subtle hover effects */
+/* Dark mode card styling */
+.dark .card, 
+.dark .dialog-content,
+.dark .alert-dialog-content,
+.dark .popover-content {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 
+              0 1px 3px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Subtle hover effects - with smoother animation */
 .card:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.03) !important;
-  transform: translateY(-1px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.04), 
+              0 2px 5px rgba(0, 0, 0, 0.02) !important;
+  transform: translateY(-2px);
 }
 
-/* More pronounced buttons */
+.dark .card:hover {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25), 
+              0 3px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ======== Button Styling ======== */
 button:not(.ghost), 
 [role="button"]:not(.ghost) {
   font-weight: 500;
   position: relative;
   overflow: hidden;
+  /* More pronounced focus styles for accessibility */
+  transition: all 0.2s ease;
 }
 
+/* Subtle pressed effect */
 button:active:not(:disabled), 
 [role="button"]:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.98);
 }
 
-/* Better table styling */
+/* Button focus states for keyboard navigation */
+button:focus-visible, 
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ======== Table Styling ======== */
+.table-container {
+  border-radius: var(--radius);
+  overflow: hidden; /* Ensures rounded corners work */
+}
+
 .table-container table {
   border-collapse: separate;
   border-spacing: 0;
+  width: 100%;
 }
 
+/* Improve table header appearance */
 .table-container thead tr {
-  background-color: rgba(0, 0, 0, 0.01);
+  background-color: hsl(var(--muted));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.table-container thead th {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+  padding: 0.875rem 1.25rem;
+}
+
+/* Zebra striping for better readability */
+.table-container tbody tr:nth-child(even) {
+  background-color: hsl(var(--muted) / 0.3);
 }
 
 .table-container tbody tr:hover {
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: hsl(var(--accent) / 0.2);
 }
 
-/* Status badges with improved visibility */
+.table-container td {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+}
+
+/* ======== Status & Badge Styling ======== */
 .status-badge {
   font-weight: 500;
   letter-spacing: 0.02em;
-  padding: 0.2rem 0.6rem;
+  padding: 0.375rem 0.75rem;
   border-radius: 9999px;
   display: inline-flex;
   align-items: center;
+  gap: 0.25rem;
   justify-content: center;
   text-transform: capitalize;
+  font-size: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* Faster transitions for better perceived performance */
+/* ======== Typography Enhancements ======== */
+h1 {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 3vw, 1.875rem);
+  font-weight: 600;
+}
+
+h3 {
+  font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+  font-weight: 600;
+}
+
+p {
+  line-height: 1.6;
+}
+
+/* Font size scaling for better readability */
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.text-base {
+  font-size: 1rem;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+}
+
+.text-xl {
+  font-size: 1.25rem;
+}
+
+.text-2xl {
+  font-size: 1.5rem;
+}
+
+/* ======== Animation & Transition Settings ======== */
+/* Smoother transitions across the app */
 * {
-  transition-duration: 150ms !important; /* Faster transitions */
+  transition-duration: 200ms !important; 
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* Improve table responsiveness */
+/* ======== Responsive Adaptations ======== */
 @media (max-width: 768px) {
   /* Make tables scroll horizontally on small screens */
   .table-container {
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
   }
   
   /* Optimize font sizes for mobile */
   body {
-    font-size: 14px;
+    font-size: 15px;
   }
   
   /* Ensure buttons have proper touch targets */
   button, 
   [role="button"],
-  a {
-    min-height: 44px; /* Apple's recommended minimum touch target size */
+  a.link,
+  a.button {
+    min-height: 44px;
     min-width: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
   
   /* Make form elements more mobile-friendly */
@@ -88,12 +201,40 @@ button:active:not(:disabled),
   select, 
   textarea {
     font-size: 16px !important; /* Prevents iOS zoom on focus */
+    padding: 0.75rem 1rem;
+  }
+  
+  /* More accessible spacing on mobile */
+  .form-group,
+  .input-group,
+  .field-group {
+    margin-bottom: 1.25rem;
+  }
+  
+  /* Stack flex items on mobile */
+  .responsive-flex {
+    flex-direction: column;
+  }
+  
+  /* Improve spacing between stacked items */
+  .responsive-flex > * + * {
+    margin-top: 1rem;
+    margin-left: 0 !important;
   }
 }
 
+/* ======== Dark Mode Optimizations ======== */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: hsl(var(--input));
+  border-color: hsl(var(--border));
+}
+
+/* ======== Performance Optimizations ======== */
 /* Improve loading performance */
 img, video {
-  content-visibility: auto; /* Modern browsers will lazy-load these */
+  content-visibility: auto;
 }
 
 /* Apply hardware acceleration for smoother animations */
@@ -110,24 +251,62 @@ img, video {
   backface-visibility: hidden;
 }
 
-/* Optimize for dark mode transitions */
-@media (prefers-color-scheme: dark) {
-  * {
-    transition-duration: 100ms !important; /* Even faster in dark mode to reduce flash */
-  }
+/* ======== Accessibility Improvements ======== */
+/* High contrast focus rings */
+:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
 }
 
-/* Apply responsive padding to container elements */
+/* Larger font option */
+.large-text {
+  font-size: 1.125rem;
+}
+
+.large-text h1 {
+  font-size: 2.5rem;
+}
+
+.large-text h2 {
+  font-size: 2.125rem;
+}
+
+.large-text h3 {
+  font-size: 1.75rem;
+}
+
+.large-text p, 
+.large-text li,
+.large-text input,
+.large-text button {
+  font-size: 1.125rem;
+}
+
+/* ======== Layout & Spacing ======== */
+/* Container padding - more responsive */
 .container, 
 .content-container,
 main,
-section,
-.card,
-.dialog {
-  padding: clamp(1rem, 3vw, 2rem);
+section {
+  padding: clamp(1.25rem, 4vw, 2.5rem);
 }
 
-/* Add print styles for better printing */
+.card,
+.dialog {
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+/* Add space between items in flex layouts */
+.flex-layout > * + * {
+  margin-left: 1rem;
+}
+
+/* Better vertical rhythm */
+.content-section + .content-section {
+  margin-top: 2.5rem;
+}
+
+/* ======== Print Styles ======== */
 @media print {
   body {
     background: white !important;
@@ -137,5 +316,17 @@ section,
   button, 
   .no-print {
     display: none !important;
+  }
+  
+  a {
+    text-decoration: none !important;
+    color: black !important;
+  }
+  
+  .card, 
+  .container,
+  .section {
+    box-shadow: none !important;
+    border: 1px solid #eee !important;
   }
 }
