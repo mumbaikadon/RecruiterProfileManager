@@ -6,49 +6,104 @@
 @tailwind utilities;
 
 :root {
-      --background: 210 50% 98%; /* Soft blue-white background - easy on eyes */
---foreground: 222 47% 11%; /* Dark blue-gray for text */
---muted: 210 40% 96.1%;
---muted-foreground: 215 25% 40%; /* Softer secondary text */
---popover: 210 50% 98%;
---popover-foreground: 222 47% 11%;
---card: 0 0% 100%; /* Pure white cards for contrast */
---card-foreground: 222 47% 11%;
---border: 214 32% 91%;
---input: 214 32% 91%;
---primary: 222 47% 50%; /* Richer blue for primary elements */
---primary-foreground: 210 40% 98%;
---secondary: 210 40% 96.1%;
---secondary-foreground: 222 47% 20%;
---accent: 210 40% 96.1%;
---accent-foreground: 222 47% 20%;
---destructive: 0 84.2% 60.2%;
---destructive-foreground: 210 40% 98%;
---ring: 215 20% 65%; /* Softer ring color */
---radius: 0.5rem;
-  }
-  .dark {
-      --background: 222 47% 15%; /* Dark blue-gray background - easier on eyes */
---foreground: 214 30% 95%; /* Light blue-gray text with increased brightness for better readability */
---muted: 222 47% 20%;
---muted-foreground: 214 25% 75%; /* Increased contrast for secondary text */
---popover: 222 47% 15%;
---popover-foreground: 214 30% 95%;
---card: 217 33% 17%; /* Slightly lighter card background */
---card-foreground: 214 30% 95%; /* Increased brightness for card text */
---border: 217 33% 30%; /* Slightly more visible borders */
---input: 217 33% 25%;
---primary: 210 100% 70%; /* Brighter blue for primary elements in dark mode */
---primary-foreground: 222 47% 10%;
---secondary: 217 33% 20%;
---secondary-foreground: 214 30% 95%;
---accent: 215 25% 30%; /* Slightly lighter accent for better contrast */
---accent-foreground: 214 30% 95%;
---destructive: 0 70% 50%; /* Brighter red for better visibility */
---destructive-foreground: 210 40% 98%;
---ring: 217 33% 33%;
---radius: 0.5rem;
-  }
+  /* Light Mode - Soft modern color palette */
+  --background: 210 40% 98%; /* Lighter, softer background */
+  --foreground: 222 35% 15%; /* Slightly lighter text for better readability */
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215 28% 45%; /* More visible secondary text */
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 35% 15%;
+  --card: 0 0% 100%; /* Pure white cards for contrast */
+  --card-foreground: 222 35% 15%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  
+  /* Primary: Soft teal/blue - modern, professional */
+  --primary: 196 80% 45%;
+  --primary-foreground: 0 0% 100%;
+  
+  /* Secondary: Soft lavender - complementary to primary */
+  --secondary: 252 20% 92%;
+  --secondary-foreground: 252 40% 35%;
+  
+  /* Accent: Soft mint - fresh, energetic */
+  --accent: 160 40% 92%;
+  --accent-foreground: 160 70% 25%;
+  
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 196 80% 45%;
+  
+  /* Increased border radius for modern, friendly feel */
+  --radius: 0.75rem;
+  
+  /* Chart Colors - Accessible and distinct */
+  --chart-1: 196 80% 45%;
+  --chart-2: 252 60% 65%;
+  --chart-3: 160 70% 45%;
+  --chart-4: 30 90% 65%;
+  --chart-5: 330 80% 60%;
+  
+  /* Sidebar specific colors */
+  --sidebar-background: 224 40% 18%;
+  --sidebar-foreground: 210 30% 98%;
+  --sidebar-primary: 196 80% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 196 60% 30%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 224 40% 25%;
+  --sidebar-ring: 196 80% 55%;
+}
+
+.dark {
+  /* Dark Mode - Rich, contrasty, yet gentle on eyes */
+  --background: 224 40% 12%; /* Softer dark background */
+  --foreground: 210 30% 98%; /* High contrast text */
+  --muted: 224 40% 18%;
+  --muted-foreground: 210 30% 80%; /* More visible secondary text */
+  --popover: 224 40% 12%;
+  --popover-foreground: 210 30% 98%;
+  --card: 224 40% 16%; /* Slightly elevated card background */
+  --card-foreground: 210 30% 98%;
+  --border: 224 40% 22%; /* More visible borders */
+  --input: 224 40% 22%;
+  
+  /* Primary: Vibrant teal - pops against dark background */
+  --primary: 196 80% 60%;
+  --primary-foreground: 224 40% 12%;
+  
+  /* Secondary: Deep lavender - subtle contrast */
+  --secondary: 252 20% 25%;
+  --secondary-foreground: 210 30% 98%;
+  
+  /* Accent: Subtle mint - fresh but not jarring */
+  --accent: 160 40% 25%;
+  --accent-foreground: 160 80% 90%;
+  
+  --destructive: 0 80% 55%;
+  --destructive-foreground: 210 30% 98%;
+  --ring: 196 80% 60%;
+  
+  /* Same radius for consistency */
+  --radius: 0.75rem;
+  
+  /* Chart Colors - Vibrant but not harsh */
+  --chart-1: 196 80% 60%;
+  --chart-2: 252 70% 70%;
+  --chart-3: 160 70% 50%;
+  --chart-4: 30 90% 65%;
+  --chart-5: 330 80% 65%;
+  
+  /* Sidebar specific colors - darker than main theme */
+  --sidebar-background: 224 40% 10%;
+  --sidebar-foreground: 210 30% 98%;
+  --sidebar-primary: 196 80% 60%;
+  --sidebar-primary-foreground: 224 40% 12%;
+  --sidebar-accent: 196 60% 35%;
+  --sidebar-accent-foreground: 210 30% 98%;
+  --sidebar-border: 224 40% 20%;
+  --sidebar-ring: 196 80% 60%;
+}
 
 @layer base {
   * {
