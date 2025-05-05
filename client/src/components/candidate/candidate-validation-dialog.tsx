@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -20,9 +20,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, CheckCircle, AlertTriangle, GitCompareArrows } from "lucide-react";
+import { AlertCircle, CheckCircle, AlertTriangle, GitCompareArrows, Users, Fingerprint, Building, Briefcase, Clock, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
 
 interface CandidateValidationDialogProps {
   isOpen: boolean;
@@ -79,8 +81,96 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
   const [validationResult, setValidationResult] = useState<"matching" | "unreal" | null>(null);
   const [reason, setReason] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [isCheckingEmployment, setIsCheckingEmployment] = useState(false);
+  const [employmentValidation, setEmploymentValidation] = useState<{
+    hasSimilarHistories: boolean;
+    hasIdenticalChronology: boolean;
+    highSimilarityMatches: Array<{
+      candidateId: number;
+      candidateName: string;
+      candidateEmail: string;
+      similarityScore: number;
+      clientNames: string[];
+      relevantDates: string[];
+    }>;
+    identicalChronologyMatches: Array<{
+      candidateId: number;
+      candidateName: string;
+      candidateEmail: string;
+      similarityScore: number;
+      clientNames: string[];
+      relevantDates: string[];
+    }>;
+    totalCandidatesChecked: number;
+  } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Check for similar employment histories when the dialog opens
+  useEffect(() => {
+    if (isOpen && newResumeData.clientNames.length > 0) {
+      checkSimilarEmploymentHistories();
+    }
+  }, [isOpen, newResumeData.clientNames]);
+  
+  // Function to check for similar employment histories
+  const checkSimilarEmploymentHistories = async () => {
+    if (newResumeData.clientNames.length === 0) {
+      return; // No companies to check
+    }
+    
+    setIsCheckingEmployment(true);
+    try {
+      const responseData = await apiRequest<{
+        message: string;
+        hasSimilarHistories: boolean;
+        hasIdenticalChronology: boolean;
+        highSimilarityMatches: Array<{
+          candidateId: number;
+          candidateName: string;
+          candidateEmail: string;
+          similarityScore: number;
+          clientNames: string[];
+          relevantDates: string[];
+        }>;
+        identicalChronologyMatches: Array<{
+          candidateId: number;
+          candidateName: string;
+          candidateEmail: string;
+          similarityScore: number;
+          clientNames: string[];
+          relevantDates: string[];
+        }>;
+        totalCandidatesChecked: number;
+      }>('/api/candidates/check-similar-employment', {
+        method: 'POST',
+        body: JSON.stringify({
+          candidateId,
+          clientNames: newResumeData.clientNames,
+          relevantDates: newResumeData.relevantDates
+        })
+      });
+      
+      console.log("Employment history validation response:", responseData);
+      setEmploymentValidation(responseData);
+      
+      // If there are suspicious patterns, automatically set a reason
+      if (responseData.hasIdenticalChronology) {
+        setReason(prev => prev || `Identical job chronology detected with ${responseData.identicalChronologyMatches.length} other candidate(s). Same companies and dates found.`);
+      } else if (responseData.hasSimilarHistories) {
+        setReason(prev => prev || `High similarity detected with ${responseData.highSimilarityMatches.length} other candidate(s). Employment history has ${responseData.highSimilarityMatches[0]?.similarityScore}% match.`);
+      }
+    } catch (error) {
+      console.error("Error checking similar employment histories:", error);
+      toast({
+        title: "Validation Warning",
+        description: "Unable to check for similar employment histories. You can still proceed with validation.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCheckingEmployment(false);
+    }
+  };
 
   // Calculate discrepancies between the existing and new resume data
   const comparisonData = {
@@ -226,6 +316,75 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
             <span>{validationError}</span>
           </div>
         )}
+        
+        {/* Employment history validation warnings */}
+        {isCheckingEmployment && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 px-5 py-4 rounded-lg mb-5 shadow-sm flex items-start">
+            <div className="animate-spin mr-3 h-5 w-5 text-blue-500">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <span>Checking for similar employment histories across candidates...</span>
+          </div>
+        )}
+        
+        {employmentValidation?.hasIdenticalChronology && (
+          <Alert variant="destructive" className="mb-5 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300">
+            <Fingerprint className="h-5 w-5" />
+            <AlertTitle className="font-bold text-lg flex items-center gap-2">
+              <span className="p-1 bg-red-100 dark:bg-red-800 rounded-full">
+                <AlertTriangle className="h-4 w-4" />
+              </span>
+              Identical Job Chronology Detected
+            </AlertTitle>
+            <AlertDescription className="mt-1">
+              <p className="mb-2">Found <span className="font-bold">{employmentValidation.identicalChronologyMatches.length}</span> other candidate(s) with identical job chronology (same companies and dates).</p>
+              <div className="bg-white dark:bg-slate-800 rounded-md p-3 mt-2 max-h-48 overflow-y-auto border border-red-200 dark:border-red-800">
+                {employmentValidation.identicalChronologyMatches.map((match, idx) => (
+                  <div key={match.candidateId} className={cn("flex flex-col p-2", idx !== 0 && "border-t border-red-100 dark:border-red-900 mt-2 pt-2")}>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-red-700 dark:text-red-400">{match.candidateName}</span>
+                      <Badge variant="outline" className="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800">
+                        {match.similarityScore}% Match
+                      </Badge>
+                    </div>
+                    <span className="text-sm text-red-600/80 dark:text-red-400/80">{match.candidateEmail || 'No email'}</span>
+                  </div>
+                ))}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {!employmentValidation?.hasIdenticalChronology && employmentValidation?.hasSimilarHistories && (
+          <Alert variant="destructive" className="mb-5 border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">
+            <Users className="h-5 w-5" />
+            <AlertTitle className="font-bold text-lg flex items-center gap-2">
+              <span className="p-1 bg-amber-100 dark:bg-amber-800 rounded-full">
+                <AlertTriangle className="h-4 w-4" />
+              </span>
+              High Similarity Detected
+            </AlertTitle>
+            <AlertDescription className="mt-1">
+              <p className="mb-2">Found <span className="font-bold">{employmentValidation.highSimilarityMatches.length}</span> other candidate(s) with &gt;80% similar employment history.</p>
+              <div className="bg-white dark:bg-slate-800 rounded-md p-3 mt-2 max-h-48 overflow-y-auto border border-amber-200 dark:border-amber-800">
+                {employmentValidation.highSimilarityMatches.map((match, idx) => (
+                  <div key={match.candidateId} className={cn("flex flex-col p-2", idx !== 0 && "border-t border-amber-100 dark:border-amber-900 mt-2 pt-2")}>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-amber-700 dark:text-amber-400">{match.candidateName}</span>
+                      <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+                        {match.similarityScore}% Match
+                      </Badge>
+                    </div>
+                    <span className="text-sm text-amber-600/80 dark:text-amber-400/80">{match.candidateEmail || 'No email'}</span>
+                  </div>
+                ))}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="space-y-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 shadow-sm border border-slate-200 dark:border-slate-700">
@@ -280,7 +439,7 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                     {existingResumeData.clientNames.map((name, idx) => (
                       <div key={`prev-company-${idx}`} className="bg-blue-50 dark:bg-slate-700/30 p-3 rounded-lg border border-blue-100 dark:border-slate-700 transition-all duration-300 hover:shadow-sm hover:border-blue-200 dark:hover:border-slate-600">
                         <div className="flex items-center gap-2 mb-2">
-                          <BuildingIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          <Building className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           <h4 className="font-medium text-blue-900 dark:text-blue-300">{name}</h4>
                         </div>
                         <div className="pl-6 text-sm">
@@ -296,7 +455,7 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                   </div>
                 ) : (
                   <div className="py-6 text-center text-slate-500 dark:text-slate-400 bg-blue-50/50 dark:bg-slate-700/20 rounded-lg border border-blue-100/50 dark:border-slate-700/50">
-                    <BriefcaseIcon className="h-12 w-12 mx-auto mb-3 text-blue-200 dark:text-slate-600" />
+                    <Briefcase className="h-12 w-12 mx-auto mb-3 text-blue-200 dark:text-slate-600" />
                     <p className="font-medium">No employment history information</p>
                     <p className="text-sm mt-2 text-slate-400 dark:text-slate-500">No previous employment records available.</p>
                   </div>
@@ -330,7 +489,7 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <BuildingIcon className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                            <Building className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                             <h4 className={cn(
                               "font-medium text-amber-900 dark:text-amber-300",
                               comparisonData.companies.added.includes(name) && "text-green-700 dark:text-green-400"
@@ -369,7 +528,7 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                   </div>
                 ) : (
                   <div className="py-6 text-center text-slate-500 dark:text-slate-400 bg-amber-50/50 dark:bg-slate-700/20 rounded-lg border border-amber-100/50 dark:border-slate-700/50">
-                    <BriefcaseIcon className="h-12 w-12 mx-auto mb-3 text-amber-200 dark:text-slate-600" />
+                    <Briefcase className="h-12 w-12 mx-auto mb-3 text-amber-200 dark:text-slate-600" />
                     <p className="font-medium">No employment history information</p>
                     <p className="text-sm mt-2 text-slate-400 dark:text-slate-500">No employment data found in new resume.</p>
                   </div>
