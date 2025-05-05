@@ -250,15 +250,15 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Previous Employment Data */}
-            <Card className="border-blue-200 bg-blue-50">
+            <Card className="border-blue-200 bg-blue-50 dark:bg-slate-800 dark:border-slate-700">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base text-blue-700">Previous Employment History</CardTitle>
+                <CardTitle className="text-base text-blue-700 dark:text-blue-300">Previous Employment History</CardTitle>
                 <CardDescription>Data from candidate's existing record</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h4 className="font-medium text-sm mb-1">Companies/Clients:</h4>
-                  <ul className="list-disc pl-5 text-sm">
+                  <h4 className="font-medium text-sm mb-1 dark:text-blue-200">Companies/Clients:</h4>
+                  <ul className="list-disc pl-5 text-sm dark:text-slate-200">
                     {existingResumeData.clientNames.length > 0 ? (
                       existingResumeData.clientNames.map((name, idx) => (
                         <li key={`prev-company-${idx}`} className="mb-1">
