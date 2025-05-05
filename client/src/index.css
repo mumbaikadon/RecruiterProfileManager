@@ -6,103 +6,161 @@
 @tailwind utilities;
 
 :root {
-  /* Light Mode - Soft modern color palette */
-  --background: 210 40% 98%; /* Lighter, softer background */
-  --foreground: 222 35% 15%; /* Slightly lighter text for better readability */
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215 28% 45%; /* More visible secondary text */
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 35% 15%;
-  --card: 0 0% 100%; /* Pure white cards for contrast */
-  --card-foreground: 222 35% 15%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
+  /* HSL value components for easier manipulation */
+  --primary-hue: 196;
+  --primary-saturation: 85%;
+  --primary-lightness: 50%;
   
-  /* Primary: Soft teal/blue - modern, professional */
-  --primary: 196 80% 45%;
+  /* Light Mode - Enhanced modern color palette */
+  --background: 210 30% 99%; /* Fresh, clean background */
+  --foreground: 222 35% 18%; /* Richer text for better readability */
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215 25% 40%; /* More visible secondary text */
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 35% 18%;
+  --card: 0 0% 100%; /* Pure white cards */
+  --card-foreground: 222 35% 18%;
+  --border: 214 25% 90%;
+  --input: 214 30% 95%;
+  
+  /* Primary: Vibrant teal/blue - modern, professional */
+  --primary: var(--primary-hue) var(--primary-saturation) var(--primary-lightness);
   --primary-foreground: 0 0% 100%;
   
-  /* Secondary: Soft lavender - complementary to primary */
-  --secondary: 252 20% 92%;
-  --secondary-foreground: 252 40% 35%;
+  /* Secondary: Soft purple - complementary to primary */
+  --secondary: 265 40% 95%;
+  --secondary-foreground: 265 50% 40%;
   
-  /* Accent: Soft mint - fresh, energetic */
-  --accent: 160 40% 92%;
-  --accent-foreground: 160 70% 25%;
+  /* Accent: Vibrant mint green - fresh, energetic */
+  --accent: 162 80% 47%;
+  --accent-foreground: 0 0% 100%;
   
-  --destructive: 0 84% 60%;
+  /* Success color - rich green */
+  --success: 145 65% 42%;
+  --success-foreground: 0 0% 100%;
+  
+  /* Warning color - vibrant amber */
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+  
+  /* Info color - bright blue */
+  --info: 217 91% 60%;
+  --info-foreground: 0 0% 100%;
+  
+  /* Destructive color - vibrant red */
+  --destructive: 0 85% 60%;
   --destructive-foreground: 0 0% 100%;
-  --ring: 196 80% 45%;
   
-  /* Increased border radius for modern, friendly feel */
-  --radius: 0.75rem;
+  /* Ring color matches primary */
+  --ring: var(--primary-hue) var(--primary-saturation) var(--primary-lightness);
   
-  /* Chart Colors - Accessible and distinct */
-  --chart-1: 196 80% 45%;
-  --chart-2: 252 60% 65%;
-  --chart-3: 160 70% 45%;
-  --chart-4: 30 90% 65%;
-  --chart-5: 330 80% 60%;
+  /* Larger border radius for modern, friendly feel */
+  --radius: 1rem;
   
-  /* Sidebar specific colors */
-  --sidebar-background: 224 40% 18%;
+  /* Chart Colors - Vivid and accessible */
+  --chart-1: var(--primary);
+  --chart-2: 265 75% 60%;
+  --chart-3: 162 75% 45%;
+  --chart-4: 38 92% 50%;
+  --chart-5: 340 82% 60%;
+  
+  /* Status colors for tags and badges */
+  --status-new: 217 91% 60%;
+  --status-updated: 276 91% 60%;
+  --status-pending: 38 92% 50%;
+  --status-completed: 145 65% 42%;
+  --status-cancelled: 0 85% 60%;
+  
+  /* Sidebar with more depth and contrast */
+  --sidebar-background: 222 45% 15%;
   --sidebar-foreground: 210 30% 98%;
-  --sidebar-primary: 196 80% 55%;
+  --sidebar-primary: var(--primary-hue) 90% 60%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 196 60% 30%;
+  --sidebar-accent: var(--primary-hue) 70% 30%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-border: 224 40% 25%;
-  --sidebar-ring: 196 80% 55%;
+  --sidebar-border: 224 40% 22%;
+  --sidebar-ring: var(--primary-hue) 90% 60%;
+  
+  /* For gradients and effects */
+  --gradient-start: var(--primary-hue) var(--primary-saturation) var(--primary-lightness);
+  --gradient-end: calc(var(--primary-hue) + 20) var(--primary-saturation) var(--primary-lightness);
 }
 
 .dark {
-  /* Dark Mode - Rich, contrasty, yet gentle on eyes */
-  --background: 224 40% 12%; /* Softer dark background */
-  --foreground: 210 30% 98%; /* High contrast text */
-  --muted: 224 40% 18%;
-  --muted-foreground: 210 30% 80%; /* More visible secondary text */
-  --popover: 224 40% 12%;
+  /* HSL value components for easier manipulation in dark mode */
+  --primary-hue: 196;
+  --primary-saturation: 90%;
+  --primary-lightness: 60%;
+  
+  /* Dark Mode - Rich, high-contrast design */
+  --background: 222 47% 10%; /* Deep, rich dark background */
+  --foreground: 210 30% 98%; /* Bright white text for contrast */
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 25% 70%; /* Highly visible secondary text */
+  --popover: 222 47% 11%;
   --popover-foreground: 210 30% 98%;
-  --card: 224 40% 16%; /* Slightly elevated card background */
+  --card: 222 47% 13%; /* Slightly elevated card background */
   --card-foreground: 210 30% 98%;
-  --border: 224 40% 22%; /* More visible borders */
-  --input: 224 40% 22%;
+  --border: 217 33% 25%; /* More defined borders */
+  --input: 217 33% 22%;
   
-  /* Primary: Vibrant teal - pops against dark background */
-  --primary: 196 80% 60%;
-  --primary-foreground: 224 40% 12%;
+  /* Primary: Vibrant cyan/blue - pops against dark background */
+  --primary: var(--primary-hue) var(--primary-saturation) var(--primary-lightness);
+  --primary-foreground: 222 47% 11%;
   
-  /* Secondary: Deep lavender - subtle contrast */
-  --secondary: 252 20% 25%;
+  /* Secondary: Rich purple - higher contrast */
+  --secondary: 265 40% 25%;
   --secondary-foreground: 210 30% 98%;
   
-  /* Accent: Subtle mint - fresh but not jarring */
-  --accent: 160 40% 25%;
-  --accent-foreground: 160 80% 90%;
+  /* Accent: Bright mint - stands out in dark mode */
+  --accent: 162 90% 45%;
+  --accent-foreground: 222 47% 11%;
   
-  --destructive: 0 80% 55%;
+  /* Brighter, more vivid status colors for dark mode */
+  --success: 145 70% 50%;
+  --success-foreground: 222 47% 11%;
+  
+  --warning: 38 95% 55%;
+  --warning-foreground: 222 47% 11%;
+  
+  --info: 217 90% 65%;
+  --info-foreground: 222 47% 11%;
+  
+  --destructive: 0 90% 60%;
   --destructive-foreground: 210 30% 98%;
-  --ring: 196 80% 60%;
+  
+  --ring: var(--primary-hue) var(--primary-saturation) var(--primary-lightness);
   
   /* Same radius for consistency */
-  --radius: 0.75rem;
+  --radius: 1rem;
   
-  /* Chart Colors - Vibrant but not harsh */
-  --chart-1: 196 80% 60%;
-  --chart-2: 252 70% 70%;
-  --chart-3: 160 70% 50%;
-  --chart-4: 30 90% 65%;
-  --chart-5: 330 80% 65%;
+  /* Chart Colors - Brighter for dark backgrounds */
+  --chart-1: var(--primary);
+  --chart-2: 265 85% 70%;
+  --chart-3: 162 80% 50%;
+  --chart-4: 38 95% 60%;
+  --chart-5: 340 85% 70%;
   
-  /* Sidebar specific colors - darker than main theme */
-  --sidebar-background: 224 40% 10%;
+  /* Status colors for dark theme */
+  --status-new: 217 90% 65%;
+  --status-updated: 276 90% 70%;
+  --status-pending: 38 95% 55%;
+  --status-completed: 145 70% 50%;
+  --status-cancelled: 0 90% 60%;
+  
+  /* Darker sidebar for better separation */
+  --sidebar-background: 222 47% 8%;
   --sidebar-foreground: 210 30% 98%;
-  --sidebar-primary: 196 80% 60%;
-  --sidebar-primary-foreground: 224 40% 12%;
-  --sidebar-accent: 196 60% 35%;
+  --sidebar-primary: var(--primary-hue) 90% 65%;
+  --sidebar-primary-foreground: 222 47% 8%;
+  --sidebar-accent: var(--primary-hue) 70% 40%;
   --sidebar-accent-foreground: 210 30% 98%;
-  --sidebar-border: 224 40% 20%;
-  --sidebar-ring: 196 80% 60%;
+  --sidebar-border: 224 40% 15%;
+  --sidebar-ring: var(--primary-hue) 90% 65%;
+  
+  /* For gradients and effects */
+  --gradient-start: var(--primary-hue) var(--primary-saturation) var(--primary-lightness);
+  --gradient-end: calc(var(--primary-hue) + 20) var(--primary-saturation) var(--primary-lightness);
 }
 
 @layer base {
@@ -110,30 +168,77 @@
     @apply border-border;
   }
 
+  /* Modern font settings with Inter as primary */
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply antialiased bg-background text-foreground;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: 0.01em;
+    font-feature-settings: "kern", "liga", "calt";
+    font-size: 1rem; /* Base font size increase */
+    overflow-x: hidden;
+    line-height: 1.6;
   }
   
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-medium tracking-tight;
+  /* Enhanced typography scale with larger sizes */
+  h1 {
+    @apply text-3xl md:text-4xl font-bold tracking-tight;
     letter-spacing: -0.02em;
+    line-height: 1.2;
   }
   
-  /* Improve table readability */
+  h2 {
+    @apply text-2xl md:text-3xl font-semibold tracking-tight;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  
+  h3 {
+    @apply text-xl md:text-2xl font-semibold tracking-tight;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+  }
+  
+  h4 {
+    @apply text-lg md:text-xl font-medium;
+    line-height: 1.4;
+  }
+  
+  h5 {
+    @apply text-base md:text-lg font-medium;
+    line-height: 1.5;
+  }
+  
+  h6 {
+    @apply text-sm md:text-base font-medium;
+    line-height: 1.5;
+  }
+  
+  /* Improved paragraph styling */
+  p {
+    @apply mb-4 text-base md:text-lg;
+    max-width: 70ch; /* Optimal reading width */
+  }
+  
+  /* Enhanced table styling */
   table {
-    @apply w-full text-sm;
+    @apply w-full text-sm md:text-base;
+    border-collapse: separate;
+    border-spacing: 0;
   }
   
   thead {
-    @apply border-b border-border;
+    @apply border-b border-border bg-muted/30;
   }
   
   th {
-    @apply font-medium px-4 py-3 text-left;
+    @apply font-semibold px-4 py-3 text-left;
     letter-spacing: 0.03em;
   }
   
@@ -141,15 +246,85 @@
     @apply px-4 py-3 border-t border-border;
   }
   
-  /* Better form elements */
+  tr {
+    @apply transition-colors duration-200;
+  }
+  
+  tbody tr:hover {
+    @apply bg-muted/30;
+  }
+  
+  /* Form element improvements */
   input, textarea, select {
-    @apply text-base;
+    @apply text-base rounded-xl;
     font-feature-settings: "kern";
   }
   
+  /* Focus states for improved accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary/70 ring-offset-1;
+  }
+  
+  /* Button styling enhancements */
   button, [role="button"] {
-    @apply font-medium;
+    @apply font-medium rounded-xl transition-all duration-200;
     letter-spacing: 0.01em;
+  }
+  
+  /* Link styling */
+  a {
+    @apply text-primary hover:text-primary/80 transition-colors duration-200;
+  }
+  
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 hover:bg-muted-foreground/30 rounded-full transition-colors;
+  }
+  
+  /* Better list styling */
+  ul, ol {
+    @apply pl-6 mb-4;
+  }
+  
+  li {
+    @apply mb-2;
+  }
+  
+  /* Animations base */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideInUp 0.4s ease-out;
+  }
+  
+  /* Ensure readable contrast in dark mode */
+  .dark ::selection {
+    @apply bg-primary/30 text-white;
+  }
+  
+  ::selection {
+    @apply bg-primary/20 text-primary-foreground;
   }
 }
 
