@@ -918,6 +918,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Candidate validation endpoint
+  // Add endpoint to check for similar employment histories
+  app.post("/api/candidates/check-similar-employment", async (req: Request, res: Response) => {
+    try {
+      const { candidateId, clientNames, relevantDates } = req.body;
+      
+      console.log("Received request to check for similar employment histories");
+      console.log(`Candidate ID: ${candidateId}`);
+      console.log(`Client Names: ${JSON.stringify(clientNames)}`);
+      console.log(`Relevant Dates: ${JSON.stringify(relevantDates)}`);
+      
+      if (!clientNames || !Array.isArray(clientNames) || clientNames.length === 0) {
+        return res.status(400).json({ 
+          message: "Required fields missing: clientNames must be a non-empty array" 
+        });
+      }
+      
+      // Find similar employment histories
+      const similarHistories = await storage.findSimilarEmploymentHistories(
+        clientNames,
+        relevantDates || [],
+        candidateId // Exclude this candidate from the results
+      );
+      
+      // Filter for high similarity (80% or more)
+      const highSimilarityMatches = similarHistories.filter(match => match.similarityScore >= 80);
+      
+      // Identify identical job chronology (same companies and dates)
+      const identicalChronologyMatches = similarHistories.filter(match => {
+        // Check if all companies match
+        const allCompaniesMatch = clientNames.every(name => 
+          match.clientNames.includes(name)
+        );
+        
+        // Check if all dates match (if dates are provided)
+        const allDatesMatch = !relevantDates || relevantDates.length === 0 || 
+          relevantDates.every(date => 
+            match.relevantDates.includes(date)
+          );
+        
+        return allCompaniesMatch && allDatesMatch;
+      });
+      
+      // Get associated candidate info for the matches
+      const highSimilarityDetails = await Promise.all(
+        highSimilarityMatches.map(async match => {
+          const candidate = await storage.getCandidate(match.candidateId);
+          return {
+            ...match,
+            candidateName: candidate ? `${candidate.firstName} ${candidate.lastName}` : `Unknown (ID: ${match.candidateId})`,
+            candidateEmail: candidate?.email || 'Unknown',
+          };
+        })
+      );
+      
+      const identicalChronologyDetails = await Promise.all(
+        identicalChronologyMatches.map(async match => {
+          const candidate = await storage.getCandidate(match.candidateId);
+          return {
+            ...match,
+            candidateName: candidate ? `${candidate.firstName} ${candidate.lastName}` : `Unknown (ID: ${match.candidateId})`,
+            candidateEmail: candidate?.email || 'Unknown',
+          };
+        })
+      );
+      
+      console.log(`Found ${highSimilarityMatches.length} candidates with >80% similar employment history`);
+      console.log(`Found ${identicalChronologyMatches.length} candidates with identical job chronology`);
+      
+      return res.status(200).json({
+        message: "Employment history validation complete",
+        hasSimilarHistories: highSimilarityMatches.length > 0,
+        hasIdenticalChronology: identicalChronologyMatches.length > 0,
+        highSimilarityMatches: highSimilarityDetails,
+        identicalChronologyMatches: identicalChronologyDetails,
+        totalCandidatesChecked: similarHistories.length
+      });
+    } catch (error) {
+      console.error("Error checking similar employment histories:", error);
+      return res.status(500).json({ 
+        message: "Failed to check employment history similarity",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   app.post(
     "/api/candidates/validate", 
     async (req: Request, res: Response) => {

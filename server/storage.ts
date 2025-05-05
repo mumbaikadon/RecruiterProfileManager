@@ -43,6 +43,17 @@ export interface IStorage {
   getResumeData(candidateId: number): Promise<ResumeData | undefined>;
   createResumeData(resumeData: InsertResumeData): Promise<ResumeData>;
   updateResumeData(id: number, resumeData: Partial<ResumeData>): Promise<ResumeData>;
+  getAllResumeData(): Promise<ResumeData[]>;
+  findSimilarEmploymentHistories(
+    clientNames: string[], 
+    relevantDates: string[], 
+    excludeCandidateId?: number
+  ): Promise<Array<{
+    candidateId: number;
+    similarityScore: number;
+    clientNames: string[];
+    relevantDates: string[];
+  }>>;
 
   // Candidate validation operations
   createCandidateValidation(validation: InsertCandidateValidation): Promise<CandidateValidation>;
@@ -326,6 +337,97 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return data;
+  }
+
+  async getAllResumeData(): Promise<ResumeData[]> {
+    return db
+      .select()
+      .from(resumeData)
+      .orderBy(desc(resumeData.uploadedAt));
+  }
+
+  async findSimilarEmploymentHistories(
+    clientNames: string[],
+    relevantDates: string[],
+    excludeCandidateId?: number
+  ): Promise<Array<{
+    candidateId: number;
+    similarityScore: number;
+    clientNames: string[];
+    relevantDates: string[];
+  }>> {
+    console.log("Finding similar employment histories...");
+    console.log(`Input: ${clientNames.length} companies, ${relevantDates.length} dates, excluding candidate ID: ${excludeCandidateId || 'none'}`);
+
+    // Get all resume data from the database
+    const allResumeData = await this.getAllResumeData();
+    
+    // Filter out the candidate we're validating (if provided)
+    const otherCandidatesData = excludeCandidateId 
+      ? allResumeData.filter(data => data.candidateId !== excludeCandidateId) 
+      : allResumeData;
+    
+    console.log(`Comparing against ${otherCandidatesData.length} other candidates' resume data`);
+    
+    // Calculate similarity scores for each candidate
+    const similarCandidates = otherCandidatesData
+      .map(data => {
+        // We need to ensure the arrays exist
+        const candidateClientNames = data.clientNames || [];
+        const candidateRelevantDates = data.relevantDates || [];
+        
+        // Calculate similarity between company names (ignoring titles as they could legitimately be the same)
+        const nameMatches = clientNames.filter(name => 
+          candidateClientNames.some(cName => 
+            cName.toLowerCase().trim() === name.toLowerCase().trim()
+          )
+        );
+        
+        // Calculate similarity between dates
+        const dateMatches = relevantDates.filter(date => 
+          candidateRelevantDates.some(cDate => 
+            cDate.toLowerCase().trim() === date.toLowerCase().trim()
+          )
+        );
+        
+        // Calculate similarity score (0-100)
+        const totalItems = clientNames.length + relevantDates.length;
+        const matchedItems = nameMatches.length + dateMatches.length;
+        
+        let similarityScore = 0;
+        if (totalItems > 0) {
+          similarityScore = Math.round((matchedItems / totalItems) * 100);
+        }
+        
+        return {
+          candidateId: data.candidateId,
+          similarityScore,
+          clientNames: candidateClientNames,
+          relevantDates: candidateRelevantDates,
+          // For debugging
+          nameMatches: nameMatches.length,
+          dateMatches: dateMatches.length,
+          totalInputItems: totalItems,
+          matchedItems
+        };
+      })
+      // Filter candidates with at least 1 match and sort by similarity score (highest first)
+      .filter(candidate => candidate.similarityScore > 0)
+      .sort((a, b) => b.similarityScore - a.similarityScore);
+    
+    // Log the results for debugging
+    console.log(`Found ${similarCandidates.length} candidates with similar employment histories`);
+    similarCandidates.slice(0, 5).forEach((candidate, idx) => {
+      console.log(`Top match #${idx + 1}: Candidate ID ${candidate.candidateId}, Similarity: ${candidate.similarityScore}%, Matched ${candidate.matchedItems}/${candidate.totalInputItems} items`);
+    });
+    
+    // Return the matches with > 0% similarity (excluding debug fields)
+    return similarCandidates.map(({ candidateId, similarityScore, clientNames, relevantDates }) => ({
+      candidateId,
+      similarityScore,
+      clientNames,
+      relevantDates
+    }));
   }
 
   async getSubmissions(filters?: { jobId?: number, candidateId?: number, recruiterId?: number }): Promise<Submission[]> {
