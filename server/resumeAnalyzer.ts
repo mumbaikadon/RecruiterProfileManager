@@ -79,6 +79,9 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
             "Extract REAL data from the resume - never fabricate information. " +
             "If you cannot find clear employment history or education details, respond with empty arrays rather than making up placeholder data. " +
             "For payment industry roles, identify deep domain-specific gaps like 'Limited experience with tokenization security standards for card data storage' rather than vague skills. " +
+            "For business analyst roles, identify domain-specific gaps like 'Insufficient experience with specific process modeling notations such as BPMN' rather than general skills like 'system diagramming'. " +
+            "For developer roles, identify domain-specific gaps like 'Limited experience with specific Java frameworks required for this role (Spring Boot, Hibernate)' rather than general terms like 'coding skills'. " +
+            "Always aim to be highly specific to the industry and tools mentioned in the job description. " +
             "Carefully identify expertise areas that directly impact the candidates' ability to excel in the exact industry context of the job."
         },
         {
