@@ -55,6 +55,10 @@ export const candidates = pgTable("candidates", {
   isUnreal: boolean("is_unreal").default(false).notNull(),
   // New field to store reason for marking as unreal
   unrealReason: text("unreal_reason"),
+  // Fields to track suspicious activity at the candidate level
+  isSuspicious: boolean("is_suspicious").default(false).notNull(),
+  suspiciousReason: text("suspicious_reason"),
+  suspiciousSeverity: text("suspicious_severity", { enum: ["LOW", "MEDIUM", "HIGH"] }),
   // New field to track when candidate was validated
   lastValidated: timestamp("last_validated"),
   // New field to track who validated the candidate
