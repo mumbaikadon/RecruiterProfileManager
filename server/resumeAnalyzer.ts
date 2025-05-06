@@ -68,16 +68,17 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
         {
           role: "system",
           content: 
-            "You are an expert resume analyzer specializing in extracting accurate employment history and education details from resumes. " +
-            "Your primary task is to extract REAL data from the resume - never generate fake or generic data. " +
-            "If you cannot find clear employment history or education details, respond with empty arrays rather than making up placeholder data. " +
-            "Extract exact company names, job titles, employment dates, educational institutions, degrees, and graduation years directly from the resume text. " +
-            "Be precise, accurate, and only use information actually present in the resume."
+            "You are an expert resume analyzer specializing in technical roles with deep domain knowledge across industries. " +
+            "You have particular expertise in analyzing payment systems, financial technology, and e-commerce platforms. " +
+            "Your strength is identifying specific, nuanced gaps between a candidate's experience and job requirements. " +
+            "You are precise in identifying domain-specific missing expertise rather than generic skill gaps. " +
+            "Extract REAL data from the resume - never fabricate information. " +
+            "If you cannot find clear employment history or education details, respond with empty arrays rather than making up placeholder data."
         },
         {
           role: "user",
           content: 
-            `I need you to analyze this resume for compatibility with the following job description.
+            `I need you to analyze this resume for compatibility with the following job description, with special focus on specific domain expertise gaps.
             
             Resume:
             ${resumeText}
@@ -101,16 +102,18 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
                   - education: Array of education details including degrees, institutions, and graduation years
                   - Format each entry as: "Degree, Institution, Year" or however it appears in the resume
             
-            4. DETAILED SKILLS GAP ANALYSIS:
-               - Identify key skills, experience, and qualifications required in the job description
-               - Check if the resume demonstrates these required skills/experience
+            4. INDUSTRY-SPECIFIC GAP ANALYSIS:
+               - Identify detailed, domain-specific expertise gaps between the resume and job requirements
+               - Focus on concrete expertise areas mentioned in the job description but missing in the resume
+               - Don't list generic skills (like "system diagramming") unless they are specifically domain-relevant
+               - Be very detailed about industry-specific knowledge missing, like "Limited experience with card-present vs. card-not-present payment flows"
                - For each significant gap, provide specific details about:
-                  a) The nature of the gap (domain expertise, technical skills, experience level, etc.)
-                  b) The importance of this skill/experience to the role (critical, important, nice-to-have)
-                  c) Specific examples of what's missing and why it matters
-               - Group gaps into categories (technical skills, domain knowledge, experience type, etc.)
-               - Provide actionable suggestions for addressing each gap
-            
+                  a) The precise nature of the domain expertise gap (be highly specific to the job's industry)
+                  b) The level of importance of this domain knowledge to the role (critical, important, nice-to-have)
+                  c) Why this specific expertise matters for this exact role
+               - Provide extremely domain-specific gap details that demonstrate deep understanding of the field
+               - Gaps should immediately show you understand the specific domain and associated technologies
+               
             5. Calculate an overall match percentage score (0-100) based on the alignment between the resume and job requirements.
             
             Return your analysis in a structured JSON format with the following fields:
@@ -119,16 +122,16 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
             - relevantDates (array of strings: extract EXACT date ranges from the resume)
             - education (array of strings: extract EXACT education details from the resume)
             - skillsGapAnalysis: { 
-                missingSkills (array of strings), 
+                missingSkills (array of domain-specific skills missing, be extremely specific and industry-focused), 
                 matchingSkills (array of strings), 
                 suggestedTraining (array of strings),
                 gapDetails: [
                   {
-                    category: string, // e.g., "Technical Skills", "Domain Knowledge", "Industry Experience"
-                    gaps: string[], // Specific gaps in this category
+                    category: string, // e.g., "Payment Processing Expertise", "Financial Systems Knowledge"
+                    gaps: string[], // Domain-specific gaps in this category (very detailed)
                     importance: string, // "Critical", "Important", or "Nice-to-have"
-                    impact: string, // How this gap impacts candidacy
-                    suggestions: string[] // Actionable ways to address this gap
+                    impact: string, // How this domain expertise gap specifically impacts the role
+                    suggestions: string[] // Actionable ways to address this domain-specific gap
                   }
                 ] 
               }
