@@ -328,8 +328,14 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         newDates: newResumeData.relevantDates,
         resumeFileName,
         reason: result === "unreal" ? reason : undefined,
-        ...suspiciousData
+        validatedBy: recruiterId, // Add the validator ID
+        ...suspiciousData // Include suspicious flags
       };
+      
+      // Log suspicious data for debugging
+      if (isSuspicious) {
+        console.log("Including suspicious flags in validation request:", suspiciousData);
+      }
       
       await validateCandidate(validationData);
       console.log("Validation successful, result:", result);

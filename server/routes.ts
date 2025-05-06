@@ -1323,6 +1323,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `Candidate employment history was validated as matching`
           });
           console.log("Activity record created for matching validation");
+          
+          // Create submission if jobId is provided and validation is successful
+          let submission = null;
+          if (jobId && validationResult === "matching") {
+            // Extract suspicious data from request
+            const isSuspicious = req.body.isSuspicious === true;
+            const suspiciousReason = req.body.suspiciousReason;
+            const suspiciousSeverity = req.body.suspiciousSeverity;
+            
+            console.log(`Creating submission for candidate ${candidateId} to job ${jobId} with suspicious flags:`, {
+              isSuspicious,
+              suspiciousReason: suspiciousReason || null,
+              suspiciousSeverity: suspiciousSeverity || null
+            });
+            
+            // Prepare submission data
+            const submissionData = {
+              jobId: jobId,
+              candidateId: candidateId,
+              recruiterId: validatedBy,
+              status: "New",
+              isSuspicious: isSuspicious,
+              suspiciousReason: suspiciousReason || null,
+              suspiciousSeverity: suspiciousSeverity || null,
+              notes: isSuspicious ? `Flagged during validation: ${suspiciousReason || 'Similar employment history'}` : null
+            };
+            
+            try {
+              // Create submission
+              submission = await storage.createSubmission(submissionData);
+              console.log(`Submission created with ID: ${submission.id}`);
+              
+              // Create activity for submission
+              await storage.createActivity({
+                type: "candidate_submitted",
+                userId: validatedBy,
+                candidateId: candidateId,
+                jobId: jobId,
+                submissionId: submission.id,
+                message: `Candidate was submitted to job ID ${jobId}${isSuspicious ? ' (flagged as suspicious)' : ''}`
+              });
+            } catch (submissionError) {
+              console.error("Error creating submission:", submissionError);
+              // Continue even if submission creation fails
+            }
+          }
         }
         
         const updatedCandidate = await storage.getCandidate(candidateId);
@@ -1331,6 +1377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(200).json({
           validation,
           candidate: updatedCandidate,
+          submission, // Include the submission in the response if created
           message: `Candidate ${validationResult === "unreal" ? "marked as unreal" : "validated successfully"}`
         });
       } catch (error) {
