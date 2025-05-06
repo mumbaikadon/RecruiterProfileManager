@@ -23,18 +23,21 @@ import StatusBadge from "./status-badge";
 interface StatusSelectProps {
   submissionId: number;
   currentStatus: string;
+  currentFeedback?: string | null;
   compact?: boolean;
 }
 
 const StatusSelect: React.FC<StatusSelectProps> = ({ 
   submissionId, 
   currentStatus, 
+  currentFeedback = null,
   compact = false 
 }) => {
   const [status, setStatus] = useState(currentStatus);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [currentStatusFeedback, setCurrentStatusFeedback] = useState(currentFeedback);
   
   const { toast } = useToast();
   const { mutate: updateStatus, isPending } = useUpdateSubmissionStatus();
@@ -86,7 +89,7 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
     if (compact) {
       return (
         <SelectTrigger className="border-none shadow-none p-0 h-auto w-auto focus:ring-0">
-          <StatusBadge status={status} />
+          <StatusBadge status={status} feedback={currentStatusFeedback} />
         </SelectTrigger>
       );
     }
@@ -94,7 +97,7 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
     return (
       <SelectTrigger className="w-full">
         <SelectValue placeholder="Select a status">
-          <StatusBadge status={status} />
+          <StatusBadge status={status} feedback={currentStatusFeedback} />
         </SelectValue>
       </SelectTrigger>
     );
