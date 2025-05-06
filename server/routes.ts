@@ -669,6 +669,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Use the existing candidate if they haven't been submitted for this job yet
           candidateId = existingCandidate.id;
         } else {
+          // Before creating a new candidate, check for similar employment histories
+          // This catches the case where different candidates submit identical resumes
+          if (submissionData.resumeData?.clientNames?.length > 0) {
+            console.log("Checking for employment history duplicates before creating new candidate");
+            
+            try {
+              // Check for similar employment histories in the database
+              const similarHistories = await storage.findSimilarEmploymentHistories(
+                submissionData.resumeData.clientNames || [],
+                submissionData.resumeData.relevantDates || []
+              );
+              
+              // Filter for high similarity matches (80% or more)
+              const highSimilarityMatches = similarHistories.filter(match => match.similarityScore >= 80);
+              
+              // Create a more specific message if matches found
+              if (highSimilarityMatches.length > 0) {
+                console.log(`Found ${highSimilarityMatches.length} candidates with high similarity employment histories`);
+                
+                // Get candidate details for at least the first match
+                const matchCandidate = await storage.getCandidate(highSimilarityMatches[0].candidateId);
+                
+                if (matchCandidate) {
+                  const matchName = `${matchCandidate.firstName} ${matchCandidate.lastName}`;
+                  console.log(`Employment history appears to be a duplicate of candidate: ${matchName}`);
+                  
+                  return res.status(409).json({
+                    message: "The submitted resume has employment history that matches an existing candidate.",
+                    matchedWithCandidateId: matchCandidate.id,
+                    matchedWithCandidateName: matchName,
+                    similarityScore: highSimilarityMatches[0].similarityScore
+                  });
+                }
+              }
+            } catch (error) {
+              console.error("Error checking for employment history duplicates:", error);
+              // Continue with candidate creation even if check fails
+            }
+          }
+          
           // Create a new candidate
           const newCandidate = await storage.createCandidate(
             validatedCandidateData,
