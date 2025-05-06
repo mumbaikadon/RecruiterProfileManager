@@ -1055,12 +1055,37 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 </div>
 
                 <div className="mb-4">
-                  <h5 className="text-sm font-medium text-gray-700 mb-2">Potential Gaps:</h5>
+                  <div className="flex justify-between items-center mb-2">
+                    <h5 className="text-sm font-medium text-gray-700">Potential Gaps:</h5>
+                    
+                    {/* Domain expertise score indicator */}
+                    {matchResults.domainKnowledgeScore !== undefined && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600">Domain Expertise:</span>
+                        <div className="flex items-center">
+                          <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full ${
+                                matchResults.domainKnowledgeScore >= 70 ? "bg-green-500" :
+                                matchResults.domainKnowledgeScore >= 40 ? "bg-amber-500" :
+                                "bg-red-500"
+                              }`}
+                              style={{ width: `${matchResults.domainKnowledgeScore}%` }}
+                            ></div>
+                          </div>
+                          <span className="ml-2 text-xs font-medium">
+                            {matchResults.domainKnowledgeScore}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   
                   {matchResults.gapDetails && matchResults.gapDetails.length > 0 ? (
                     <Tabs defaultValue="summary" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2">
+                      <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="summary">Summary</TabsTrigger>
+                        <TabsTrigger value="domain">Domain Expertise</TabsTrigger>
                         <TabsTrigger value="detailed">Detailed Analysis</TabsTrigger>
                       </TabsList>
                       
@@ -1070,6 +1095,28 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                             <li key={index} className="mb-1">{weakness}</li>
                           ))}
                         </ul>
+                      </TabsContent>
+                      
+                      {/* New domain expertise tab */}
+                      <TabsContent value="domain" className="space-y-2 mt-2">
+                        {matchResults.domainExpertiseGaps && matchResults.domainExpertiseGaps.length > 0 ? (
+                          <>
+                            <div className="p-2 bg-amber-50 border border-amber-200 rounded-md mb-3">
+                              <h6 className="text-sm font-medium text-amber-800 mb-1">Domain-Specific Expertise Gaps</h6>
+                              <ul className="pl-5 text-sm text-amber-700 list-disc">
+                                {matchResults.domainExpertiseGaps.map((gap: string, index: number) => (
+                                  <li key={index} className="mb-1">{gap}</li>
+                                ))}
+                              </ul>
+                            </div>
+                            
+                            <div className="text-xs text-gray-600">
+                              <p className="mb-1"><strong>Why this matters:</strong> Domain expertise gaps directly impact the candidate's ability to perform effectively in this specific role. These gaps are industry-specific knowledge or experience areas that are critical for success.</p>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-sm text-gray-500 italic">No domain-specific gaps detected</p>
+                        )}
                       </TabsContent>
                       
                       <TabsContent value="detailed" className="space-y-4 mt-2">
