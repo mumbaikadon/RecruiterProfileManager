@@ -169,39 +169,88 @@ export async function matchResumeToJob(resumeText: string, jobDescription: strin
     
     // Format the result to match our expected API structure
     // Extract domain-specific expertise gaps from the detailed gap analysis
-    const domainExpertiseGaps = Array.isArray(analysis.skillsGapAnalysis.gapDetails) 
-      ? analysis.skillsGapAnalysis.gapDetails.flatMap(detail => 
-          detail.gaps.filter(gap => 
-            gap.toLowerCase().includes('payment') || 
-            gap.toLowerCase().includes('api') || 
-            gap.toLowerCase().includes('financial') ||
-            gap.toLowerCase().includes('processing') ||
-            gap.toLowerCase().includes('card') ||
-            gap.toLowerCase().includes('transaction')
-          )
-        )
-      : [];
+    // Use the provided domainExpertiseGaps if available, otherwise extract them from gapDetails
+    let domainExpertiseGaps: string[] = [];
+    if (Array.isArray(analysis.domainExpertiseGaps) && analysis.domainExpertiseGaps.length > 0) {
+      // Use directly provided domain expertise gaps if available
+      domainExpertiseGaps = analysis.domainExpertiseGaps;
+    } else if (Array.isArray(analysis.skillsGapAnalysis.gapDetails)) {
+      // Extract from gap details with industry-relevant filtering
+      domainExpertiseGaps = analysis.skillsGapAnalysis.gapDetails.flatMap((detail: GapDetail): string[] => {
+        // First check if the gap category is domain-specific
+        const isDomainCategory = 
+          detail.category.toLowerCase().includes('domain') ||
+          detail.category.toLowerCase().includes('industry') ||
+          detail.category.toLowerCase().includes('specific') ||
+          detail.category.toLowerCase().includes('expertise') ||
+          detail.category.toLowerCase().includes('knowledge') ||
+          detail.importance === 'Critical';
+        
+        // If it's a domain category, include all gaps; otherwise filter for domain-specific terms
+        return isDomainCategory ? detail.gaps : detail.gaps.filter(gap => 
+          gap.toLowerCase().includes('payment') || 
+          gap.toLowerCase().includes('api') || 
+          gap.toLowerCase().includes('financial') ||
+          gap.toLowerCase().includes('processing') ||
+          gap.toLowerCase().includes('card') ||
+          gap.toLowerCase().includes('transaction') ||
+          gap.toLowerCase().includes('modeling') ||
+          gap.toLowerCase().includes('notation') ||
+          gap.toLowerCase().includes('bpmn') ||
+          gap.toLowerCase().includes('uml') ||
+          gap.toLowerCase().includes('methodology') ||
+          gap.toLowerCase().includes('framework') ||
+          gap.toLowerCase().includes('specific')
+        );
+      });
+    }
     
     // Calculate a domain knowledge score based on gaps and strengths
-    // Lower score for critical payment-related gaps, higher score if strengths show payment expertise
-    const domainRelevantStrengths = analysis.relevantExperience.filter(exp => 
-      exp.toLowerCase().includes('payment') || 
-      exp.toLowerCase().includes('transaction') || 
-      exp.toLowerCase().includes('api') ||
-      exp.toLowerCase().includes('financial')
-    ).length;
+    // First, check if we have a pre-calculated domain knowledge score
+    let domainKnowledgeScore: number;
     
-    const criticalDomainGaps = Array.isArray(analysis.skillsGapAnalysis.gapDetails)
-      ? analysis.skillsGapAnalysis.gapDetails.filter(detail => 
-          detail.importance === "Critical" && 
-          detail.category.toLowerCase().includes('payment')
-        ).length
-      : 0;
-    
-    // Higher score means better domain knowledge (0-100)
-    const domainKnowledgeScore = Math.max(0, Math.min(100, 
-      analysis.overallScore - (criticalDomainGaps * 15) + (domainRelevantStrengths * 5)
-    ));
+    if (typeof analysis.domainKnowledgeScore === 'number') {
+      // Use the domain knowledge score provided by the analysis
+      domainKnowledgeScore = analysis.domainKnowledgeScore;
+    } else {
+      // Identify domain-relevant strengths based on job description keywords
+      // Check if job description contains business analyst terms
+      const isBusinessAnalystRole = jobDescription.toLowerCase().includes('business analyst') || 
+                                  jobDescription.toLowerCase().includes('system analyst') ||
+                                  jobDescription.toLowerCase().includes('process') ||
+                                  jobDescription.toLowerCase().includes('requirements');
+                                  
+      // Check if job description contains payment processing terms
+      const isPaymentRole = jobDescription.toLowerCase().includes('payment') || 
+                          jobDescription.toLowerCase().includes('transaction') ||
+                          jobDescription.toLowerCase().includes('financial') ||
+                          jobDescription.toLowerCase().includes('gateway');
+      
+      // Define domain-specific keywords based on role type
+      const domainKeywords = isBusinessAnalystRole 
+        ? ['process', 'requirement', 'analysis', 'model', 'diagram', 'bpmn', 'uml', 'system', 'stakeholder', 'agile']
+        : isPaymentRole 
+          ? ['payment', 'transaction', 'api', 'financial', 'gateway', 'processor', 'ecommerce']
+          : ['api', 'development', 'architecture', 'integration', 'framework'];
+      
+      // Count strengths related to the domain
+      const domainRelevantStrengths = analysis.relevantExperience.filter(exp => 
+        domainKeywords.some(keyword => exp.toLowerCase().includes(keyword))
+      ).length;
+      
+      // Count critical domain gaps
+      const criticalDomainGaps = Array.isArray(analysis.skillsGapAnalysis.gapDetails)
+        ? analysis.skillsGapAnalysis.gapDetails.filter(detail => 
+            detail.importance === "Critical" && 
+            domainKeywords.some(keyword => detail.category.toLowerCase().includes(keyword))
+          ).length
+        : 0;
+      
+      // Higher score means better domain knowledge (0-100)
+      domainKnowledgeScore = Math.max(0, Math.min(100, 
+        analysis.overallScore - (criticalDomainGaps * 15) + (domainRelevantStrengths * 5)
+      ));
+    }
     
     const result: MatchScoreResult = {
       // Core match scores and analysis
