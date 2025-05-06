@@ -238,6 +238,16 @@ export class DatabaseStorage implements IStorage {
     
     return job;
   }
+  
+  async updateJobDescription(id: number, description: string): Promise<Job> {
+    const [job] = await db
+      .update(jobs)
+      .set({ description })
+      .where(eq(jobs.id, id))
+      .returning();
+    
+    return job;
+  }
 
   async assignRecruitersToJob(jobId: number, recruiterIds: number[]): Promise<JobAssignment[]> {
     // Create an array of assignment objects

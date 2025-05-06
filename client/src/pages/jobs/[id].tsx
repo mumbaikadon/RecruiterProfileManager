@@ -306,12 +306,36 @@ const JobDetailPage: React.FC = () => {
             
             <TabsContent value="description" className="mt-4">
               <Card>
-                <CardContent className="pt-6">
+                <CardHeader className="pb-0 pt-6">
+                  <div className="flex justify-end">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setIsDescriptionDialogOpen(true)}
+                      className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Edit Description
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-4">
                   <div className="prose dark:prose-invert max-w-none">
                     <p className="whitespace-pre-line text-foreground">{sanitizeHtml(job.description)}</p>
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Job description edit dialog */}
+              {isDescriptionDialogOpen && (
+                <JobDescriptionEditDialog
+                  isOpen={isDescriptionDialogOpen}
+                  onClose={() => setIsDescriptionDialogOpen(false)}
+                  jobId={numericId}
+                  jobTitle={job.title}
+                  currentDescription={job.description || ''}
+                />
+              )}
             </TabsContent>
             
             <TabsContent value="submissions" className="mt-4">
