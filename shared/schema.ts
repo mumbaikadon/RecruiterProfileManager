@@ -110,6 +110,9 @@ export const submissions = pgTable("submissions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   notes: text("notes"),
   feedback: text("feedback"),  // Feedback about status changes
+  isSuspicious: boolean("is_suspicious").default(false).notNull(),  // Flag for suspicious submissions
+  suspiciousReason: text("suspicious_reason"),  // Reason why the submission was flagged
+  suspiciousSeverity: text("suspicious_severity", { enum: ["LOW", "MEDIUM", "HIGH"] }),  // Severity level
   lastUpdatedBy: integer("last_updated_by").references(() => users.id),
 }, (table) => {
   return {
