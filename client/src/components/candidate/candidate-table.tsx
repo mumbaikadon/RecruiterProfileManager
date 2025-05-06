@@ -12,9 +12,16 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, AlertTriangle, UploadCloud } from "lucide-react";
+import { 
+  Eye, 
+  AlertTriangle, 
+  UploadCloud, 
+  XCircle, 
+  CheckCircle 
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import ResubmitDialog from "./resubmit-dialog";
+import CandidateUnrealDialog from "./candidate-unreal-dialog";
 import SuspiciousBadge from "../submission/suspicious-badge";
 import {
   Tooltip,
@@ -34,7 +41,13 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
 }) => {
   const [_, setLocation] = useLocation();
   const [isResubmitDialogOpen, setIsResubmitDialogOpen] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState<{id: number, name: string} | null>(null);
+  const [isUnrealDialogOpen, setIsUnrealDialogOpen] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<{
+    id: number, 
+    name: string, 
+    isUnreal?: boolean,
+    unrealReason?: string | null
+  } | null>(null);
 
   const handleViewCandidate = (id: number) => {
     setLocation(`/candidates/${id}`);
@@ -43,6 +56,18 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
   const handleResubmitCandidate = (id: number, name: string) => {
     setSelectedCandidate({ id, name });
     setIsResubmitDialogOpen(true);
+  };
+  
+  const handleToggleUnreal = (
+    e: React.MouseEvent, 
+    id: number, 
+    name: string,
+    isUnreal: boolean,
+    unrealReason?: string | null
+  ) => {
+    e.stopPropagation();
+    setSelectedCandidate({ id, name, isUnreal, unrealReason });
+    setIsUnrealDialogOpen(true);
   };
 
   const getWorkAuthorizationDisplay = (auth: string) => {
@@ -79,12 +104,22 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
   return (
     <div className="overflow-x-auto">
       {selectedCandidate && (
-        <ResubmitDialog
-          isOpen={isResubmitDialogOpen}
-          onClose={() => setIsResubmitDialogOpen(false)}
-          candidateId={selectedCandidate.id}
-          candidateName={selectedCandidate.name}
-        />
+        <>
+          <ResubmitDialog
+            isOpen={isResubmitDialogOpen}
+            onClose={() => setIsResubmitDialogOpen(false)}
+            candidateId={selectedCandidate.id}
+            candidateName={selectedCandidate.name}
+          />
+          <CandidateUnrealDialog 
+            isOpen={isUnrealDialogOpen}
+            onClose={() => setIsUnrealDialogOpen(false)}
+            candidateId={selectedCandidate.id}
+            candidateName={selectedCandidate.name}
+            currentUnrealStatus={!!selectedCandidate.isUnreal}
+            currentUnrealReason={selectedCandidate.unrealReason}
+          />
+        </>
       )}
       <Table>
         <TableHeader>
@@ -180,6 +215,30 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
                   >
                     <UploadCloud className="h-4 w-4 mr-1" />
                     <span className="hidden sm:inline">Resubmit</span>
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className={candidate.isUnreal 
+                      ? "text-green-600 hover:text-green-700 transition-colors" 
+                      : "text-red-600 hover:text-red-700 transition-colors"
+                    }
+                    onClick={(e) => handleToggleUnreal(
+                      e, 
+                      candidate.id, 
+                      `${candidate.firstName} ${candidate.lastName}`,
+                      !!candidate.isUnreal,
+                      candidate.unrealReason
+                    )}
+                  >
+                    {candidate.isUnreal 
+                      ? <CheckCircle className="h-4 w-4 mr-1" /> 
+                      : <XCircle className="h-4 w-4 mr-1" />
+                    }
+                    <span className="hidden sm:inline">
+                      {candidate.isUnreal ? "Validate" : "UNREAL"}
+                    </span>
                   </Button>
                 </div>
               </TableCell>

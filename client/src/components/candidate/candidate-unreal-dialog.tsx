@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/query-client";
+import { apiRequest } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -44,10 +44,13 @@ const CandidateUnrealDialog: React.FC<CandidateUnrealDialogProps> = ({
     }) => {
       return apiRequest("/api/candidates/validate", {
         method: "POST",
-        data: {
+        body: JSON.stringify({
           ...data,
           validatedBy: 3, // Hardcoded for now - would normally come from auth context
-        },
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
     },
     onSuccess: () => {
