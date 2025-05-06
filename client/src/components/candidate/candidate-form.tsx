@@ -415,6 +415,53 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           relevantDates: matchResult.relevantDates || []
         });
         
+        // Early validation - check for suspicious employment history patterns
+        try {
+          if (matchResult.clientNames?.length > 0) {
+            console.log("Performing early resume validation...");
+            
+            const validationResponse = await fetch("/api/validate-resume", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                clientNames: matchResult.clientNames,
+                relevantDates: matchResult.relevantDates || []
+              })
+            });
+            
+            if (validationResponse.ok) {
+              const validationResult = await validationResponse.json();
+              
+              console.log("Early resume validation result:", validationResult);
+              
+              if (!validationResult.isValid) {
+                // Suspicious pattern detected
+                if (validationResult.suspiciousPatterns?.length > 0) {
+                  const firstPattern = validationResult.suspiciousPatterns[0];
+                  
+                  // Show warning to the user
+                  toast({
+                    title: "⚠️ Suspicious Resume Pattern Detected",
+                    description: firstPattern.message,
+                    variant: "destructive",
+                    duration: 10000, // Show for longer
+                  });
+                  
+                  // Set form error
+                  form.setError("firstName", {
+                    type: "manual",
+                    message: `WARNING: ${firstPattern.message} ${firstPattern.detail}`
+                  });
+                }
+              }
+            }
+          }
+        } catch (validationError) {
+          console.error("Error during early resume validation:", validationError);
+        }
+        
         toast({
           title: "Resume Analysis Complete",
           description: `Match score: ${matchResult.score}%`,
