@@ -8,6 +8,7 @@ interface AnalysisResult {
   clientNames?: string[];
   jobTitles?: string[];
   relevantDates?: string[];
+  education?: string[];
   skillsGapAnalysis: {
     missingSkills: string[];
     matchingSkills: string[];
@@ -57,10 +58,10 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
         {
           role: "system",
           content: 
-            "You are an expert resume analyzer specializing in extracting accurate employment history from resumes. " +
-            "Your primary task is to extract REAL employment data from the resume - never generate fake or generic data. " +
-            "If you cannot find clear employment history, respond with empty arrays rather than making up placeholder data. " +
-            "Extract exact company names, job titles, and employment dates directly from the resume text. " +
+            "You are an expert resume analyzer specializing in extracting accurate employment history and education details from resumes. " +
+            "Your primary task is to extract REAL data from the resume - never generate fake or generic data. " +
+            "If you cannot find clear employment history or education details, respond with empty arrays rather than making up placeholder data. " +
+            "Extract exact company names, job titles, employment dates, educational institutions, degrees, and graduation years directly from the resume text. " +
             "Be precise, accurate, and only use information actually present in the resume."
         },
         {
@@ -74,27 +75,36 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
             Job Description:
             ${jobDescription}
             
-            IMPORTANT - EMPLOYMENT HISTORY EXTRACTION INSTRUCTIONS:
+            IMPORTANT - DATA EXTRACTION INSTRUCTIONS:
             1. Carefully read the entire resume text
-            2. Search for sections labeled "Experience", "Work Experience", "Professional Experience", "Employment History", etc.
-            3. Extract the following from these sections EXACTLY as they appear in the resume - do not generate or fabricate data:
-               - clientNames: Array of company/employer names the candidate worked for (most recent first)
-               - jobTitles: Array of job titles/positions held by the candidate (most recent first)
-               - relevantDates: Array of employment periods (most recent first)
             
-            2. Then analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
+            2. EMPLOYMENT HISTORY:
+               - Search for sections labeled "Experience", "Work Experience", "Professional Experience", "Employment History", etc.
+               - Extract the following from these sections EXACTLY as they appear in the resume:
+                  - clientNames: Array of company/employer names the candidate worked for (most recent first)
+                  - jobTitles: Array of job titles/positions held by the candidate (most recent first)
+                  - relevantDates: Array of employment periods (most recent first)
+            
+            3. EDUCATION:
+               - Search for sections labeled "Education", "Academic Background", "Qualifications", etc.
+               - Extract the following from these sections EXACTLY as they appear in the resume:
+                  - education: Array of education details including degrees, institutions, and graduation years
+                  - Format each entry as: "Degree, Institution, Year" or however it appears in the resume
+            
+            4. Then analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
             
             Return your analysis in a structured JSON format with the following fields:
             - clientNames (array of strings: extract EXACT company names from the resume)
             - jobTitles (array of strings: extract EXACT job titles from the resume)
             - relevantDates (array of strings: extract EXACT date ranges from the resume)
+            - education (array of strings: extract EXACT education details from the resume)
             - skillsGapAnalysis: { missingSkills (array), matchingSkills (array), suggestedTraining (array) }
             - relevantExperience (array of relevant experiences from the resume)
             - improvements: { content (array), formatting (array), language (array) }
             - overallScore (number 0-100)
             - confidenceScore (number 0-1)
             
-            NOTICE: It is critical that you extract only actual employment data from the resume. NEVER invent company names, job titles, or dates. If you cannot find employment history, return empty arrays.`
+            NOTICE: It is critical that you extract only actual data from the resume. NEVER invent company names, job titles, dates, education details, etc. If you cannot find certain information, return empty arrays for those fields.`
         }
       ],
       response_format: { type: "json_object" },
