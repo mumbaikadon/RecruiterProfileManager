@@ -32,6 +32,10 @@ interface AnalysisResult {
   };
   overallScore: number;
   confidenceScore: number;
+  
+  // Domain-specific expertise indicators
+  domainExpertiseGaps?: string[];
+  domainKnowledgeScore?: number;
 }
 
 /**
@@ -73,7 +77,9 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
             "Your strength is identifying specific, nuanced gaps between a candidate's experience and job requirements. " +
             "You are precise in identifying domain-specific missing expertise rather than generic skill gaps. " +
             "Extract REAL data from the resume - never fabricate information. " +
-            "If you cannot find clear employment history or education details, respond with empty arrays rather than making up placeholder data."
+            "If you cannot find clear employment history or education details, respond with empty arrays rather than making up placeholder data. " +
+            "For payment industry roles, identify deep domain-specific gaps like 'Limited experience with tokenization security standards for card data storage' rather than vague skills. " +
+            "Carefully identify expertise areas that directly impact the candidates' ability to excel in the exact industry context of the job."
         },
         {
           role: "user",
@@ -139,6 +145,8 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
             - improvements: { content (array), formatting (array), language (array) }
             - overallScore (number 0-100)
             - confidenceScore (number 0-1)
+            - domainExpertiseGaps (array of domain-specific expertise gaps)
+            - domainKnowledgeScore (number 0-100 indicating domain-specific knowledge level)
             
             NOTICE: It is critical that you extract only actual data from the resume. NEVER invent company names, job titles, dates, education details, etc. If you cannot find certain information, return empty arrays for those fields.`
         }
@@ -221,7 +229,15 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
         : 0,
       confidenceScore: typeof analysisResult.confidenceScore === 'number' 
         ? Math.max(0, Math.min(1, analysisResult.confidenceScore)) 
-        : 0
+        : 0,
+        
+      // Add domain-specific expertise indicators
+      domainExpertiseGaps: Array.isArray(analysisResult.domainExpertiseGaps)
+        ? analysisResult.domainExpertiseGaps
+        : [],
+      domainKnowledgeScore: typeof analysisResult.domainKnowledgeScore === 'number'
+        ? Math.max(0, Math.min(100, analysisResult.domainKnowledgeScore))
+        : undefined
     };
     
     return sanitizedResult;
