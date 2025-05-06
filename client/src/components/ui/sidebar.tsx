@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import CreateJobDialog from "@/components/job/create-job-dialog";
 
 interface SidebarLinkProps {
   href: string;
@@ -144,10 +145,7 @@ const Sidebar = () => {
           
           {/* Quick Action */}
           <div className="px-4 py-4 mt-auto">
-            <button className="w-full bg-primary/10 hover:bg-primary/20 text-primary rounded-lg py-2 flex items-center justify-center gap-2 transition-colors">
-              <PlusCircle className="h-4 w-4" />
-              <span className="text-sm font-medium">New Job</span>
-            </button>
+            <CreateJobDialog buttonVariant="outline" />
           </div>
         </div>
         
