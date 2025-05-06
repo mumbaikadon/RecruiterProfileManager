@@ -570,39 +570,71 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                   <div className="bg-blue-100 dark:bg-blue-900/50 p-1.5 rounded-full">
                     <Clock className="h-4 w-4 text-blue-700 dark:text-blue-300" />
                   </div>
-                  Previous Employment History
+                  Previous Candidate Data
                 </CardTitle>
                 <CardDescription className="text-blue-700/70 dark:text-blue-400/80">
                   Data from candidate's existing record
                 </CardDescription>
               </div>
-              <CardContent className="p-5 bg-white dark:bg-slate-800">
-                {existingResumeData.clientNames.length > 0 ? (
-                  <div className="space-y-5">
-                    {existingResumeData.clientNames.map((name, idx) => (
-                      <div key={`prev-company-${idx}`} className="bg-blue-50 dark:bg-slate-700/30 p-3 rounded-lg border border-blue-100 dark:border-slate-700 transition-all duration-300 hover:shadow-sm hover:border-blue-200 dark:hover:border-slate-600">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Building className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          <h4 className="font-medium text-blue-900 dark:text-blue-300">{name}</h4>
+              <CardContent className="p-5 bg-white dark:bg-slate-800 space-y-6">
+                {/* Employment history section */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3 text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                    <Briefcase className="h-4 w-4" />
+                    Employment History
+                  </h3>
+                
+                  {existingResumeData.clientNames.length > 0 ? (
+                    <div className="space-y-5">
+                      {existingResumeData.clientNames.map((name, idx) => (
+                        <div key={`prev-company-${idx}`} className="bg-blue-50 dark:bg-slate-700/30 p-3 rounded-lg border border-blue-100 dark:border-slate-700 transition-all duration-300 hover:shadow-sm hover:border-blue-200 dark:hover:border-slate-600">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Building className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <h4 className="font-medium text-blue-900 dark:text-blue-300">{name}</h4>
+                          </div>
+                          <div className="pl-6 text-sm">
+                            <p className="font-medium text-slate-700 dark:text-slate-300">
+                              {idx < existingResumeData.jobTitles.length ? existingResumeData.jobTitles[idx] : "Position not specified"}
+                            </p>
+                            <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
+                              {idx < existingResumeData.relevantDates.length ? existingResumeData.relevantDates[idx] : "Dates not specified"}
+                            </p>
+                          </div>
                         </div>
-                        <div className="pl-6 text-sm">
-                          <p className="font-medium text-slate-700 dark:text-slate-300">
-                            {idx < existingResumeData.jobTitles.length ? existingResumeData.jobTitles[idx] : "Position not specified"}
-                          </p>
-                          <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
-                            {idx < existingResumeData.relevantDates.length ? existingResumeData.relevantDates[idx] : "Dates not specified"}
-                          </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center text-slate-500 dark:text-slate-400 bg-blue-50/50 dark:bg-slate-700/20 rounded-lg border border-blue-100/50 dark:border-slate-700/50">
+                      <Briefcase className="h-12 w-12 mx-auto mb-3 text-blue-200 dark:text-slate-600" />
+                      <p className="font-medium">No employment history information</p>
+                      <p className="text-sm mt-2 text-slate-400 dark:text-slate-500">No previous employment records available.</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Education section */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3 text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                    <FileText className="h-4 w-4" />
+                    Educational Background
+                  </h3>
+                
+                  {existingResumeData.education && existingResumeData.education.length > 0 ? (
+                    <div className="space-y-3">
+                      {existingResumeData.education.map((edu, idx) => (
+                        <div key={`prev-edu-${idx}`} className="bg-blue-50 dark:bg-slate-700/30 p-3 rounded-lg border border-blue-100 dark:border-slate-700 transition-all duration-300 hover:shadow-sm hover:border-blue-200 dark:hover:border-slate-600">
+                          <p className="text-blue-900 dark:text-blue-300">{edu}</p>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-6 text-center text-slate-500 dark:text-slate-400 bg-blue-50/50 dark:bg-slate-700/20 rounded-lg border border-blue-100/50 dark:border-slate-700/50">
-                    <Briefcase className="h-12 w-12 mx-auto mb-3 text-blue-200 dark:text-slate-600" />
-                    <p className="font-medium">No employment history information</p>
-                    <p className="text-sm mt-2 text-slate-400 dark:text-slate-500">No previous employment records available.</p>
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center text-slate-500 dark:text-slate-400 bg-blue-50/50 dark:bg-slate-700/20 rounded-lg border border-blue-100/50 dark:border-slate-700/50">
+                      <FileText className="h-12 w-12 mx-auto mb-3 text-blue-200 dark:text-slate-600" />
+                      <p className="font-medium">No education information</p>
+                      <p className="text-sm mt-2 text-slate-400 dark:text-slate-500">No previous education records available.</p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -619,63 +651,113 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                   Data from candidate's new resume
                 </CardDescription>
               </div>
-              <CardContent className="p-5 bg-white dark:bg-slate-800">
-                {newResumeData.clientNames.length > 0 ? (
-                  <div className="space-y-5">
-                    {newResumeData.clientNames.map((name, idx) => (
-                      <div 
-                        key={`new-company-${idx}`} 
-                        className={cn(
-                          "bg-amber-50 dark:bg-slate-700/30 p-3 rounded-lg border border-amber-100 dark:border-slate-700 transition-all duration-300 hover:shadow-sm",
-                          comparisonData.companies.added.includes(name) && "border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-900/10"
-                        )}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Building className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                            <h4 className={cn(
-                              "font-medium text-amber-900 dark:text-amber-300",
-                              comparisonData.companies.added.includes(name) && "text-green-700 dark:text-green-400"
-                            )}>
-                              {name}
-                            </h4>
-                          </div>
-                          {comparisonData.companies.added.includes(name) && (
-                            <Badge variant="outline" className="text-xs bg-green-100/50 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
-                              New
-                            </Badge>
+              <CardContent className="p-5 bg-white dark:bg-slate-800 space-y-6">
+                {/* Employment history section */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3 text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                    <Briefcase className="h-4 w-4" />
+                    Employment History
+                  </h3>
+                
+                  {newResumeData.clientNames.length > 0 ? (
+                    <div className="space-y-5">
+                      {newResumeData.clientNames.map((name, idx) => (
+                        <div 
+                          key={`new-company-${idx}`} 
+                          className={cn(
+                            "bg-amber-50 dark:bg-slate-700/30 p-3 rounded-lg border border-amber-100 dark:border-slate-700 transition-all duration-300 hover:shadow-sm",
+                            comparisonData.companies.added.includes(name) && "border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-900/10"
                           )}
-                        </div>
-                        <div className="pl-6 text-sm">
-                          <p className={cn(
-                            "font-medium text-slate-700 dark:text-slate-300",
-                            idx < newResumeData.jobTitles.length && comparisonData.titles.added.includes(newResumeData.jobTitles[idx]) && "text-green-700 dark:text-green-400"
-                          )}>
-                            {idx < newResumeData.jobTitles.length ? newResumeData.jobTitles[idx] : "Position not specified"}
-                            {idx < newResumeData.jobTitles.length && comparisonData.titles.added.includes(newResumeData.jobTitles[idx]) && (
-                              <span className="ml-2 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-1.5 py-0.5 rounded">New</span>
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Building className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                              <h4 className={cn(
+                                "font-medium text-amber-900 dark:text-amber-300",
+                                comparisonData.companies.added.includes(name) && "text-green-700 dark:text-green-400"
+                              )}>
+                                {name}
+                              </h4>
+                            </div>
+                            {comparisonData.companies.added.includes(name) && (
+                              <Badge variant="outline" className="text-xs bg-green-100/50 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
+                                New
+                              </Badge>
                             )}
-                          </p>
-                          <p className={cn(
-                            "text-slate-500 dark:text-slate-400 mt-1 text-sm", 
-                            idx < newResumeData.relevantDates.length && comparisonData.dates.added.includes(newResumeData.relevantDates[idx]) && "text-green-700 dark:text-green-400"
-                          )}>
-                            {idx < newResumeData.relevantDates.length ? newResumeData.relevantDates[idx] : "Dates not specified"}
-                            {idx < newResumeData.relevantDates.length && comparisonData.dates.added.includes(newResumeData.relevantDates[idx]) && (
-                              <span className="ml-2 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-1.5 py-0.5 rounded">New</span>
-                            )}
-                          </p>
+                          </div>
+                          <div className="pl-6 text-sm">
+                            <p className={cn(
+                              "font-medium text-slate-700 dark:text-slate-300",
+                              idx < newResumeData.jobTitles.length && comparisonData.titles.added.includes(newResumeData.jobTitles[idx]) && "text-green-700 dark:text-green-400"
+                            )}>
+                              {idx < newResumeData.jobTitles.length ? newResumeData.jobTitles[idx] : "Position not specified"}
+                              {idx < newResumeData.jobTitles.length && comparisonData.titles.added.includes(newResumeData.jobTitles[idx]) && (
+                                <span className="ml-2 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-1.5 py-0.5 rounded">New</span>
+                              )}
+                            </p>
+                            <p className={cn(
+                              "text-slate-500 dark:text-slate-400 mt-1 text-sm", 
+                              idx < newResumeData.relevantDates.length && comparisonData.dates.added.includes(newResumeData.relevantDates[idx]) && "text-green-700 dark:text-green-400"
+                            )}>
+                              {idx < newResumeData.relevantDates.length ? newResumeData.relevantDates[idx] : "Dates not specified"}
+                              {idx < newResumeData.relevantDates.length && comparisonData.dates.added.includes(newResumeData.relevantDates[idx]) && (
+                                <span className="ml-2 text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-1.5 py-0.5 rounded">New</span>
+                              )}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-6 text-center text-slate-500 dark:text-slate-400 bg-amber-50/50 dark:bg-slate-700/20 rounded-lg border border-amber-100/50 dark:border-slate-700/50">
-                    <Briefcase className="h-12 w-12 mx-auto mb-3 text-amber-200 dark:text-slate-600" />
-                    <p className="font-medium">No employment history information</p>
-                    <p className="text-sm mt-2 text-slate-400 dark:text-slate-500">No employment data found in new resume.</p>
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center text-slate-500 dark:text-slate-400 bg-amber-50/50 dark:bg-slate-700/20 rounded-lg border border-amber-100/50 dark:border-slate-700/50">
+                      <Briefcase className="h-12 w-12 mx-auto mb-3 text-amber-200 dark:text-slate-600" />
+                      <p className="font-medium">No employment history information</p>
+                      <p className="text-sm mt-2 text-slate-400 dark:text-slate-500">No employment data found in new resume.</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Education section */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3 text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                    <FileText className="h-4 w-4" />
+                    Educational Background
+                  </h3>
+                
+                  {newResumeData.education && newResumeData.education.length > 0 ? (
+                    <div className="space-y-3">
+                      {newResumeData.education.map((edu, idx) => (
+                        <div 
+                          key={`new-edu-${idx}`} 
+                          className={cn(
+                            "bg-amber-50 dark:bg-slate-700/30 p-3 rounded-lg border border-amber-100 dark:border-slate-700 transition-all duration-300 hover:shadow-sm",
+                            comparisonData.education.added.includes(edu) && "border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-900/10"
+                          )}
+                        >
+                          <div className="flex justify-between items-center">
+                            <p className={cn(
+                              "text-amber-900 dark:text-amber-300",
+                              comparisonData.education.added.includes(edu) && "text-green-700 dark:text-green-400"
+                            )}>
+                              {edu}
+                            </p>
+                            {comparisonData.education.added.includes(edu) && (
+                              <Badge variant="outline" className="text-xs bg-green-100/50 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
+                                New
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center text-slate-500 dark:text-slate-400 bg-amber-50/50 dark:bg-slate-700/20 rounded-lg border border-amber-100/50 dark:border-slate-700/50">
+                      <FileText className="h-12 w-12 mx-auto mb-3 text-amber-200 dark:text-slate-600" />
+                      <p className="font-medium">No education information</p>
+                      <p className="text-sm mt-2 text-slate-400 dark:text-slate-500">No education data found in new resume.</p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
