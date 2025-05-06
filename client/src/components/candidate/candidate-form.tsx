@@ -35,7 +35,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { AlertCircle, CheckCircle2, AlertTriangle, CheckCircle } from "lucide-react";
 
 export const candidateFormSchema = z.object({
   firstName: z.string().min(2, "First name is required"),
@@ -399,7 +405,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         const matchResult = await matchResumeToJob(
           result.text, 
           jobDescription,
-          candidateId ? parseInt(candidateId.toString()) : undefined
+          candidateId ? parseInt(String(candidateId)) : undefined
         );
         
         console.log("Resume match results:", matchResult);
@@ -1052,11 +1058,85 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
 
                 <div className="mb-4">
                   <h5 className="text-sm font-medium text-gray-700 mb-2">Potential Gaps:</h5>
-                  <ul className="pl-5 text-sm text-gray-600 list-disc">
-                    {matchResults.weaknesses.map((weakness: string, index: number) => (
-                      <li key={index} className="mb-1">{weakness}</li>
-                    ))}
-                  </ul>
+                  
+                  {matchResults.gapDetails && matchResults.gapDetails.length > 0 ? (
+                    <Tabs defaultValue="summary" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="summary">Summary</TabsTrigger>
+                        <TabsTrigger value="detailed">Detailed Analysis</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="summary" className="space-y-2 mt-2">
+                        <ul className="pl-5 text-sm text-gray-600 list-disc">
+                          {matchResults.weaknesses.map((weakness: string, index: number) => (
+                            <li key={index} className="mb-1">{weakness}</li>
+                          ))}
+                        </ul>
+                      </TabsContent>
+                      
+                      <TabsContent value="detailed" className="space-y-4 mt-2">
+                        {matchResults.gapDetails.map((gapDetail: any, categoryIndex: number) => (
+                          <div key={categoryIndex} className="border rounded-md p-3 mb-2">
+                            <div className="flex items-center gap-2 mb-2">
+                              {gapDetail.importance === "Critical" ? (
+                                <AlertCircle className="h-4 w-4 text-red-500" />
+                              ) : gapDetail.importance === "Important" ? (
+                                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                              ) : (
+                                <AlertCircle className="h-4 w-4 text-blue-500" />
+                              )}
+                              <h6 className="text-sm font-semibold text-gray-800">
+                                {gapDetail.category}
+                                <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
+                                  gapDetail.importance === "Critical" ? "bg-red-100 text-red-800" :
+                                  gapDetail.importance === "Important" ? "bg-amber-100 text-amber-800" :
+                                  "bg-blue-100 text-blue-800"
+                                }`}>
+                                  {gapDetail.importance}
+                                </span>
+                              </h6>
+                            </div>
+                            
+                            <div className="ml-6">
+                              {/* Gap list */}
+                              <div className="mb-2">
+                                <p className="text-xs text-gray-600 mb-1">Specific gaps:</p>
+                                <ul className="pl-5 text-sm text-gray-600 list-disc">
+                                  {gapDetail.gaps.map((gap: string, gapIndex: number) => (
+                                    <li key={gapIndex} className="text-xs">{gap}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                              
+                              {/* Impact */}
+                              <div className="mb-2">
+                                <p className="text-xs text-gray-600 mb-1">Impact:</p>
+                                <p className="text-xs text-gray-800">{gapDetail.impact}</p>
+                              </div>
+                              
+                              {/* Suggestions */}
+                              {gapDetail.suggestions && gapDetail.suggestions.length > 0 && (
+                                <div>
+                                  <p className="text-xs text-gray-600 mb-1">Suggestions:</p>
+                                  <ul className="pl-5 text-sm text-gray-600 list-disc">
+                                    {gapDetail.suggestions.map((suggestion: string, suggIndex: number) => (
+                                      <li key={suggIndex} className="text-xs">{suggestion}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </TabsContent>
+                    </Tabs>
+                  ) : (
+                    <ul className="pl-5 text-sm text-gray-600 list-disc">
+                      {matchResults.weaknesses.map((weakness: string, index: number) => (
+                        <li key={index} className="mb-1">{weakness}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
 
                 {resumeData && (
