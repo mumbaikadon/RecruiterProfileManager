@@ -208,6 +208,17 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             return;
           }
           
+          // Check if this is a duplicate employment history match
+          if (data.matchedWithCandidateId && data.matchedWithCandidateName) {
+            setSubmissionError(`Employment history matches with existing candidate: ${data.matchedWithCandidateName}`);
+            toast({
+              title: "Duplicate employment history",
+              description: `This resume has employment history that matches existing candidate: ${data.matchedWithCandidateName}`,
+              variant: "destructive",
+            });
+            return;
+          }
+          
           // Set existing candidate state to show previous submission info
           setExistingCandidate({
             id: data.candidateId,
