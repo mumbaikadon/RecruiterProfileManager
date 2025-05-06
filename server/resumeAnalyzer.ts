@@ -187,6 +187,16 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
           : [],
         suggestedTraining: Array.isArray(analysisResult.skillsGapAnalysis?.suggestedTraining) 
           ? analysisResult.skillsGapAnalysis.suggestedTraining 
+          : [],
+        // Include detailed gap analysis if available
+        gapDetails: Array.isArray(analysisResult.skillsGapAnalysis?.gapDetails)
+          ? analysisResult.skillsGapAnalysis.gapDetails.map(gap => ({
+              category: gap.category || "",
+              gaps: Array.isArray(gap.gaps) ? gap.gaps : [],
+              importance: gap.importance || "Important",
+              impact: gap.impact || "",
+              suggestions: Array.isArray(gap.suggestions) ? gap.suggestions : []
+            }))
           : []
       },
       relevantExperience: Array.isArray(analysisResult.relevantExperience) 

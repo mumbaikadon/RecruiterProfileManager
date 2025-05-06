@@ -14,6 +14,15 @@ export interface ResumeAnalysisResult {
   extractedText: string;
 }
 
+// Interface for detailed gap information
+export interface GapDetail {
+  category: string;
+  gaps: string[];
+  importance: string;
+  impact: string;
+  suggestions: string[];
+}
+
 // Interface for the match result between a resume and job description
 export interface MatchScoreResult {
   score: number;
@@ -23,6 +32,9 @@ export interface MatchScoreResult {
   technicalGaps?: string[];
   matchingSkills?: string[];
   missingSkills?: string[];
+  
+  // Enhanced gap analysis details
+  gapDetails?: GapDetail[];
   
   // Structured employment history data
   clientNames?: string[];
@@ -163,6 +175,11 @@ export async function matchResumeToJob(resumeText: string, jobDescription: strin
       technicalGaps: analysis.skillsGapAnalysis.missingSkills,
       matchingSkills: analysis.skillsGapAnalysis.matchingSkills,
       missingSkills: analysis.skillsGapAnalysis.missingSkills,
+      
+      // Enhanced gap analysis details
+      gapDetails: Array.isArray(analysis.skillsGapAnalysis.gapDetails) 
+        ? analysis.skillsGapAnalysis.gapDetails 
+        : [],
       
       // Employment history data
       clientNames: analysis.clientNames || [],
