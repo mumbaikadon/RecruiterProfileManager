@@ -1783,6 +1783,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New endpoint to validate a resume for duplicate/suspicious patterns before candidate creation
+  app.post("/api/validate-resume", async (req: Request, res: Response) => {
+    try {
+      const { clientNames, relevantDates } = req.body;
+      
+      if (!clientNames || !Array.isArray(clientNames) || clientNames.length === 0) {
+        return res.status(400).json({ 
+          message: "Required fields missing: clientNames must be a non-empty array",
+          isValid: true // Return true so the form submission can continue
+        });
+      }
+      
+      console.log("======= EARLY RESUME VALIDATION ========");
+      console.log(`Client Names (${clientNames?.length || 0}): ${JSON.stringify(clientNames)}`);
+      console.log(`Relevant Dates (${relevantDates?.length || 0}): ${JSON.stringify(relevantDates)}`);
+      
+      // Find similar employment histories
+      const similarHistories = await storage.findSimilarEmploymentHistories(
+        clientNames,
+        relevantDates || []
+      );
+      
+      // Filter and verify high similarity matches (80% or higher)
+      const highSimilarityMatches = similarHistories.filter(match => 
+        match.similarityScore >= 80
+      );
+      
+      // Get more details about the matches including candidate names
+      const highSimilarityDetails = await Promise.all(
+        highSimilarityMatches.map(async match => {
+          const candidate = await storage.getCandidate(match.candidateId);
+          if (candidate) {
+            return {
+              ...match,
+              candidateName: `${candidate.firstName} ${candidate.lastName}`,
+              candidateEmail: candidate.email || ""
+            };
+          }
+          return null;
+        })
+      );
+      
+      // Filter for identical chronology (same companies + dates, 90%+ match)
+      const identicalChronologyMatches = similarHistories.filter(match => 
+        match.hasIdenticalChronology || 
+        (match.companyMatchPercentage >= 90 && match.dateMatchPercentage >= 90)
+      );
+      
+      // Get more details about identical chronology matches
+      const identicalChronologyDetails = await Promise.all(
+        identicalChronologyMatches.map(async match => {
+          const candidate = await storage.getCandidate(match.candidateId);
+          if (candidate) {
+            return {
+              ...match,
+              candidateName: `${candidate.firstName} ${candidate.lastName}`,
+              candidateEmail: candidate.email || ""
+            };
+          }
+          return null;
+        })
+      );
+      
+      // Create detailed explanations and recommendations
+      const suspiciousPatterns = [];
+      
+      if (identicalChronologyDetails.length > 0) {
+        // Get candidate names for detailed message
+        const matchedCandidateNames = identicalChronologyDetails
+          .filter(Boolean)
+          .map(match => match.candidateName)
+          .join(', ');
+        
+        suspiciousPatterns.push({
+          type: "IDENTICAL_CHRONOLOGY",
+          severity: "HIGH",
+          message: `${identicalChronologyDetails.length} other candidate(s) have identical employer sequence and dates: ${matchedCandidateNames}`,
+          detail: "Same companies in same order with matching employment dates strongly suggests resume fraud. Consider rejecting this candidate or requiring additional verification.",
+          matchedCandidates: identicalChronologyDetails.filter(Boolean).map(match => ({
+            id: match.candidateId,
+            name: match.candidateName,
+            similarityScore: match.similarityScore
+          }))
+        });
+      }
+      
+      if (highSimilarityDetails.length > 0 && identicalChronologyDetails.length === 0) {
+        // Get candidate names for detailed message
+        const matchedCandidateNames = highSimilarityDetails
+          .filter(Boolean)
+          .map(match => match.candidateName)
+          .join(', ');
+          
+        suspiciousPatterns.push({
+          type: "HIGH_SIMILARITY",
+          severity: "MEDIUM",
+          message: `${highSimilarityDetails.length} other candidate(s) have >80% matching employment histories: ${matchedCandidateNames}`,
+          detail: "Extremely similar work histories may indicate resume fraud, template usage, or legitimate similar career paths. Review carefully and compare specific details.",
+          matchedCandidates: highSimilarityDetails.filter(Boolean).map(match => ({
+            id: match.candidateId,
+            name: match.candidateName,
+            similarityScore: match.similarityScore
+          }))
+        });
+      }
+      
+      // Return validation results
+      const response = {
+        isValid: suspiciousPatterns.length === 0,
+        message: suspiciousPatterns.length > 0 
+          ? "Suspicious patterns detected in resume" 
+          : "Resume passed validation checks",
+        hasSimilarHistories: highSimilarityMatches.length > 0,
+        hasIdenticalChronology: identicalChronologyMatches.length > 0,
+        highSimilarityMatches: highSimilarityDetails,
+        identicalChronologyMatches: identicalChronologyDetails,
+        totalCandidatesChecked: similarHistories.length,
+        suspiciousPatterns: suspiciousPatterns
+      };
+      
+      console.log("Resume validation completed with status:");
+      console.log(`- Is valid: ${response.isValid}`);
+      console.log(`- Has similar histories: ${response.hasSimilarHistories}`);
+      console.log(`- Has identical chronology: ${response.hasIdenticalChronology}`);
+      console.log(`- Suspicious patterns: ${response.suspiciousPatterns.length}`);
+      
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error("Error validating resume:", error);
+      return res.status(500).json({
+        isValid: true, // Let the submission continue on server errors 
+        message: "Failed to validate resume, but allowing submission to continue",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Initialize the HTTP server
   const httpServer = createServer(app);
   return httpServer;
