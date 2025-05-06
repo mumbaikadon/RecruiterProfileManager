@@ -1402,12 +1402,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const updatedCandidate = await storage.getCandidate(candidateId);
         
         console.log(`Validation completed for candidate ${candidateId}, returning success response`);
-        res.status(200).json({
+        const response: any = {
           validation,
           candidate: updatedCandidate,
-          submission, // Include the submission in the response if created
           message: `Candidate ${validationResult === "unreal" ? "marked as unreal" : "validated successfully"}`
-        });
+        };
+        
+        // Only include submission in the response if it exists
+        if (typeof submission !== 'undefined') {
+          response.submission = submission;
+        }
+        
+        res.status(200).json(response);
       } catch (error) {
         console.error("Candidate validation error:", error);
         if (error instanceof z.ZodError) {
