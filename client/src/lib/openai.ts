@@ -1,4 +1,5 @@
 import { apiRequest, apiRequestWithJson } from "./queryClient";
+import { extractDocumentText } from './documentUtils';
 
 /**
  * Enhanced interface for resume data with structured employment history
@@ -32,6 +33,7 @@ export interface MatchScoreResult {
   clientNames?: string[];
   jobTitles?: string[];
   relevantDates?: string[];
+  education?: string[]; // Education data
   
   // Legacy fields
   clientExperience?: string;
@@ -101,10 +103,11 @@ export async function matchResumeToJob(
     
     // Log detailed response for debugging
     console.log("Received matchResumeToJob response:", response);
-    console.log("Employment history data in response:", {
+    console.log("Candidate data in response:", {
       clientNames: response.clientNames || [],
       jobTitles: response.jobTitles || [],
-      relevantDates: response.relevantDates || []
+      relevantDates: response.relevantDates || [],
+      education: response.education || []
     });
     
     return response;
@@ -126,6 +129,7 @@ export async function matchResumeToJob(
       clientNames: [],
       jobTitles: [],
       relevantDates: [],
+      education: [], // Include education field
       
       // Legacy fields
       clientExperience: "",
@@ -137,8 +141,6 @@ export async function matchResumeToJob(
 /**
  * Process a resume file and extract text for analysis
  */
-import { extractDocumentText } from './documentUtils';
-
 export async function analyzeResume(file: File): Promise<{
   analysis: ResumeAnalysisResult;
   text: string;
