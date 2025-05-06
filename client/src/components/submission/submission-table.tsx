@@ -20,9 +20,20 @@ import { cn } from "@/lib/utils";
 
 interface SubmissionTableProps {
   submissions: (Submission & {
-    job?: { id: number; jobId: string; title: string };
-    candidate?: { id: number; firstName: string; lastName: string; location: string };
-    recruiter?: { id: number; name: string };
+    job?: { id: number; jobId: string; title: string; status: string };
+    candidate?: { 
+      id: number; 
+      firstName: string; 
+      middleName?: string;
+      lastName: string; 
+      location: string;
+      isSuspicious?: boolean;
+      suspiciousReason?: string | null;
+      suspiciousSeverity?: string | null;
+      isUnreal?: boolean;
+      unrealReason?: string | null;
+    };
+    recruiter?: { id: number; name: string; username?: string };
   })[];
   isLoading?: boolean;
 }

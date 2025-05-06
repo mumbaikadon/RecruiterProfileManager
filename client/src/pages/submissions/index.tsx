@@ -19,30 +19,12 @@ const SubmissionsPage: React.FC = () => {
   // Fetch all submissions
   const { data: rawSubmissions, isLoading } = useSubmissions();
   
-  // Temporary structure to hold submission details with related data for display
+  // Use the actual submission data from the API with its related entities
   const submissions = React.useMemo(() => {
     if (!rawSubmissions) return [];
     
-    // In a real app, we would make an API call to get the full data
-    // For now, we'll create a simple structure with what we have
-    return rawSubmissions.map(sub => ({
-      ...sub,
-      job: {
-        id: sub.jobId,
-        jobId: `JOB-${sub.jobId}`, // Just a placeholder
-        title: `Job #${sub.jobId}` // Just a placeholder
-      },
-      candidate: {
-        id: sub.candidateId,
-        firstName: `Candidate`,
-        lastName: `#${sub.candidateId}`,
-        location: "Unknown Location"
-      },
-      recruiter: {
-        id: sub.recruiterId,
-        name: `Recruiter #${sub.recruiterId}`
-      }
-    }));
+    // The API now returns full data for job, candidate, and recruiter
+    return rawSubmissions;
   }, [rawSubmissions]);
   
   // Filter submissions based on search and status
