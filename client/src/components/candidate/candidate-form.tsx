@@ -1097,21 +1097,50 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                         </ul>
                       </TabsContent>
                       
-                      {/* New domain expertise tab */}
+                      {/* Domain expertise tab with enhanced scoring */}
                       <TabsContent value="domain" className="space-y-2 mt-2">
+                        {/* Domain Knowledge Score indicator */}
+                        {typeof matchResults.domainKnowledgeScore === 'number' && (
+                          <div className="mb-4">
+                            <h6 className="text-sm font-medium mb-2">Domain Knowledge Score</h6>
+                            <div className="flex items-center">
+                              <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                                <div className={`h-2.5 rounded-full ${
+                                  matchResults.domainKnowledgeScore >= 70 ? 'bg-green-600' : 
+                                  matchResults.domainKnowledgeScore >= 40 ? 'bg-amber-500' : 'bg-red-600'
+                                }`} 
+                                style={{ width: `${Math.max(5, matchResults.domainKnowledgeScore)}%` }}>
+                                </div>
+                              </div>
+                              <span className={`text-sm font-medium ${
+                                matchResults.domainKnowledgeScore >= 70 ? 'text-green-600' : 
+                                matchResults.domainKnowledgeScore >= 40 ? 'text-amber-600' : 'text-red-600'
+                              }`}>
+                                {matchResults.domainKnowledgeScore}%
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              This score indicates how well the candidate's experience aligns with 
+                              industry-specific requirements for this role.
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* Domain Expertise Gaps section */}
                         {matchResults.domainExpertiseGaps && matchResults.domainExpertiseGaps.length > 0 ? (
                           <>
-                            <div className="p-2 bg-amber-50 border border-amber-200 rounded-md mb-3">
-                              <h6 className="text-sm font-medium text-amber-800 mb-1">Domain-Specific Expertise Gaps</h6>
+                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-md mb-3">
+                              <h6 className="text-sm font-medium text-amber-800 mb-2">Domain-Specific Expertise Gaps</h6>
                               <ul className="pl-5 text-sm text-amber-700 list-disc">
                                 {matchResults.domainExpertiseGaps.map((gap: string, index: number) => (
-                                  <li key={index} className="mb-1">{gap}</li>
+                                  <li key={index} className="mb-1.5">{gap}</li>
                                 ))}
                               </ul>
                             </div>
                             
-                            <div className="text-xs text-gray-600">
-                              <p className="mb-1"><strong>Why this matters:</strong> Domain expertise gaps directly impact the candidate's ability to perform effectively in this specific role. These gaps are industry-specific knowledge or experience areas that are critical for success.</p>
+                            <div className="text-xs text-gray-600 p-2 bg-gray-50 rounded-md">
+                              <p className="mb-1"><strong>Why this matters:</strong> Domain expertise gaps directly impact the candidate's ability to perform effectively in this specific role. These gaps represent industry-specific knowledge or experience areas that are critical for success.</p>
+                              <p><strong>Recommendation:</strong> Focus on addressing these domain-specific gaps during interview discussions to better evaluate the candidate's potential in this specialized role.</p>
                             </div>
                           </>
                         ) : (
