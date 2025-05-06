@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { formatDate, formatDob } from "@/lib/date-utils";
 import { Candidate } from "@shared/schema";
@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, AlertTriangle } from "lucide-react";
+import { Eye, AlertTriangle, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ResubmitDialog from "./resubmit-dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -31,9 +32,16 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
   isLoading = false 
 }) => {
   const [_, setLocation] = useLocation();
+  const [isResubmitDialogOpen, setIsResubmitDialogOpen] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<{id: number, name: string} | null>(null);
 
   const handleViewCandidate = (id: number) => {
     setLocation(`/candidates/${id}`);
+  };
+  
+  const handleResubmitCandidate = (id: number, name: string) => {
+    setSelectedCandidate({ id, name });
+    setIsResubmitDialogOpen(true);
   };
 
   const getWorkAuthorizationDisplay = (auth: string) => {
@@ -69,6 +77,14 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
 
   return (
     <div className="overflow-x-auto">
+      {selectedCandidate && (
+        <ResubmitDialog
+          isOpen={isResubmitDialogOpen}
+          onClose={() => setIsResubmitDialogOpen(false)}
+          candidateId={selectedCandidate.id}
+          candidateName={selectedCandidate.name}
+        />
+      )}
       <Table>
         <TableHeader>
           <TableRow className="border-border hover:bg-transparent">
