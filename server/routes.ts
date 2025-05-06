@@ -792,6 +792,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         matchScore: submissionData.matchScore,
         agreedRate: submissionData.agreedRate,
         notes: submissionData.notes || "",
+        isSuspicious: !!submissionData.isSuspicious,
+        suspiciousReason: submissionData.suspiciousReason || null,
+        suspiciousSeverity: submissionData.suspiciousSeverity || null,
       };
 
       const validatedData = insertSubmissionSchema.parse(submissionPayload);
