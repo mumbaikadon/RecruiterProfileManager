@@ -377,18 +377,59 @@ export class DatabaseStorage implements IStorage {
         const candidateRelevantDates = data.relevantDates || [];
         
         // Calculate similarity between company names (ignoring titles as they could legitimately be the same)
-        const nameMatches = clientNames.filter(name => 
-          candidateClientNames.some(cName => 
-            cName.toLowerCase().trim() === name.toLowerCase().trim()
-          )
-        );
+        // Improved matching to handle company names with locations
+        const nameMatches = clientNames.filter(name => {
+          // Normalize input name - extract just the company part (before any comma)
+          const normalizedName = name.split(',')[0].toLowerCase().trim();
+          console.log(`Comparing input company: "${name}" (normalized: "${normalizedName}")`);
+          
+          return candidateClientNames.some(cName => {
+            // Normalize candidate name similarly
+            const normalizedCandidateName = cName.split(',')[0].toLowerCase().trim();
+            const isMatch = normalizedCandidateName === normalizedName;
+            
+            if (isMatch) {
+              console.log(`MATCH FOUND: "${cName}" matches "${name}"`);
+            } else {
+              console.log(`No match: "${cName}" (normalized: "${normalizedCandidateName}") vs "${name}" (normalized: "${normalizedName}")`);
+            }
+            
+            return isMatch;
+          });
+        });
         
         // Calculate similarity between dates
-        const dateMatches = relevantDates.filter(date => 
-          candidateRelevantDates.some(cDate => 
-            cDate.toLowerCase().trim() === date.toLowerCase().trim()
-          )
-        );
+        const dateMatches = relevantDates.filter(date => {
+          const normalizedDate = date.toLowerCase().trim();
+          console.log(`Comparing input date: "${date}"`);
+          
+          return candidateRelevantDates.some(cDate => {
+            const normalizedCandidateDate = cDate.toLowerCase().trim();
+            
+            // Basic exact match
+            const exactMatch = normalizedCandidateDate === normalizedDate;
+            
+            // Check if months/years match even if format differs
+            const datePartsInput = normalizedDate.replace(/[^a-z0-9]/gi, ' ').split(/\s+/).filter(Boolean);
+            const datePartsCandidate = normalizedCandidateDate.replace(/[^a-z0-9]/gi, ' ').split(/\s+/).filter(Boolean);
+            
+            // If both contain same months/years in any order, consider it a match
+            const containsSameMonthsYears = datePartsInput.length > 0 && 
+              datePartsInput.every(part => 
+                datePartsCandidate.some(cPart => cPart === part)
+              );
+            
+            const isMatch = exactMatch || containsSameMonthsYears;
+            
+            if (isMatch) {
+              console.log(`DATE MATCH FOUND: "${cDate}" matches "${date}"`);
+            } else {
+              console.log(`No date match: "${cDate}" vs "${date}"`);
+            }
+            
+            return isMatch;
+          });
+        });
         
         // Calculate similarity score (0-100)
         const totalItems = clientNames.length + relevantDates.length;
