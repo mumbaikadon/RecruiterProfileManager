@@ -959,9 +959,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Identify identical job chronology (same companies and dates)
       const identicalChronologyMatches = similarHistories.filter(match => {
-        // Extract base company names (before any comma)
-        const inputCompanyNames = clientNames.map(name => name.split(',')[0].toLowerCase().trim());
-        const matchCompanyNames = match.clientNames.map(name => name.split(',')[0].toLowerCase().trim());
+        // Extract just the main company name for better matching
+        const inputCompanyNames = clientNames.map(name => {
+          // First split by commas and take first part
+          const withoutLocation = name.split(',')[0].toLowerCase().trim();
+          // Then extract just the main company name (first word)
+          return withoutLocation.split(/\s+/)[0];
+        });
+        
+        const matchCompanyNames = match.clientNames.map(name => {
+          // First split by commas and take first part
+          const withoutLocation = name.split(',')[0].toLowerCase().trim();
+          // Then extract just the main company name (first word)
+          return withoutLocation.split(/\s+/)[0];
+        });
         
         // Check if normalized companies match with some flexibility
         // We require most companies to match, but allow for some variation
@@ -987,20 +998,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const inputDateParts = relevantDates.map(extractDateParts);
           const matchDateParts = match.relevantDates.map(extractDateParts);
           
-          // Check if dates have matching parts (at least 80% match in date components)
+          // Improved date matching with better calculation
+          // This fixes the >100% match percentage issue by comparing each date entry directly
           let matchingDateComponents = 0;
           let totalDateComponents = 0;
           
-          inputDateParts.forEach(parts => {
-            totalDateComponents += parts.length;
-            matchDateParts.forEach(matchParts => {
-              const matchingParts = parts.filter(part => 
-                matchParts.some(mPart => mPart === part)
-              );
-              matchingDateComponents += matchingParts.length;
+          // For each input date, find the best matching date from the comparison set
+          inputDateParts.forEach((parts) => {
+            totalDateComponents += 1; // Count each date entry as 1 instead of counting parts
+            
+            // Find best matching date by comparing parts
+            let bestMatchCount = 0;
+            matchDateParts.forEach((matchParts) => {
+              const matchingPartCount = parts.filter((part) => 
+                matchParts.some((mPart) => mPart === part)
+              ).length;
+              
+              // Keep track of best match
+              bestMatchCount = Math.max(bestMatchCount, matchingPartCount);
             });
+            
+            // Calculate score for this date (0-1 range)
+            const dateScore = parts.length > 0 ? bestMatchCount / parts.length : 0;
+            
+            // If more than 80% of parts match, consider it a matching date
+            if (dateScore >= 0.8) {
+              matchingDateComponents += 1;
+            }
+            
+            console.log(`Date parts: ${JSON.stringify(parts)}, Best match count: ${bestMatchCount}, Score: ${dateScore}`);
           });
           
+          // Calculate final percentage based on number of matching dates
           const dateMatchPercentage = totalDateComponents > 0 
             ? (matchingDateComponents / totalDateComponents) * 100 
             : 0;
