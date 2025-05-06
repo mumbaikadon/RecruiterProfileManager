@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, AlertTriangle, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ResubmitDialog from "./resubmit-dialog";
+import SuspiciousBadge from "../submission/suspicious-badge";
 import {
   Tooltip,
   TooltipContent,
@@ -127,6 +128,16 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+                  )}
+                  
+                  {/* Show suspicious badge if candidate is flagged as suspicious */}
+                  {candidate.isSuspicious && (
+                    <SuspiciousBadge 
+                      isSuspicious={!!candidate.isSuspicious}
+                      suspiciousReason={candidate.suspiciousReason}
+                      suspiciousSeverity={candidate.suspiciousSeverity}
+                      size="sm"
+                    />
                   )}
                 </div>
               </TableCell>
