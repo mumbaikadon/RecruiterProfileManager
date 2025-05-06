@@ -155,7 +155,8 @@ export const activities = pgTable("activities", {
   type: text("type", { 
     enum: [
       "job_created", 
-      "job_closed", 
+      "job_closed",
+      "job_updated",
       "candidate_submitted", 
       "status_changed", 
       "duplicate_detected", 
