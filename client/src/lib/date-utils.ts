@@ -59,3 +59,15 @@ export function isDateEqual(date1: string | Date, date2: string | Date): boolean
   
   return isSameDay(dateObj1, dateObj2);
 }
+
+/**
+ * Checks if a date is older than two weeks from now
+ * @param date The date to check
+ * @returns True if the date is older than two weeks from now
+ */
+export function isOlderThanTwoWeeks(date: string | Date): boolean {
+  const submissionDate = typeof date === "string" ? new Date(date) : date;
+  const twoWeeksAgo = new Date();
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+  return submissionDate < twoWeeksAgo;
+}
