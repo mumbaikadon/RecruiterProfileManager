@@ -129,18 +129,32 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
               </TableCell>
               <TableCell className="hidden sm:table-cell">{formatDate(candidate.createdAt)}</TableCell>
               <TableCell className="text-right">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-primary hover:text-primary/80 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewCandidate(candidate.id);
-                  }}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">View</span>
-                </Button>
+                <div className="flex justify-end space-x-1">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-primary hover:text-primary/80 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewCandidate(candidate.id);
+                    }}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">View</span>
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-green-600 hover:text-green-700 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleResubmitCandidate(candidate.id, `${candidate.firstName} ${candidate.lastName}`);
+                    }}
+                  >
+                    <UploadCloud className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">Resubmit</span>
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}
