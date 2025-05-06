@@ -1089,21 +1089,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create detailed explanations and next step recommendations
       const suspiciousPatterns = [];
       
-      if (identicalChronologyMatches.length > 0) {
+      if (identicalChronologyDetails.length > 0) {
+        // Get candidate names for detailed message
+        const matchedCandidateNames = identicalChronologyDetails
+          .filter(Boolean)
+          .map(match => match.candidateName)
+          .join(', ');
+        
         suspiciousPatterns.push({
           type: "IDENTICAL_CHRONOLOGY",
           severity: "HIGH",
-          message: `${identicalChronologyMatches.length} other candidate(s) have identical employer sequence and dates`,
-          detail: "Same companies in same order with matching employment dates strongly suggests resume fraud. Consider rejecting this candidate or requiring additional verification."
+          message: `${identicalChronologyDetails.length} other candidate(s) have identical employer sequence and dates: ${matchedCandidateNames}`,
+          detail: "Same companies in same order with matching employment dates strongly suggests resume fraud. Consider rejecting this candidate or requiring additional verification.",
+          matchedCandidates: identicalChronologyDetails.filter(Boolean).map(match => ({
+            id: match.candidateId,
+            name: match.candidateName,
+            similarityScore: match.similarityScore
+          }))
         });
       }
       
-      if (highSimilarityMatches.length > 0) {
+      if (highSimilarityDetails.length > 0) {
+        // Get candidate names for detailed message
+        const matchedCandidateNames = highSimilarityDetails
+          .filter(Boolean)
+          .map(match => match.candidateName)
+          .join(', ');
+          
         suspiciousPatterns.push({
           type: "HIGH_SIMILARITY",
           severity: "MEDIUM",
-          message: `${highSimilarityMatches.length} other candidate(s) have >80% matching employment histories`,
-          detail: "Extremely similar work histories may indicate resume fraud, template usage, or legitimate similar career paths. Review carefully and compare specific details."
+          message: `${highSimilarityDetails.length} other candidate(s) have >80% matching employment histories: ${matchedCandidateNames}`,
+          detail: "Extremely similar work histories may indicate resume fraud, template usage, or legitimate similar career paths. Review carefully and compare specific details.",
+          matchedCandidates: highSimilarityDetails.filter(Boolean).map(match => ({
+            id: match.candidateId,
+            name: match.candidateName,
+            similarityScore: match.similarityScore
+          }))
         });
       }
       
