@@ -38,6 +38,11 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [requiresNewResume, setRequiresNewResume] = useState(false);
+  const [suspiciousFlags, setSuspiciousFlags] = useState<{
+    isSuspicious: boolean;
+    suspiciousReason: string | null;
+    suspiciousSeverity: string | null;
+  } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -67,6 +72,9 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       jobId: number;
       candidateId: number;
       resumeFile?: File;
+      isSuspicious?: boolean;
+      suspiciousReason?: string | null;
+      suspiciousSeverity?: string | null;
     }) => {
       if (data.resumeFile) {
         // Upload and parse the resume if provided
@@ -104,6 +112,12 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
             matchStrengths: matchResult.strengths,
             matchWeaknesses: matchResult.weaknesses,
             matchSuggestions: matchResult.suggestions,
+            // Include suspicious flags if they exist
+            ...(data.isSuspicious ? {
+              isSuspicious: data.isSuspicious,
+              suspiciousReason: data.suspiciousReason,
+              suspiciousSeverity: data.suspiciousSeverity,
+            } : {}),
           }),
         });
       } else {
@@ -144,11 +158,32 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       
       if (previousSubmission) {
         setRequiresNewResume(isOlderThanTwoWeeks(previousSubmission.submittedAt));
+        
+        // Check if any of the submissions for this candidate are marked suspicious
+        // This will carry suspicious flags forward to new submissions
+        const isSuspicious = previousSubmission.isSuspicious || false;
+        if (isSuspicious) {
+          setSuspiciousFlags({
+            isSuspicious: true,
+            suspiciousReason: previousSubmission.suspiciousReason || "Previously flagged as suspicious",
+            suspiciousSeverity: previousSubmission.suspiciousSeverity || "MEDIUM"
+          });
+          
+          // Show warning to recruiter
+          toast({
+            title: "Warning: Suspicious Candidate",
+            description: "This candidate was previously flagged as suspicious. The flag will be applied to this new submission.",
+            variant: "destructive",
+            duration: 6000, // Show for longer
+          });
+        } else {
+          setSuspiciousFlags(null);
+        }
       } else {
         setRequiresNewResume(true); // New submission always requires resume
       }
     }
-  }, [selectedJobId, submissions]);
+  }, [selectedJobId, submissions, toast]);
 
   const handleSubmit = () => {
     if (!selectedJobId) {
@@ -169,10 +204,16 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       return;
     }
 
+    // Include suspicious flags if they exist
     submitMutation.mutate({
       jobId: selectedJobId,
       candidateId,
       resumeFile: file || undefined,
+      ...suspiciousFlags ? {
+        isSuspicious: suspiciousFlags.isSuspicious,
+        suspiciousReason: suspiciousFlags.suspiciousReason,
+        suspiciousSeverity: suspiciousFlags.suspiciousSeverity
+      } : {}
     });
   };
 
