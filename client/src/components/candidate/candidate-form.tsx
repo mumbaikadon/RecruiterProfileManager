@@ -666,29 +666,63 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       {validationWarning && (
         <Alert 
           variant="destructive"
-          className={`border-2 ${validationWarning.severity === "HIGH" ? "border-red-500 bg-red-50" : "border-amber-500 bg-amber-50"}`}
+          className={`border-2 p-0 overflow-hidden ${validationWarning.severity === "HIGH" ? "border-red-500" : "border-amber-500"}`}
         >
-          <AlertCircle className={`h-5 w-5 ${validationWarning.severity === "HIGH" ? "text-red-700" : "text-amber-700"}`} />
-          <AlertTitle className="text-lg font-bold text-red-700">
-            {validationWarning.title}
-          </AlertTitle>
-          <AlertDescription className="mt-2">
-            <p className="text-base font-medium mb-2">{validationWarning.message}</p>
-            <p className="text-sm">{validationWarning.detail}</p>
-            
-            {validationWarning.matchedCandidates && validationWarning.matchedCandidates.length > 0 && (
-              <div className="mt-3 border-t border-red-200 pt-2">
-                <p className="font-medium text-sm">Matching candidates:</p>
-                <ul className="list-disc pl-5 mt-1 text-sm space-y-1">
-                  {validationWarning.matchedCandidates.map(candidate => (
-                    <li key={candidate.id}>
-                      {candidate.name} <span className="text-xs text-gray-500">({candidate.similarityScore.toFixed(1)}% match)</span>
-                    </li>
-                  ))}
-                </ul>
+          {/* Header section with icon and title */}
+          <div className={`p-3 ${validationWarning.severity === "HIGH" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"}`}>
+            <div className="flex items-center gap-2">
+              <div className={`p-1 rounded-full ${validationWarning.severity === "HIGH" ? "bg-red-200" : "bg-amber-200"}`}>
+                <AlertCircle className="h-5 w-5" />
               </div>
-            )}
-          </AlertDescription>
+              <h3 className="text-lg font-bold">{validationWarning.title}</h3>
+            </div>
+          </div>
+          
+          {/* Content section with formatted message */}
+          <div className={`p-4 ${validationWarning.severity === "HIGH" ? "bg-red-50" : "bg-amber-50"}`}>
+            <div className="space-y-4">
+              {/* Main warning message */}
+              <div className="rounded-md p-3 border border-gray-200 bg-white">
+                <h4 className="font-semibold mb-1">Detection Summary:</h4>
+                <p className="text-base">
+                  {validationWarning.severity === "HIGH" ? (
+                    <>This resume shows identical job chronology with {validationWarning.matchedCandidates?.length || 0} other candidate(s)</>
+                  ) : (
+                    <>This resume has high similarity ({'>'}80%) with {validationWarning.matchedCandidates?.length || 0} other candidate(s)</>
+                  )}
+                </p>
+              </div>
+              
+              {/* Matching candidates */}
+              {validationWarning.matchedCandidates && validationWarning.matchedCandidates.length > 0 && (
+                <div className="rounded-md p-3 border border-gray-200 bg-white">
+                  <h4 className="font-semibold mb-2">Matching Candidates:</h4>
+                  <ul className="space-y-2 pl-1">
+                    {validationWarning.matchedCandidates.map(candidate => (
+                      <li key={candidate.id} className="flex items-center gap-2">
+                        <div className={`h-2 w-2 rounded-full ${validationWarning.severity === "HIGH" ? "bg-red-500" : "bg-amber-500"}`}></div>
+                        <span className="font-medium">{candidate.name}</span>
+                        <span className="text-xs px-2 py-1 rounded-full bg-gray-100">
+                          {candidate.similarityScore.toFixed(1)}% match
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {/* Recommendation section */}
+              <div className="rounded-md p-3 border border-gray-200 bg-white">
+                <h4 className="font-semibold mb-1">Recommendation:</h4>
+                <p className="text-sm">{validationWarning.detail}</p>
+              </div>
+              
+              {/* Warning footer with action description */}
+              <div className={`text-sm italic ${validationWarning.severity === "HIGH" ? "text-red-600" : "text-amber-600"}`}>
+                You may still proceed with this submission, but the warning will be recorded.
+              </div>
+            </div>
+          </div>
         </Alert>
       )}
 
