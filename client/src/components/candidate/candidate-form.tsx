@@ -399,13 +399,11 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         console.log("Starting resume matching with OpenAI...");
         
         // For new candidates, we don't have an ID yet
-        const candidateId = undefined;
-        
-        // Include candidateId when matched, to store employment history in the database
+        // No candidateId for a new submission
         const matchResult = await matchResumeToJob(
           result.text, 
           jobDescription,
-          candidateId ? parseInt(String(candidateId)) : undefined
+          undefined
         );
         
         console.log("Resume match results:", matchResult);
@@ -430,7 +428,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         
         // Early validation - check for suspicious employment history patterns
         try {
-          if (matchResult.clientNames?.length > 0) {
+          if (matchResult.clientNames && matchResult.clientNames.length > 0) {
             console.log("Performing early resume validation...");
             
             const validationResponse = await fetch("/api/validate-resume", {
