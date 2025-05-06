@@ -1720,13 +1720,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                    - clientNames: Array of company/employer names the candidate worked for (most recent first)
                    - jobTitles: Array of job titles/positions held by the candidate (most recent first)
                    - relevantDates: Array of employment periods (most recent first)
+                   
+                4. EDUCATION:
+                   - Search for sections labeled "Education", "Academic Background", "Qualifications", etc.
+                   - Extract education details including degrees, institutions, and graduation years
                 
-                2. Then analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
+                5. Then analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
                 
                 Return your analysis in a structured JSON format with the following fields:
                 - clientNames (array of strings: extract EXACT company names from the resume)
                 - jobTitles (array of strings: extract EXACT job titles from the resume)
                 - relevantDates (array of strings: extract EXACT date ranges from the resume)
+                - education (array of strings: extract EXACT education details from the resume)
                 - skillsGapAnalysis: { missingSkills (array), matchingSkills (array), suggestedTraining (array) }
                 - relevantExperience (array of relevant experiences from the resume)
                 - improvements: { content (array), formatting (array), language (array) }
@@ -1757,6 +1762,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           clientNames: analysisResult.clientNames || [],
           jobTitles: analysisResult.jobTitles || [],
           relevantDates: analysisResult.relevantDates || [],
+          
+          // Education data - directly from OpenAI
+          education: analysisResult.education || [],
         };
       } 
       catch (openaiError) {
@@ -1774,6 +1782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("- clientNames:", JSON.stringify(matchResult.clientNames || []));
       console.log("- jobTitles:", JSON.stringify(matchResult.jobTitles || []));
       console.log("- relevantDates:", JSON.stringify(matchResult.relevantDates || []));
+      console.log("- education:", JSON.stringify(matchResult.education || []));
       
       // If we have a valid candidateId in the request, save the employment history to the database
       if (req.body.candidateId) {
