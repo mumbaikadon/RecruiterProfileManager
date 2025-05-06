@@ -527,6 +527,10 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
                       agreedRate: 0, // For now, using a placeholder value
                       matchScore: null,
                       notes: "",
+                      // Pass suspicious flags if they exist in validation data
+                      isSuspicious: !!data.isSuspicious,
+                      suspiciousReason: data.suspiciousReason || null,
+                      suspiciousSeverity: data.suspiciousSeverity || null,
                     }, {
                       onSuccess: () => {
                         toast({
