@@ -67,35 +67,36 @@ function CandidateDetailPage() {
             </h1>
             
             {candidate.isUnreal && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="destructive" className="flex items-center gap-1.5 px-3 py-1 text-sm">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>UNREAL CANDIDATE</span>
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[350px] p-4">
-                    <h4 className="font-semibold mb-2">Potentially Fraudulent Candidate</h4>
-                    <p className="mb-2">This candidate has been flagged as potentially unreal due to inconsistencies in employment history.</p>
-                    {candidate.unrealReason && (
-                      <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                        <span className="font-medium">Reason:</span> {candidate.unrealReason}
-                      </div>
-                    )}
-                    {candidate.lastValidated && (
-                      <div className="mt-2 text-xs text-slate-500">
-                        Flagged on {formatDate(candidate.lastValidated)}
-                      </div>
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <>
+                <Badge variant="destructive" className="flex items-center gap-1.5 px-3 py-1 text-sm">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>UNREAL CANDIDATE</span>
+                </Badge>
+              </>
             )}
           </div>
           <p className="text-muted-foreground">
             {candidate.workAuthorization} • Added on {formatDate(candidate.createdAt)}
           </p>
+          
+          {/* Display UNREAL reason prominently if candidate is marked as unreal */}
+          {candidate.isUnreal && candidate.unrealReason && (
+            <div className="mt-4 p-4 border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 rounded-md">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-red-700 dark:text-red-400">Candidate marked as UNREAL</h3>
+                  <p className="text-red-700 dark:text-red-400 mt-1">{candidate.unrealReason}</p>
+                  {candidate.lastValidated && (
+                    <p className="text-xs text-red-500/70 mt-2">
+                      Flagged on {formatDateTime(candidate.lastValidated)}
+                      {candidate.validatedBy && ` by ${candidate.validatedBy}`}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
