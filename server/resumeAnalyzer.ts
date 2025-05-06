@@ -3,6 +3,15 @@ import OpenAI from "openai";
 // Initialize OpenAI with API key from environment variables
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Interface for gap details
+interface GapDetail {
+  category: string;
+  gaps: string[];
+  importance: string;
+  impact: string;
+  suggestions: string[];
+}
+
 // Interface for the analysis result
 interface AnalysisResult {
   clientNames?: string[];
@@ -13,6 +22,7 @@ interface AnalysisResult {
     missingSkills: string[];
     matchingSkills: string[];
     suggestedTraining: string[];
+    gapDetails?: GapDetail[];
   };
   relevantExperience: string[];
   improvements: {
@@ -91,14 +101,37 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
                   - education: Array of education details including degrees, institutions, and graduation years
                   - Format each entry as: "Degree, Institution, Year" or however it appears in the resume
             
-            4. Then analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
+            4. DETAILED SKILLS GAP ANALYSIS:
+               - Identify key skills, experience, and qualifications required in the job description
+               - Check if the resume demonstrates these required skills/experience
+               - For each significant gap, provide specific details about:
+                  a) The nature of the gap (domain expertise, technical skills, experience level, etc.)
+                  b) The importance of this skill/experience to the role (critical, important, nice-to-have)
+                  c) Specific examples of what's missing and why it matters
+               - Group gaps into categories (technical skills, domain knowledge, experience type, etc.)
+               - Provide actionable suggestions for addressing each gap
+            
+            5. Calculate an overall match percentage score (0-100) based on the alignment between the resume and job requirements.
             
             Return your analysis in a structured JSON format with the following fields:
             - clientNames (array of strings: extract EXACT company names from the resume)
             - jobTitles (array of strings: extract EXACT job titles from the resume)
             - relevantDates (array of strings: extract EXACT date ranges from the resume)
             - education (array of strings: extract EXACT education details from the resume)
-            - skillsGapAnalysis: { missingSkills (array), matchingSkills (array), suggestedTraining (array) }
+            - skillsGapAnalysis: { 
+                missingSkills (array of strings), 
+                matchingSkills (array of strings), 
+                suggestedTraining (array of strings),
+                gapDetails: [
+                  {
+                    category: string, // e.g., "Technical Skills", "Domain Knowledge", "Industry Experience"
+                    gaps: string[], // Specific gaps in this category
+                    importance: string, // "Critical", "Important", or "Nice-to-have"
+                    impact: string, // How this gap impacts candidacy
+                    suggestions: string[] // Actionable ways to address this gap
+                  }
+                ] 
+              }
             - relevantExperience (array of relevant experiences from the resume)
             - improvements: { content (array), formatting (array), language (array) }
             - overallScore (number 0-100)
