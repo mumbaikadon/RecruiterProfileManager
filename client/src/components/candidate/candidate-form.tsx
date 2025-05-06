@@ -81,6 +81,13 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   const [candidateExists, setCandidateExists] = useState(false);
   const [showOtherAuthorizationInput, setShowOtherAuthorizationInput] = useState(false);
   const [otherAuthorization, setOtherAuthorization] = useState("");
+  const [validationWarning, setValidationWarning] = useState<{
+    title: string;
+    message: string;
+    detail: string;
+    severity: "HIGH" | "MEDIUM" | "LOW";
+    matchedCandidates?: { id: number; name: string; similarityScore: number }[];
+  } | null>(null);
 
   const { toast } = useToast();
   const { mutateAsync: checkCandidate } = useCheckCandidate();
@@ -449,6 +456,17 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                     duration: 10000, // Show for longer
                   });
                   
+                  // Set validation warning state to display prominently
+                  setValidationWarning({
+                    title: firstPattern.type === "IDENTICAL_CHRONOLOGY" ? 
+                      "DUPLICATE EMPLOYMENT HISTORY DETECTED" : 
+                      "SUSPICIOUS RESUME PATTERN DETECTED",
+                    message: firstPattern.message,
+                    detail: firstPattern.detail,
+                    severity: firstPattern.severity,
+                    matchedCandidates: firstPattern.matchedCandidates
+                  });
+                  
                   // Set form error
                   form.setError("firstName", {
                     type: "manual",
@@ -544,6 +562,32 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         });
         return;
       }
+      
+      // Show confirmation dialog for suspicious resumes
+      if (validationWarning && validationWarning.severity === "HIGH") {
+        // Ask for confirmation before submitting suspicious resume
+        const userConfirmed = window.confirm(
+          `⚠️ WARNING: ${validationWarning.title}\n\n` +
+          `${validationWarning.message}\n\n` +
+          `${validationWarning.detail}\n\n` +
+          `Are you sure you want to continue with this submission?`
+        );
+        
+        if (!userConfirmed) {
+          toast({
+            title: "Submission Cancelled",
+            description: "You canceled the submission due to validation warnings.",
+          });
+          return;
+        } else {
+          // User confirmed to continue despite warning
+          toast({
+            title: "Proceeding with Submission",
+            description: "Submitting candidate despite validation warnings.",
+            variant: "destructive",
+          });
+        }
+      }
 
       // Include resume data and match results if available
       console.log("Submitting candidate data with resume:", 
@@ -615,6 +659,35 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           <AlertTitle>Candidate Already Exists</AlertTitle>
           <AlertDescription>
             This candidate is already in the system. Please select a different candidate or check if they've already been submitted for this job.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {validationWarning && (
+        <Alert 
+          variant="destructive"
+          className={`border-2 ${validationWarning.severity === "HIGH" ? "border-red-500 bg-red-50" : "border-amber-500 bg-amber-50"}`}
+        >
+          <AlertCircle className={`h-5 w-5 ${validationWarning.severity === "HIGH" ? "text-red-700" : "text-amber-700"}`} />
+          <AlertTitle className="text-lg font-bold text-red-700">
+            {validationWarning.title}
+          </AlertTitle>
+          <AlertDescription className="mt-2">
+            <p className="text-base font-medium mb-2">{validationWarning.message}</p>
+            <p className="text-sm">{validationWarning.detail}</p>
+            
+            {validationWarning.matchedCandidates && validationWarning.matchedCandidates.length > 0 && (
+              <div className="mt-3 border-t border-red-200 pt-2">
+                <p className="font-medium text-sm">Matching candidates:</p>
+                <ul className="list-disc pl-5 mt-1 text-sm space-y-1">
+                  {validationWarning.matchedCandidates.map(candidate => (
+                    <li key={candidate.id}>
+                      {candidate.name} <span className="text-xs text-gray-500">({candidate.similarityScore.toFixed(1)}% match)</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </AlertDescription>
         </Alert>
       )}
