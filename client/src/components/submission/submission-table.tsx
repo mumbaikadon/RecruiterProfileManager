@@ -156,7 +156,8 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                   <div onClick={(e) => e.stopPropagation()}>
                     <StatusSelect 
                       submissionId={submission.id} 
-                      currentStatus={submission.status} 
+                      currentStatus={submission.status}
+                      currentFeedback={submission.feedback}
                       compact={true}
                     />
                   </div>

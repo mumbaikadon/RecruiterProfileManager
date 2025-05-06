@@ -109,6 +109,7 @@ const SubmissionDetailPage: React.FC = () => {
                 <StatusSelect 
                   submissionId={submission.id} 
                   currentStatus={submission.status}
+                  currentFeedback={submission.feedback}
                 />
               </div>
             </div>
@@ -167,7 +168,7 @@ const SubmissionDetailPage: React.FC = () => {
                       <div>
                         <div className="flex items-center space-x-2">
                           <div className="font-medium">Current Status:</div>
-                          <StatusBadge status={submission.status} />
+                          <StatusBadge status={submission.status} feedback={submission.feedback} />
                         </div>
                         
                         {submission.feedback && (

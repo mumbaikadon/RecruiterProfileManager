@@ -49,7 +49,8 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
       className={cn(
         "px-2 py-1 inline-flex items-center justify-center font-semibold rounded-full",
         textSize,
-        statusColors[status] || "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+        statusColors[status] || "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300",
+        showFeedback && "pr-3" // Add more padding if feedback is shown
       )}
     >
       {formattedStatus}
