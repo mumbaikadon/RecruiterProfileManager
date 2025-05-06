@@ -1796,72 +1796,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log("======= EARLY RESUME VALIDATION ========");
-      console.log(`Client Names (${clientNames?.length || 0}): ${JSON.stringify(clientNames)}`);
-      console.log(`Relevant Dates (${relevantDates?.length || 0}): ${JSON.stringify(relevantDates)}`);
       
-      // Find similar employment histories
+      // Performance improvement: Start with a quick check to see if there's enough data
+      if (clientNames.length < 2) {
+        console.log("Not enough company data for meaningful validation, skipping check");
+        return res.json({
+          isValid: true,
+          message: "Resume passed validation checks (insufficient data for detailed validation)",
+          hasSimilarHistories: false,
+          hasIdenticalChronology: false,
+          totalCandidatesChecked: 0,
+          suspiciousPatterns: []
+        });
+      }
+      
+      // Find similar employment histories - using our optimized algorithm
       const similarHistories = await storage.findSimilarEmploymentHistories(
         clientNames,
         relevantDates || []
       );
       
-      // Filter and verify high similarity matches (80% or higher)
+      // If no similar histories found, return early
+      if (!similarHistories.length) {
+        return res.json({
+          isValid: true,
+          message: "Resume passed validation checks",
+          hasSimilarHistories: false,
+          hasIdenticalChronology: false,
+          totalCandidatesChecked: 0,
+          suspiciousPatterns: []
+        });
+      }
+
+      // Filter for high similarity and identical chronology matches 
+      // (now directly using the flags from our optimized algorithm)
       const highSimilarityMatches = similarHistories.filter(match => 
-        match.similarityScore >= 80
+        match.isHighSimilarity || match.similarityScore >= 80
       );
       
-      // Get more details about the matches including candidate names
-      const highSimilarityDetails = await Promise.all(
-        highSimilarityMatches.map(async match => {
-          const candidate = await storage.getCandidate(match.candidateId);
-          if (candidate) {
-            return {
-              ...match,
-              candidateName: `${candidate.firstName} ${candidate.lastName}`,
-              candidateEmail: candidate.email || ""
-            };
-          }
-          return null;
-        })
-      );
-      
-      // Filter for identical chronology (same companies + dates, 90%+ match)
       const identicalChronologyMatches = similarHistories.filter(match => 
         match.hasIdenticalChronology || 
-        (match.companyMatchPercentage >= 90 && match.dateMatchPercentage >= 90)
+        (match.companyMatchPercentage >= 90 && match.dateMatchPercentage >= 80)
       );
       
-      // Get more details about identical chronology matches
-      const identicalChronologyDetails = await Promise.all(
-        identicalChronologyMatches.map(async match => {
-          const candidate = await storage.getCandidate(match.candidateId);
-          if (candidate) {
-            return {
-              ...match,
-              candidateName: `${candidate.firstName} ${candidate.lastName}`,
-              candidateEmail: candidate.email || ""
-            };
-          }
-          return null;
-        })
+      // Batch fetch candidate details for efficiency (only one DB call)
+      const candidateIds = [...new Set([
+        ...highSimilarityMatches.map(m => m.candidateId),
+        ...identicalChronologyMatches.map(m => m.candidateId)
+      ])];
+      
+      // Early exit if no candidates to check
+      if (candidateIds.length === 0) {
+        return res.json({
+          isValid: true,
+          message: "Resume passed validation checks",
+          hasSimilarHistories: false,
+          hasIdenticalChronology: false,
+          totalCandidatesChecked: similarHistories.length,
+          suspiciousPatterns: []
+        });
+      }
+      
+      // Get candidate details in one batch
+      const candidateDetailsMap = {};
+      const candidates = await Promise.all(
+        candidateIds.map(id => storage.getCandidate(id))
       );
+      
+      candidates.filter(Boolean).forEach(candidate => {
+        candidateDetailsMap[candidate.id] = {
+          id: candidate.id,
+          name: `${candidate.firstName || ''} ${candidate.lastName || ''}`.trim(),
+          email: candidate.email || ""
+        };
+      });
+      
+      // Create enriched match objects
+      const enrichMatch = (match) => {
+        const candidateDetails = candidateDetailsMap[match.candidateId];
+        if (!candidateDetails) return null;
+        
+        return {
+          ...match,
+          candidateName: candidateDetails.name,
+          candidateEmail: candidateDetails.email
+        };
+      };
+      
+      // Efficiently enrich matches
+      const highSimilarityDetails = highSimilarityMatches
+        .map(enrichMatch)
+        .filter(Boolean);
+        
+      const identicalChronologyDetails = identicalChronologyMatches
+        .map(enrichMatch)
+        .filter(Boolean);
       
       // Create detailed explanations and recommendations
       const suspiciousPatterns = [];
       
       if (identicalChronologyDetails.length > 0) {
-        // Get candidate names for detailed message
+        // Get candidate names for detailed message (limit length to avoid too long messages)
         const matchedCandidateNames = identicalChronologyDetails
-          .filter(Boolean)
+          .slice(0, 3) // Show max 3 names
           .map(match => match.candidateName)
           .join(', ');
+        
+        const extraCount = identicalChronologyDetails.length > 3 ? 
+          ` and ${identicalChronologyDetails.length - 3} more` : '';
         
         suspiciousPatterns.push({
           type: "IDENTICAL_CHRONOLOGY",
           severity: "HIGH",
-          message: `${identicalChronologyDetails.length} other candidate(s) have identical employer sequence and dates: ${matchedCandidateNames}`,
+          title: "Identical Employment Pattern Detected",
+          message: `${identicalChronologyDetails.length} candidate(s) have identical employer sequence and dates: ${matchedCandidateNames}${extraCount}`,
           detail: "Same companies in same order with matching employment dates strongly suggests resume fraud. Consider rejecting this candidate or requiring additional verification.",
-          matchedCandidates: identicalChronologyDetails.filter(Boolean).map(match => ({
+          matchedCandidates: identicalChronologyDetails.map(match => ({
             id: match.candidateId,
             name: match.candidateName,
             similarityScore: match.similarityScore
@@ -1870,18 +1920,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (highSimilarityDetails.length > 0 && identicalChronologyDetails.length === 0) {
-        // Get candidate names for detailed message
+        // Get candidate names for detailed message (limit length to avoid too long messages)
         const matchedCandidateNames = highSimilarityDetails
-          .filter(Boolean)
+          .slice(0, 3) // Show max 3 names
           .map(match => match.candidateName)
           .join(', ');
+          
+        const extraCount = highSimilarityDetails.length > 3 ? 
+          ` and ${highSimilarityDetails.length - 3} more` : '';
           
         suspiciousPatterns.push({
           type: "HIGH_SIMILARITY",
           severity: "MEDIUM",
-          message: `${highSimilarityDetails.length} other candidate(s) have >80% matching employment histories: ${matchedCandidateNames}`,
+          title: "High Similarity Resume Detected",
+          message: `${highSimilarityDetails.length} candidate(s) have >80% matching employment histories: ${matchedCandidateNames}${extraCount}`,
           detail: "Extremely similar work histories may indicate resume fraud, template usage, or legitimate similar career paths. Review carefully and compare specific details.",
-          matchedCandidates: highSimilarityDetails.filter(Boolean).map(match => ({
+          matchedCandidates: highSimilarityDetails.map(match => ({
             id: match.candidateId,
             name: match.candidateName,
             similarityScore: match.similarityScore
