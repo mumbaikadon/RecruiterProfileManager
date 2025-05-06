@@ -29,14 +29,18 @@ export interface MatchScoreResult {
   jobTitles?: string[];  
   relevantDates?: string[];
   
+  // Education data
+  education?: string[];
+  
   // Legacy fields for backward compatibility
   clientExperience?: string;
   confidence?: number;
 }
 
 /**
- * Simple resume text analysis that extracts basic fields
- * This function will be used for initial resume data extraction
+ * Resume text analysis that extracts basic fields including education
+ * This function extracts information like employment history, education details,
+ * and skills from the resume text using OpenAI
  */
 export async function analyzeResumeText(resumeText: string): Promise<ResumeAnalysisResult> {
   // Basic validation
@@ -45,19 +49,84 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
   }
   
   try {
-    // We keep this lightweight - just return the basic structure
-    // Actual analysis is done in the matchResumeToJob function
+    console.log("Starting resume analysis with OpenAI...");
+    console.log(`Resume text length: ${resumeText.length} characters`);
+    
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: 
+            "You are an expert resume analyzer specializing in extracting accurate information from resumes. " +
+            "Your task is to extract REAL data from the resume - never generate fake or generic data. " +
+            "Extract company names, job titles, dates, skills, and education details directly from the resume text. " +
+            "Be precise and only use information actually present in the resume."
+        },
+        {
+          role: "user",
+          content: 
+            `Extract key information from this resume text:
+            
+            ${resumeText}
+            
+            EXTRACTION INSTRUCTIONS:
+            1. Carefully read the entire resume text
+            
+            2. EMPLOYMENT HISTORY:
+               - Extract company/employer names the candidate worked for
+               - Extract job titles/positions held by the candidate
+               - Extract employment periods (date ranges)
+            
+            3. EDUCATION:
+               - Extract education details including degrees, institutions, and graduation years
+            
+            4. SKILLS:
+               - Extract technical skills, technologies, programming languages, etc.
+            
+            Return your analysis in a structured JSON format with the following fields:
+            - clientNames (array of strings: extract company names)
+            - jobTitles (array of strings: extract job titles)
+            - relevantDates (array of strings: extract date ranges)
+            - education (array of strings: extract education details)
+            - skills (array of strings: extract skills and technologies)
+            
+            NOTICE: If you cannot find certain information, return empty arrays for those fields.`
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+      max_tokens: 1000,
+    });
+
+    console.log("OpenAI resume analysis completed");
+    
+    // Parse the response
+    const responseContent = response.choices[0].message.content || '{}';
+    const analysisResult = JSON.parse(responseContent);
+    
+    // Sanitize and return the result
+    return {
+      clientNames: Array.isArray(analysisResult.clientNames) ? analysisResult.clientNames : [],
+      jobTitles: Array.isArray(analysisResult.jobTitles) ? analysisResult.jobTitles : [],  
+      relevantDates: Array.isArray(analysisResult.relevantDates) ? analysisResult.relevantDates : [],
+      skills: Array.isArray(analysisResult.skills) ? analysisResult.skills : [],
+      education: Array.isArray(analysisResult.education) ? analysisResult.education : [],
+      extractedText: resumeText.substring(0, 4000) // Limit to 4000 chars for DB storage
+    };
+  } catch (error) {
+    console.error("Error analyzing resume text:", error);
+    
+    // If there's an error, return empty fields rather than failing completely
     return {
       clientNames: [],
       jobTitles: [],  
       relevantDates: [],
       skills: [],
       education: [],
-      extractedText: resumeText.substring(0, 4000) // Limit to 4000 chars for DB storage
+      extractedText: resumeText.substring(0, 4000)
     };
-  } catch (error) {
-    console.error("Error analyzing resume text:", error);
-    throw error;
   }
 }
 
@@ -99,6 +168,9 @@ export async function matchResumeToJob(resumeText: string, jobDescription: strin
       clientNames: analysis.clientNames || [],
       jobTitles: analysis.jobTitles || [],
       relevantDates: analysis.relevantDates || [],
+      
+      // Education data
+      education: analysis.education || [],
       
       // Legacy fields
       clientExperience: analysis.relevantExperience.join(", "),

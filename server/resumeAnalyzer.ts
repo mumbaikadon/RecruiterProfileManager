@@ -125,6 +125,9 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
     console.log("- jobTitles:", JSON.stringify(analysisResult.jobTitles));
     console.log("- relevantDates:", JSON.stringify(analysisResult.relevantDates));
     
+    // Log education data as well
+    console.log("- education:", JSON.stringify(analysisResult.education));
+    
     // Validate and sanitize the response
     const sanitizedResult: AnalysisResult = {
       // Add employment history data
@@ -136,6 +139,10 @@ export async function analyzeResume(resumeText: string, jobDescription: string):
         : [],
       relevantDates: Array.isArray(analysisResult.relevantDates) 
         ? analysisResult.relevantDates 
+        : [],
+      // Add education data
+      education: Array.isArray(analysisResult.education)
+        ? analysisResult.education
         : [],
       // Skills analysis
       skillsGapAnalysis: {
