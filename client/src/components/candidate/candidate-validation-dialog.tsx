@@ -46,6 +46,10 @@ interface CandidateValidationDialogProps {
   };
   validationType: "resubmission";
   resumeFileName?: string;
+  // Suspicious flags preloaded from previous validations or detections
+  isSuspicious?: boolean;
+  suspiciousReason?: string;
+  suspiciousSeverity?: "LOW" | "MEDIUM" | "HIGH";
   validateCandidate: (validationData: {
     candidateId: number;
     jobId: number;
@@ -78,6 +82,10 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
   newResumeData,
   validationType,
   resumeFileName,
+  // Add suspicious flag props with defaults
+  isSuspicious = false,
+  suspiciousReason,
+  suspiciousSeverity,
   validateCandidate,
   validatedBy
 }) => {
@@ -283,22 +291,32 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
     setValidationError(null);
 
     try {
-      // Determine if we should flag the submission as suspicious
-      const isSuspicious = result === "matching" && (
+      // Determine if we should flag the submission as suspicious based on both props and validation results
+      const isNewlySuspicious = result === "matching" && (
         employmentValidation?.hasIdenticalChronology || 
         employmentValidation?.hasSimilarHistories
       );
       
-      // Prepare the suspicious data as individual variables instead of an object
-      const isSuspiciousFlag = isSuspicious;
-      const suspiciousReason = isSuspicious 
+      // Combine existing suspicious status from props with any new findings
+      // If it was already marked as suspicious or newly found to be suspicious, keep it flagged
+      const isSuspiciousFlag = isSuspicious || isNewlySuspicious;
+      
+      // Use either the existing reason or generate a new one if newly suspicious
+      const suspiciousReasonToUse = suspiciousReason || (isNewlySuspicious 
         ? (employmentValidation?.hasIdenticalChronology 
           ? `Identical job chronology with ${employmentValidation.identicalChronologyMatches.length} other candidate(s)` 
           : `Similar employment history (>${employmentValidation?.highSimilarityMatches[0]?.similarityScore}%) with ${employmentValidation?.highSimilarityMatches.length} other candidate(s)`)
-        : undefined;
-      const suspiciousSeverity = isSuspicious
-        ? (employmentValidation?.hasIdenticalChronology ? "HIGH" : "MEDIUM")
-        : undefined;
+        : undefined);
+      
+      // Use the most severe classification - if existing is HIGH, keep it, otherwise use new severity if available
+      let suspiciousSeverityToUse = suspiciousSeverity;
+      if (isNewlySuspicious) {
+        const newSeverity = employmentValidation?.hasIdenticalChronology ? "HIGH" : "MEDIUM";
+        // If existing severity is not HIGH or there's no existing severity, use the new severity
+        if (suspiciousSeverityToUse !== "HIGH") {
+          suspiciousSeverityToUse = newSeverity;
+        }
+      }
       
       // Log validation data being sent
       console.log("Sending validation data:", {
@@ -318,8 +336,8 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         },
         reason: result === "unreal" ? reason : undefined,
         isSuspicious: isSuspiciousFlag,
-        suspiciousReason,
-        suspiciousSeverity
+        suspiciousReason: suspiciousReasonToUse,
+        suspiciousSeverity: suspiciousSeverityToUse
       });
       
       // Prepare the validation data with suspicious flags if needed
@@ -337,18 +355,18 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         resumeFileName,
         reason: result === "unreal" ? reason : undefined,
         validatedBy, // Use validatedBy from props
-        // Add suspicious flags directly as properties
+        // Add suspicious flags directly as properties with the processed values
         isSuspicious: isSuspiciousFlag,
-        suspiciousReason,
-        suspiciousSeverity
+        suspiciousReason: suspiciousReasonToUse,
+        suspiciousSeverity: suspiciousSeverityToUse
       };
       
       // Log suspicious data for debugging
       if (isSuspiciousFlag) {
         console.log("Including suspicious flags in validation request:", {
           isSuspicious: isSuspiciousFlag,
-          suspiciousReason,
-          suspiciousSeverity
+          suspiciousReason: suspiciousReasonToUse,
+          suspiciousSeverity: suspiciousSeverityToUse
         });
       }
       
