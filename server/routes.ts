@@ -1010,13 +1010,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Found ${highSimilarityMatches.length} candidates with >80% similar employment history`);
       console.log(`Found ${identicalChronologyMatches.length} candidates with identical job chronology`);
       
+      // Create a more informative warning message
+      let warningMessage = "";
+      if (identicalChronologyMatches.length > 0) {
+        warningMessage = `⚠️ CRITICAL: Found ${identicalChronologyMatches.length} candidates with identical job chronology. This is a high fraud risk pattern.`;
+      } else if (highSimilarityMatches.length > 0) {
+        warningMessage = `⚠️ WARNING: Found ${highSimilarityMatches.length} candidates with >80% similar employment history. Review carefully.`;
+      }
+
+      // Create detailed explanations based on what was found
+      const suspiciousPatterns = [];
+      
+      if (identicalChronologyMatches.length > 0) {
+        suspiciousPatterns.push({
+          type: "IDENTICAL_CHRONOLOGY",
+          severity: "HIGH",
+          message: `${identicalChronologyMatches.length} other candidate(s) have identical employer sequence and dates`,
+          detail: "Same companies in same order with matching employment dates suggests copied resume"
+        });
+      }
+      
+      if (highSimilarityMatches.length > 0) {
+        suspiciousPatterns.push({
+          type: "HIGH_SIMILARITY",
+          severity: "MEDIUM",
+          message: `${highSimilarityMatches.length} other candidate(s) have >80% matching employment histories`,
+          detail: "Extremely similar work histories may indicate resume fraud or template usage"
+        });
+      }
+      
       return res.status(200).json({
-        message: "Employment history validation complete",
+        message: warningMessage || "Employment history validation complete",
         hasSimilarHistories: highSimilarityMatches.length > 0,
         hasIdenticalChronology: identicalChronologyMatches.length > 0,
         highSimilarityMatches: highSimilarityDetails,
         identicalChronologyMatches: identicalChronologyDetails,
-        totalCandidatesChecked: similarHistories.length
+        totalCandidatesChecked: similarHistories.length,
+        suspiciousPatterns: suspiciousPatterns
       });
     } catch (error) {
       console.error("Error checking similar employment histories:", error);

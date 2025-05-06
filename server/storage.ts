@@ -356,11 +356,15 @@ export class DatabaseStorage implements IStorage {
     clientNames: string[];
     relevantDates: string[];
   }>> {
+    console.log("===== STARTING FRAUD DETECTION =====");
     console.log("Finding similar employment histories...");
-    console.log(`Input: ${clientNames.length} companies, ${relevantDates.length} dates, excluding candidate ID: ${excludeCandidateId || 'none'}`);
+    console.log(`Input client names: ${JSON.stringify(clientNames)}`);
+    console.log(`Input relevant dates: ${JSON.stringify(relevantDates)}`);
+    console.log(`Excluding candidate ID: ${excludeCandidateId || 'none'}`);
 
     // Get all resume data from the database
     const allResumeData = await this.getAllResumeData();
+    console.log(`Total resume data records: ${allResumeData.length}`);
     
     // Filter out the candidate we're validating (if provided)
     const otherCandidatesData = excludeCandidateId 
@@ -376,12 +380,15 @@ export class DatabaseStorage implements IStorage {
         const candidateClientNames = data.clientNames || [];
         const candidateRelevantDates = data.relevantDates || [];
         
+        console.log(`\nChecking candidate ID ${data.candidateId}:`);
+        console.log(`Candidate companies: ${JSON.stringify(candidateClientNames)}`);
+        console.log(`Candidate dates: ${JSON.stringify(candidateRelevantDates)}`);
+        
         // Calculate similarity between company names (ignoring titles as they could legitimately be the same)
         // Improved matching to handle company names with locations
         const nameMatches = clientNames.filter(name => {
           // Normalize input name - extract just the company part (before any comma)
           const normalizedName = name.split(',')[0].toLowerCase().trim();
-          console.log(`Comparing input company: "${name}" (normalized: "${normalizedName}")`);
           
           return candidateClientNames.some(cName => {
             // Normalize candidate name similarly
@@ -389,9 +396,7 @@ export class DatabaseStorage implements IStorage {
             const isMatch = normalizedCandidateName === normalizedName;
             
             if (isMatch) {
-              console.log(`MATCH FOUND: "${cName}" matches "${name}"`);
-            } else {
-              console.log(`No match: "${cName}" (normalized: "${normalizedCandidateName}") vs "${name}" (normalized: "${normalizedName}")`);
+              console.log(`✓ COMPANY MATCH: "${cName}" matches "${name}"`);
             }
             
             return isMatch;
@@ -401,7 +406,6 @@ export class DatabaseStorage implements IStorage {
         // Calculate similarity between dates
         const dateMatches = relevantDates.filter(date => {
           const normalizedDate = date.toLowerCase().trim();
-          console.log(`Comparing input date: "${date}"`);
           
           return candidateRelevantDates.some(cDate => {
             const normalizedCandidateDate = cDate.toLowerCase().trim();
@@ -422,9 +426,7 @@ export class DatabaseStorage implements IStorage {
             const isMatch = exactMatch || containsSameMonthsYears;
             
             if (isMatch) {
-              console.log(`DATE MATCH FOUND: "${cDate}" matches "${date}"`);
-            } else {
-              console.log(`No date match: "${cDate}" vs "${date}"`);
+              console.log(`✓ DATE MATCH: "${cDate}" matches "${date}"`);
             }
             
             return isMatch;
@@ -439,6 +441,11 @@ export class DatabaseStorage implements IStorage {
         if (totalItems > 0) {
           similarityScore = Math.round((matchedItems / totalItems) * 100);
         }
+        
+        console.log(`Candidate ${data.candidateId} results:`);
+        console.log(`- Company matches: ${nameMatches.length}/${clientNames.length}`);
+        console.log(`- Date matches: ${dateMatches.length}/${relevantDates.length}`);
+        console.log(`- Total similarity score: ${similarityScore}%`);
         
         return {
           candidateId: data.candidateId,
@@ -457,10 +464,23 @@ export class DatabaseStorage implements IStorage {
       .sort((a, b) => b.similarityScore - a.similarityScore);
     
     // Log the results for debugging
+    console.log(`\n===== FRAUD DETECTION RESULTS =====`);
     console.log(`Found ${similarCandidates.length} candidates with similar employment histories`);
-    similarCandidates.slice(0, 5).forEach((candidate, idx) => {
-      console.log(`Top match #${idx + 1}: Candidate ID ${candidate.candidateId}, Similarity: ${candidate.similarityScore}%, Matched ${candidate.matchedItems}/${candidate.totalInputItems} items`);
-    });
+    
+    if (similarCandidates.length > 0) {
+      console.log(`Top matches:`);
+      similarCandidates.slice(0, 5).forEach((candidate, idx) => {
+        console.log(`Match #${idx + 1}: Candidate ID ${candidate.candidateId}, Similarity: ${candidate.similarityScore}%, Matched ${candidate.matchedItems}/${candidate.totalInputItems} items`);
+      });
+      
+      // Log high similarity matches specifically
+      const highSimilarityMatches = similarCandidates.filter(c => c.similarityScore >= 80);
+      if (highSimilarityMatches.length > 0) {
+        console.log(`⚠️ WARNING: Found ${highSimilarityMatches.length} candidates with HIGH SIMILARITY (≥80%)`);
+      }
+    } else {
+      console.log("No similar employment histories found.");
+    }
     
     // Return the matches with > 0% similarity (excluding debug fields)
     return similarCandidates.map(({ candidateId, similarityScore, clientNames, relevantDates }) => ({
