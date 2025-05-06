@@ -33,11 +33,13 @@ import {
   CheckCircle2, 
   Users, 
   UserPlus,
-  Clock
+  Clock,
+  Pencil
 } from "lucide-react";
 import SubmissionTable from "@/components/submission/submission-table";
 import SubmissionDialog from "@/components/submission/submission-dialog";
 import StatusBadge from "@/components/submission/status-badge";
+import JobDescriptionEditDialog from "@/components/job/job-description-edit-dialog";
 
 const JobDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,6 +48,7 @@ const JobDetailPage: React.FC = () => {
   const { toast } = useToast();
   
   const [isSubmissionDialogOpen, setIsSubmissionDialogOpen] = useState(false);
+  const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
   const [selectedRecruiters, setSelectedRecruiters] = useState<number[]>([]);
   
   // Fetch job data

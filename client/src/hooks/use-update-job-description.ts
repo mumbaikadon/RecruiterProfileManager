@@ -11,9 +11,8 @@ export function useUpdateJobDescription() {
   
   return useMutation({
     mutationFn: async ({ id, description }: UpdateJobDescriptionParams) => {
-      const response = await apiRequest(`/api/jobs/${id}/description`, {
-        method: 'PUT',
-        body: JSON.stringify({ description }),
+      const response = await apiRequest(`/api/jobs/${id}/description`, 'PUT', { 
+        description 
       });
       return response;
     },
