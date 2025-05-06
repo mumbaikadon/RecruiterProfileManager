@@ -355,241 +355,199 @@ export class DatabaseStorage implements IStorage {
     similarityScore: number;
     clientNames: string[];
     relevantDates: string[];
+    hasIdenticalChronology?: boolean;
+    isHighSimilarity?: boolean;
+    companyMatchPercentage?: number;
+    dateMatchPercentage?: number;
   }>> {
     console.log("\n\n===== STARTING FRAUD DETECTION ANALYSIS =====");
-    console.log("📋 CANDIDATE DATA BEING CHECKED:");
-    console.log(`Input client names (${clientNames.length}): ${JSON.stringify(clientNames)}`);
-    console.log(`Input relevant dates (${relevantDates.length}): ${JSON.stringify(relevantDates)}`);
-    console.log(`Excluding candidate ID: ${excludeCandidateId || 'none'}`);
+    
+    // Bail out early if there's no data to check
+    if (!clientNames.length) {
+      console.log("No company data to check - skipping validation");
+      return [];
+    }
 
-    // Normalize input company names for better matching
+    // Normalize input company names for better matching - with less logging
     const normalizedInputCompanies = clientNames.map(name => {
-      // Extract just the main company name, removing locations and extra details
-      // First split by commas and take first part
       let normalized = name.split(',')[0].toLowerCase().trim();
-      // Then extract just the main company name (before any spaces)
-      const mainCompanyName = normalized.split(/\s+/)[0];
-      console.log(`Normalized company: "${name}" → "${mainCompanyName}" (from "${normalized}")`);
-      return mainCompanyName;
+      return normalized.split(/\s+/)[0]; // Just the main company name
     });
 
-    // Normalize input dates for better matching
+    // Normalize input dates for better matching - with less logging
     const normalizedInputDates = relevantDates.map(date => {
-      // Extract and standardize date components (years, months)
       const rawComponents = date.toLowerCase()
-        .replace(/[^a-z0-9]/gi, ' ')  // Replace non-alphanumeric with spaces
-        .split(/\s+/)                  // Split on whitespace
-        .filter(Boolean);              // Remove empty strings
+        .replace(/[^a-z0-9]/gi, ' ')
+        .split(/\s+/)
+        .filter(Boolean);
       
-      // Extract just the year parts and month names/numbers
-      const yearParts = rawComponents.filter(part => /^(19|20)\d{2}$/.test(part));
-      const monthParts = rawComponents.filter(part => 
-        /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|[01]?\d)$/.test(part)
-      );
+      // Extract years and months
+      const components = [
+        ...rawComponents.filter(part => /^(19|20)\d{2}$/.test(part)),
+        ...rawComponents.filter(part => /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|[01]?\d)$/.test(part))
+      ];
       
-      const components = [...yearParts, ...monthParts];
-      
-      console.log(`Normalized date: "${date}" → Components: ${JSON.stringify(components)}`);
-      return {
-        original: date,
-        components: components
-      };
+      return { original: date, components };
     });
 
-    // Get all resume data from the database
+    // Get resume data - but with early filtering to reduce processing
     const allResumeData = await this.getAllResumeData();
-    console.log(`\nTotal resume data records in database: ${allResumeData.length}`);
     
-    // Filter out the candidate we're validating (if provided)
-    const otherCandidatesData = excludeCandidateId 
-      ? allResumeData.filter(data => data.candidateId !== excludeCandidateId) 
-      : allResumeData;
+    // Filter out candidates with no data and the one we're validating
+    const validCandidatesData = allResumeData.filter(data => {
+      return (!excludeCandidateId || data.candidateId !== excludeCandidateId) && 
+             (data.clientNames?.length > 0 || data.relevantDates?.length > 0);
+    });
     
-    console.log(`Comparing against ${otherCandidatesData.length} other candidates' resume data\n`);
+    console.log(`Comparing against ${validCandidatesData.length} candidates with resume data`);
     
-    // Calculate similarity scores for each candidate
-    const similarCandidates = otherCandidatesData
+    // Early check - if we have very few candidates, no need for optimization
+    if (validCandidatesData.length === 0) {
+      return [];
+    }
+    
+    // First pass - quick filtering to reduce candidates needing detailed analysis
+    // Only do detailed processing for candidates with any company name match
+    const potentialMatches = validCandidatesData.filter(data => {
+      const candidateCompanyNames = data.clientNames || [];
+      
+      // Quick check - does any company name match (after normalization)?
+      const hasAnyMatch = candidateCompanyNames.some(name => {
+        const normalized = name.split(',')[0].toLowerCase().trim().split(/\s+/)[0];
+        return normalizedInputCompanies.includes(normalized);
+      });
+      
+      return hasAnyMatch;
+    });
+    
+    console.log(`Found ${potentialMatches.length} candidates with at least one matching company name`);
+    
+    // Detailed analysis only for potential matches
+    const similarCandidates = potentialMatches
       .map(data => {
-        console.log(`\n-------------------------------------`);
-        console.log(`🔍 Checking candidate ID: ${data.candidateId}`);
-        
-        // We need to ensure the arrays exist
+        // Get candidate data
         const candidateClientNames = data.clientNames || [];
         const candidateRelevantDates = data.relevantDates || [];
         
-        // Skip candidates with no data
-        if (candidateClientNames.length === 0 && candidateRelevantDates.length === 0) {
-          console.log(`Skipping candidate ${data.candidateId} - no employment history data`);
-          return null;
-        }
-        
-        console.log(`Candidate companies (${candidateClientNames.length}): ${JSON.stringify(candidateClientNames)}`);
-        console.log(`Candidate dates (${candidateRelevantDates.length}): ${JSON.stringify(candidateRelevantDates)}`);
-        
-        // Normalize candidate company names using the same approach
+        // Normalize candidate company names
         const normalizedCandidateCompanies = candidateClientNames.map(name => {
-          // First split by commas and take first part
-          let normalized = name.split(',')[0].toLowerCase().trim();
-          // Then extract just the main company name (before any spaces)
-          const mainCompanyName = normalized.split(/\s+/)[0];
-          console.log(`Normalized candidate company: "${name}" → "${mainCompanyName}" (from "${normalized}")`);
-          return mainCompanyName;
+          const normalized = name.split(',')[0].toLowerCase().trim();
+          return normalized.split(/\s+/)[0];
         });
         
-        console.log(`Normalized candidate companies: ${JSON.stringify(normalizedCandidateCompanies)}`);
+        // Normalized candidate dates
+        const normalizedCandidateDates = candidateRelevantDates.map(date => {
+          const rawComponents = date.toLowerCase()
+            .replace(/[^a-z0-9]/gi, ' ')
+            .split(/\s+/)
+            .filter(Boolean);
+          
+          const components = [
+            ...rawComponents.filter(part => /^(19|20)\d{2}$/.test(part)),
+            ...rawComponents.filter(part => /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|[01]?\d)$/.test(part))
+          ];
+          
+          return { original: date, components };
+        });
         
-        // Check for job chronology match - look for matching sequence of companies
-        let hasChronologyMatch = false;
-        
-        // Count matching companies with company-specific logging
+        // Find matching companies
         const matchingCompanies = [];
+        const matchingIndices = [];
+        
         for (const company of normalizedInputCompanies) {
           const matchIndex = normalizedCandidateCompanies.findIndex(c => c === company);
           if (matchIndex !== -1) {
-            matchingCompanies.push({
-              inputCompany: company,
-              candidateCompany: candidateClientNames[matchIndex],
-              index: matchIndex
-            });
-            console.log(`✓ COMPANY MATCH: "${candidateClientNames[matchIndex]}" matches "${company}"`);
+            matchingCompanies.push(company);
+            matchingIndices.push(matchIndex);
           }
         }
         
         // Calculate company match percentage
         const companyMatchPercentage = normalizedInputCompanies.length > 0 ?
           (matchingCompanies.length / normalizedInputCompanies.length) * 100 : 0;
-          
-        console.log(`Company match percentage: ${companyMatchPercentage.toFixed(1)}%`);
         
         // Check if companies appear in the same order (chronology)
+        let hasChronologyMatch = false;
         if (matchingCompanies.length >= 2) {
-          const indices = matchingCompanies.map(m => m.index);
-          const isSorted = indices.every((val, i, arr) => !i || val >= arr[i - 1]);
-          hasChronologyMatch = isSorted;
-          
-          console.log(`Company indices in candidate data: [${indices.join(', ')}]`);
-          console.log(`Companies appear in same order: ${isSorted ? "YES" : "NO"}`);
+          hasChronologyMatch = matchingIndices.every((val, i, arr) => !i || val >= arr[i - 1]);
         }
         
-        // Normalize candidate dates for better comparisons
-        const normalizedCandidateDates = candidateRelevantDates.map(date => {
-          // Extract and standardize date components
-          const rawComponents = date.toLowerCase()
-            .replace(/[^a-z0-9]/gi, ' ')
-            .split(/\s+/)
-            .filter(Boolean);
-          
-          // Extract just year parts and month names/numbers
-          const yearParts = rawComponents.filter(part => /^(19|20)\d{2}$/.test(part));
-          const monthParts = rawComponents.filter(part => 
-            /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|[01]?\d)$/.test(part)
-          );
-          
-          const components = [...yearParts, ...monthParts];
-          
-          return {
-            original: date,
-            components: components
-          };
-        });
-        
-        // Count matching date components
+        // Date component matching - optimized with less logging
         let totalDateComponentMatches = 0;
         let totalInputDateComponents = 0;
-        let totalMatchingDates = 0;
         
-        normalizedInputDates.forEach(inputDate => {
+        for (const inputDate of normalizedInputDates) {
           if (inputDate.components.length > 0) {
             totalInputDateComponents += inputDate.components.length;
             
-            normalizedCandidateDates.forEach(candidateDate => {
+            for (const candidateDate of normalizedCandidateDates) {
               if (candidateDate.components.length > 0) {
-                // Count how many components match
+                // Count matching components
                 const matches = inputDate.components.filter(component => 
                   candidateDate.components.includes(component)
                 );
                 
                 if (matches.length > 0) {
                   totalDateComponentMatches += matches.length;
-                  
-                  // If most components match (>50%), consider it a matching date
-                  if (matches.length / inputDate.components.length > 0.5) {
-                    totalMatchingDates++;
-                    console.log(`✓ DATE MATCH: "${inputDate.original}" ~ "${candidateDate.original}"`);
-                    console.log(`  Matching components: [${matches.join(', ')}]`);
-                  }
                 }
               }
-            });
+            }
           }
-        });
+        }
         
         // Calculate date match percentage
-        const dateComponentMatchPercentage = totalInputDateComponents > 0 ?
+        const dateMatchPercentage = totalInputDateComponents > 0 ?
           (totalDateComponentMatches / totalInputDateComponents) * 100 : 0;
-          
-        console.log(`Date component match percentage: ${dateComponentMatchPercentage.toFixed(1)}%`);
-        console.log(`Total matching dates: ${totalMatchingDates} of ${normalizedInputDates.length}`);
         
-        // Calculate overall similarity score with weighted components:
-        // - 70% weight on company matches
-        // - 30% weight on date matches
+        // Calculate overall similarity score with weighted components
         const similarityScore = Math.round(
-          (companyMatchPercentage * 0.7) + (dateComponentMatchPercentage * 0.3)
+          (companyMatchPercentage * 0.7) + (dateMatchPercentage * 0.3)
         );
         
-        // Check if this is an identical chronology match
-        const hasIdenticalChronology = hasChronologyMatch && 
-          companyMatchPercentage >= 90 && 
-          dateComponentMatchPercentage >= 80;
+        // Only log details for high similarity candidates
+        if (similarityScore >= 50) {
+          console.log(`\nCandidate ${data.candidateId} - ${similarityScore}% match`);
+          console.log(`- Company matches: ${matchingCompanies.length}/${normalizedInputCompanies.length} (${companyMatchPercentage.toFixed(1)}%)`);
+          console.log(`- Date component matches: ${totalDateComponentMatches}/${totalInputDateComponents} (${dateMatchPercentage.toFixed(1)}%)`);
+        }
+        
+        // Return result if similarity is high enough
+        if (similarityScore >= 50) {
+          const hasIdenticalChronology = hasChronologyMatch && 
+            companyMatchPercentage >= 90 && 
+            dateMatchPercentage >= 80;
+            
+          const isHighSimilarity = similarityScore >= 80;
           
-        // Check if this is a high similarity match
-        const isHighSimilarity = similarityScore >= 80;
+          return {
+            candidateId: data.candidateId,
+            similarityScore,
+            clientNames: candidateClientNames,
+            relevantDates: candidateRelevantDates,
+            hasIdenticalChronology,
+            isHighSimilarity,
+            companyMatchPercentage,
+            dateMatchPercentage
+          };
+        }
         
-        console.log(`\nCandidate ${data.candidateId} detection results:`);
-        console.log(`- Company matches: ${matchingCompanies.length}/${normalizedInputCompanies.length} (${companyMatchPercentage.toFixed(1)}%)`);
-        console.log(`- Date component matches: ${totalDateComponentMatches}/${totalInputDateComponents} (${dateComponentMatchPercentage.toFixed(1)}%)`);
-        console.log(`- Has identical chronology: ${hasIdenticalChronology ? "YES ⚠️" : "NO"}`);
-        console.log(`- Is high similarity: ${isHighSimilarity ? "YES ⚠️" : "NO"}`);
-        console.log(`- Overall similarity score: ${similarityScore}%`);
-        
-        return {
-          candidateId: data.candidateId,
-          similarityScore,
-          clientNames: candidateClientNames,
-          relevantDates: candidateRelevantDates,
-          hasIdenticalChronology,
-          isHighSimilarity,
-          companyMatchPercentage,
-          dateComponentMatchPercentage,
-          matchingCompanies: matchingCompanies.length,
-          totalCompanies: normalizedInputCompanies.length,
-          matchingDateComponents: totalDateComponentMatches,
-          totalDateComponents: totalInputDateComponents
-        };
+        return null;
       })
       .filter(Boolean) // Remove null entries
-      // Filter candidates with at least 50% similarity and sort by similarity score (highest first)
-      .filter(candidate => candidate.similarityScore >= 50)
       .sort((a, b) => b.similarityScore - a.similarityScore);
     
-    // Log the results for debugging
+    // Log results summary
     console.log(`\n===== FRAUD DETECTION RESULTS SUMMARY =====`);
     console.log(`Found ${similarCandidates.length} candidates with significant similarity (≥50%)`);
     
     if (similarCandidates.length > 0) {
-      console.log(`Top matches:`);
-      similarCandidates.slice(0, 5).forEach((candidate, idx) => {
-        console.log(`Match #${idx + 1}: Candidate ID ${candidate.candidateId}, Similarity: ${candidate.similarityScore}%, Identical Chronology: ${candidate.hasIdenticalChronology ? "YES ⚠️" : "No"}`);
-      });
-      
-      // Log high similarity matches specifically
+      // Log high similarity matches
       const highSimilarityMatches = similarCandidates.filter(c => c.isHighSimilarity);
       if (highSimilarityMatches.length > 0) {
         console.log(`⚠️ WARNING: Found ${highSimilarityMatches.length} candidates with HIGH SIMILARITY (≥80%)`);
       }
       
-      // Log identical chronology matches specifically
+      // Log identical chronology matches
       const identicalChronologyMatches = similarCandidates.filter(c => c.hasIdenticalChronology);
       if (identicalChronologyMatches.length > 0) {
         console.log(`⚠️ CRITICAL: Found ${identicalChronologyMatches.length} candidates with IDENTICAL JOB CHRONOLOGY`);
@@ -598,17 +556,10 @@ export class DatabaseStorage implements IStorage {
       console.log("No similar employment histories found.");
     }
     
-    console.log("===== FRAUD DETECTION ANALYSIS COMPLETE =====\n\n");
+    console.log("===== FRAUD DETECTION ANALYSIS COMPLETE =====");
     
-    // Return the matches (excluding debug fields for the API response)
-    return similarCandidates.map(({ 
-      candidateId, similarityScore, clientNames, relevantDates
-    }) => ({
-      candidateId,
-      similarityScore,
-      clientNames,
-      relevantDates
-    }));
+    // Return the matches
+    return similarCandidates;
   }
 
   async getSubmissions(filters?: { jobId?: number, candidateId?: number, recruiterId?: number }): Promise<Submission[]> {
