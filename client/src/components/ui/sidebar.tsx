@@ -145,7 +145,7 @@ const Sidebar = () => {
           
           {/* Quick Action */}
           <div className="px-4 py-4 mt-auto">
-            <CreateJobDialog buttonVariant="outline" />
+            <CreateJobDialog buttonVariant="default" />
           </div>
         </div>
         
