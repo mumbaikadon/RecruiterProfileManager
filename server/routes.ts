@@ -2111,6 +2111,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test route for gap analysis
+  app.get("/api/test-gap-analysis", async (_req: Request, res: Response) => {
+    try {
+      console.log("Running gap analysis test...");
+      
+      // Import and run the test function
+      const { testAnalyze } = await import('./test-gap-analysis');
+      const results = await testAnalyze();
+      
+      return res.status(200).json(results);
+    } catch (error) {
+      console.error("Error during gap analysis test:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error during gap analysis test"
+      });
+    }
+  });
+
   // Initialize the HTTP server
   const httpServer = createServer(app);
   return httpServer;
