@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequestWithJson } from '@/lib/queryClient';
 
 interface UpdateJobDescriptionParams {
   id: number;
@@ -11,7 +11,7 @@ export function useUpdateJobDescription() {
   
   return useMutation({
     mutationFn: async ({ id, description }: UpdateJobDescriptionParams) => {
-      const response = await apiRequest(`/api/jobs/${id}/description`, 'PUT', { 
+      const response = await apiRequestWithJson('PUT', `/api/jobs/${id}/description`, { 
         description 
       });
       return response;
