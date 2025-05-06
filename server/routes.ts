@@ -521,15 +521,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? {
                   id: candidate.id,
                   firstName: candidate.firstName,
+                  middleName: candidate.middleName,
                   lastName: candidate.lastName,
-                  location: candidate.location,
+                  location: candidate.location || "Unknown Location",
                   workAuthorization: candidate.workAuthorization,
+                  isUnreal: candidate.isUnreal,
+                  unrealReason: candidate.unrealReason,
+                  isSuspicious: candidate.isSuspicious,
+                  suspiciousReason: candidate.suspiciousReason,
+                  suspiciousSeverity: candidate.suspiciousSeverity,
                 }
               : undefined,
             recruiter: recruiter
               ? {
                   id: recruiter.id,
-                  name: recruiter.name,
+                  name: recruiter.name || recruiter.username,
+                  username: recruiter.username
                 }
               : undefined,
             // Include resume data in response if job is active
@@ -572,11 +579,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resumeData = await storage.getResumeData(candidate.id);
       }
 
+      // Format candidate and recruiter data with proper details
+      const formattedCandidate = candidate ? {
+        id: candidate.id,
+        firstName: candidate.firstName,
+        middleName: candidate.middleName,
+        lastName: candidate.lastName,
+        location: candidate.location || "Unknown Location",
+        workAuthorization: candidate.workAuthorization,
+        isUnreal: candidate.isUnreal,
+        unrealReason: candidate.unrealReason,
+        isSuspicious: candidate.isSuspicious,
+        suspiciousReason: candidate.suspiciousReason,
+        suspiciousSeverity: candidate.suspiciousSeverity,
+      } : undefined;
+
+      const formattedRecruiter = recruiter ? {
+        id: recruiter.id,
+        name: recruiter.name,
+        username: recruiter.username,
+      } : undefined;
+
       res.json({
         ...submission,
         job,
-        candidate,
-        recruiter,
+        candidate: formattedCandidate,
+        recruiter: formattedRecruiter,
         // Include resume data in response if job is active
         resumeData:
           job && job.status.toLowerCase() === "active" ? resumeData : null,
