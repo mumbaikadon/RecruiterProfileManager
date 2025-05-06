@@ -59,6 +59,10 @@ interface CandidateValidationDialogProps {
     newDates: string[];
     resumeFileName?: string;
     reason?: string;
+    // Add suspicious flags
+    isSuspicious?: boolean;
+    suspiciousReason?: string;
+    suspiciousSeverity?: "LOW" | "MEDIUM" | "HIGH";
   }) => Promise<any>;
   validatedBy: number;
 }
@@ -285,14 +289,16 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         employmentValidation?.hasSimilarHistories
       );
       
-      // If suspicious, prepare the suspicious details
-      const suspiciousData = isSuspicious ? {
-        isSuspicious: true,
-        suspiciousReason: employmentValidation?.hasIdenticalChronology 
+      // Prepare the suspicious data as individual variables instead of an object
+      const isSuspiciousFlag = isSuspicious;
+      const suspiciousReason = isSuspicious 
+        ? (employmentValidation?.hasIdenticalChronology 
           ? `Identical job chronology with ${employmentValidation.identicalChronologyMatches.length} other candidate(s)` 
-          : `Similar employment history (>${employmentValidation?.highSimilarityMatches[0]?.similarityScore}%) with ${employmentValidation?.highSimilarityMatches.length} other candidate(s)`,
-        suspiciousSeverity: employmentValidation?.hasIdenticalChronology ? "HIGH" : "MEDIUM"
-      } : {};
+          : `Similar employment history (>${employmentValidation?.highSimilarityMatches[0]?.similarityScore}%) with ${employmentValidation?.highSimilarityMatches.length} other candidate(s)`)
+        : undefined;
+      const suspiciousSeverity = isSuspicious
+        ? (employmentValidation?.hasIdenticalChronology ? "HIGH" : "MEDIUM")
+        : undefined;
       
       // Log validation data being sent
       console.log("Sending validation data:", {
@@ -311,7 +317,9 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
           dates: newResumeData.relevantDates.length
         },
         reason: result === "unreal" ? reason : undefined,
-        ...(isSuspicious ? { suspiciousData } : {})
+        isSuspicious: isSuspiciousFlag,
+        suspiciousReason,
+        suspiciousSeverity
       });
       
       // Prepare the validation data with suspicious flags if needed
@@ -328,13 +336,20 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         newDates: newResumeData.relevantDates,
         resumeFileName,
         reason: result === "unreal" ? reason : undefined,
-        validatedBy: recruiterId, // Add the validator ID
-        ...suspiciousData // Include suspicious flags
+        validatedBy, // Use validatedBy from props
+        // Add suspicious flags directly as properties
+        isSuspicious: isSuspiciousFlag,
+        suspiciousReason,
+        suspiciousSeverity
       };
       
       // Log suspicious data for debugging
-      if (isSuspicious) {
-        console.log("Including suspicious flags in validation request:", suspiciousData);
+      if (isSuspiciousFlag) {
+        console.log("Including suspicious flags in validation request:", {
+          isSuspicious: isSuspiciousFlag,
+          suspiciousReason,
+          suspiciousSeverity
+        });
       }
       
       await validateCandidate(validationData);

@@ -15,6 +15,10 @@ interface CandidateValidationParams {
   resumeFileName?: string;
   reason?: string;
   validatedBy: number;
+  // Add suspicious flags
+  isSuspicious?: boolean;
+  suspiciousReason?: string;
+  suspiciousSeverity?: "LOW" | "MEDIUM" | "HIGH";
 }
 
 export function useCandidateValidation() {
