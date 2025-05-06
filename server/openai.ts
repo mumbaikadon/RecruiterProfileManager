@@ -33,7 +33,7 @@ export interface MatchScoreResult {
   matchingSkills?: string[];
   missingSkills?: string[];
   
-  // Enhanced gap analysis details
+  // Enhanced gap analysis details with domain-specific expertise gaps
   gapDetails?: GapDetail[];
   
   // Structured employment history data
@@ -43,6 +43,10 @@ export interface MatchScoreResult {
   
   // Education data
   education?: string[];
+  
+  // Domain-specific expertise indicators
+  domainExpertiseGaps?: string[];
+  domainKnowledgeScore?: number;
   
   // Legacy fields for backward compatibility
   clientExperience?: string;
@@ -164,11 +168,51 @@ export async function matchResumeToJob(resumeText: string, jobDescription: strin
     const analysis = await resumeAnalyzer(resumeText, jobDescription);
     
     // Format the result to match our expected API structure
+    // Extract domain-specific expertise gaps from the detailed gap analysis
+    const domainExpertiseGaps = Array.isArray(analysis.skillsGapAnalysis.gapDetails) 
+      ? analysis.skillsGapAnalysis.gapDetails.flatMap(detail => 
+          detail.gaps.filter(gap => 
+            gap.toLowerCase().includes('payment') || 
+            gap.toLowerCase().includes('api') || 
+            gap.toLowerCase().includes('financial') ||
+            gap.toLowerCase().includes('processing') ||
+            gap.toLowerCase().includes('card') ||
+            gap.toLowerCase().includes('transaction')
+          )
+        )
+      : [];
+    
+    // Calculate a domain knowledge score based on gaps and strengths
+    // Lower score for critical payment-related gaps, higher score if strengths show payment expertise
+    const domainRelevantStrengths = analysis.relevantExperience.filter(exp => 
+      exp.toLowerCase().includes('payment') || 
+      exp.toLowerCase().includes('transaction') || 
+      exp.toLowerCase().includes('api') ||
+      exp.toLowerCase().includes('financial')
+    ).length;
+    
+    const criticalDomainGaps = Array.isArray(analysis.skillsGapAnalysis.gapDetails)
+      ? analysis.skillsGapAnalysis.gapDetails.filter(detail => 
+          detail.importance === "Critical" && 
+          detail.category.toLowerCase().includes('payment')
+        ).length
+      : 0;
+    
+    // Higher score means better domain knowledge (0-100)
+    const domainKnowledgeScore = Math.max(0, Math.min(100, 
+      analysis.overallScore - (criticalDomainGaps * 15) + (domainRelevantStrengths * 5)
+    ));
+    
     const result: MatchScoreResult = {
       // Core match scores and analysis
       score: analysis.overallScore,
       strengths: analysis.relevantExperience,
-      weaknesses: analysis.skillsGapAnalysis.missingSkills,
+      
+      // Use domain-specific gaps when possible, falling back to general gaps
+      weaknesses: domainExpertiseGaps.length > 0 
+        ? domainExpertiseGaps 
+        : analysis.skillsGapAnalysis.missingSkills,
+        
       suggestions: analysis.improvements.content,
       
       // Skills analysis
@@ -180,6 +224,10 @@ export async function matchResumeToJob(resumeText: string, jobDescription: strin
       gapDetails: Array.isArray(analysis.skillsGapAnalysis.gapDetails) 
         ? analysis.skillsGapAnalysis.gapDetails 
         : [],
+      
+      // Domain-specific expertise indicators
+      domainExpertiseGaps,
+      domainKnowledgeScore,
       
       // Employment history data
       clientNames: analysis.clientNames || [],
