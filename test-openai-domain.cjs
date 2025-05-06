@@ -1,15 +1,16 @@
 /**
- * Test script for testing the domain-specific gap analysis functionality
- * This will compare a resume against a payments-related job description
+ * Test script for the domain-specific gap analysis using CommonJS syntax
  */
 
-import fs from 'fs';
-import { matchResumeToJob } from './server/openai.js';
+// CommonJS imports
+const OpenAI = require('openai');
 
-async function runDomainGapAnalysis() {
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+async function analyzeResumeForDomainExpertise() {
   try {
-    // Instead of trying to parse the PDF directly, let's use a sample resume text
-    console.log("Using sample resume text...");
     const resumeText = `
     Drew Corrigan
     Product Manager | Technologist | Strategic Thinker
@@ -58,7 +59,6 @@ async function runDomainGapAnalysis() {
     JavaScript • Product Management • SQL • Full-Stack Development • React.js • Node.js • PostgreSQL
     `;
     
-    // Create a payment industry focused job description
     const jobDescription = `
     Senior Software Engineer - Payment Systems
 
@@ -92,14 +92,69 @@ async function runDomainGapAnalysis() {
     - AWS or Azure cloud infrastructure
     `;
     
-    // Call the resume matching function with domain-specific focus
-    console.log("Starting analysis...");
-    const analysisResult = await matchResumeToJob(resumeText, jobDescription);
+    console.log("Analyzing resume for domain-specific expertise gaps...");
     
-    // Log the detailed results
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert resume analyst specializing in domain-specific gap analysis. 
+            Your task is to identify key domain-specific gaps between a candidate's resume and a job description, 
+            focusing specifically on payment industry expertise.
+            
+            Analyze the following domains:
+            1. Payment processing systems knowledge
+            2. Experience with payment service providers and gateways
+            3. Security and compliance expertise in payments
+            4. Technical implementation experience in payment systems
+            5. Domain-specific technologies in payment processing
+            
+            For each domain, provide:
+            - A list of specific gaps
+            - The importance of each gap (Critical, Important, or Minor)
+            - The potential impact of these gaps on job performance
+            - Suggestions to address the gaps`
+        },
+        {
+          role: "user",
+          content: `Compare this resume and job description to identify domain-specific expertise gaps:
+          
+          RESUME:
+          ${resumeText}
+          
+          JOB DESCRIPTION:
+          ${jobDescription}
+          
+          Please structure your analysis in JSON format with the following schema:
+          {
+            "overallScore": number, // 0-100 match score
+            "domainKnowledgeScore": number, // 0-100 payment domain knowledge score
+            "domainExpertiseGaps": string[], // Array of domain-specific gaps specific to payment industry
+            "strengths": string[], // Array of strengths related to the job
+            "gapDetails": [ // Detailed analysis by domain
+              {
+                "category": string, // Domain category
+                "importance": string, // "Critical", "Important", or "Minor"
+                "gaps": string[], // Specific gaps in this domain
+                "impact": string, // Impact description
+                "suggestions": string[] // Suggestions to address gaps
+              }
+            ]
+          }`
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.2,
+    });
+    
+    // Parse and display results
+    const analysisResult = JSON.parse(response.choices[0].message.content);
+    
     console.log("\n=== DOMAIN-SPECIFIC GAP ANALYSIS RESULTS ===\n");
-    console.log(`Overall match score: ${analysisResult.score}`);
-    console.log(`Domain knowledge score: ${analysisResult.domainKnowledgeScore || 'Not available'}`);
+    console.log(`Overall match score: ${analysisResult.overallScore}`);
+    console.log(`Domain knowledge score: ${analysisResult.domainKnowledgeScore}`);
     
     console.log("\nDomain-specific expertise gaps:");
     if (analysisResult.domainExpertiseGaps && analysisResult.domainExpertiseGaps.length > 0) {
@@ -114,19 +169,21 @@ async function runDomainGapAnalysis() {
         console.log(`\n${detail.category} (${detail.importance}):`);
         detail.gaps.forEach(gap => console.log(`- ${gap}`));
         console.log(`Impact: ${detail.impact}`);
+        console.log("Suggestions:");
+        detail.suggestions.forEach(suggestion => console.log(`- ${suggestion}`));
       });
     } else {
       console.log("No detailed gap analysis available");
     }
     
-    // Save the full analysis to a file for reference
-    fs.writeFileSync('domain_gap_analysis_result.json', JSON.stringify(analysisResult, null, 2));
-    console.log("\nFull analysis saved to domain_gap_analysis_result.json");
+    // Save the result
+    require('fs').writeFileSync('openai_domain_analysis.json', JSON.stringify(analysisResult, null, 2));
+    console.log("\nFull analysis saved to openai_domain_analysis.json");
     
   } catch (error) {
-    console.error("Error in domain gap analysis:", error);
+    console.error("Error in OpenAI analysis:", error);
   }
 }
 
 // Run the analysis
-runDomainGapAnalysis();
+analyzeResumeForDomainExpertise();
