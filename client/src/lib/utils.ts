@@ -40,3 +40,30 @@ export function sanitizeHtml(str: string): string {
     return str.replace(/<[^>]*>/g, '').trim();
   }
 }
+
+/**
+ * Checks if a date is older than two weeks from now
+ * @param date The date to check
+ * @returns True if the date is older than two weeks from now
+ */
+export function isOlderThanTwoWeeks(date: string | Date): boolean {
+  const submissionDate = new Date(date);
+  const twoWeeksAgo = new Date();
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+  return submissionDate < twoWeeksAgo;
+}
+
+/**
+ * Formats a date to a localized string (MM/DD/YYYY)
+ * @param date Date to format
+ * @returns Formatted date string
+ */
+export function formatDate(date: string | Date): string {
+  const d = new Date(date);
+  const options: Intl.DateTimeFormatOptions = {
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric',
+  };
+  return new Intl.DateTimeFormat('en-US', options).format(d);
+}
