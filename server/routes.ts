@@ -946,16 +946,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Identify identical job chronology (same companies and dates)
       const identicalChronologyMatches = similarHistories.filter(match => {
-        // Check if all companies match
-        const allCompaniesMatch = clientNames.every(name => 
-          match.clientNames.includes(name)
+        // Extract base company names (before any comma)
+        const inputCompanyNames = clientNames.map(name => name.split(',')[0].toLowerCase().trim());
+        const matchCompanyNames = match.clientNames.map(name => name.split(',')[0].toLowerCase().trim());
+        
+        // Check if all normalized companies match
+        const allCompaniesMatch = inputCompanyNames.every(name => 
+          matchCompanyNames.some(matchName => matchName === name)
         );
         
+        console.log(`Checking identical chronology for candidate ${match.candidateId}:`);
+        console.log(`Input companies (normalized): ${JSON.stringify(inputCompanyNames)}`);
+        console.log(`Match companies (normalized): ${JSON.stringify(matchCompanyNames)}`);
+        console.log(`All companies match: ${allCompaniesMatch}`);
+        
         // Check if all dates match (if dates are provided)
-        const allDatesMatch = !relevantDates || relevantDates.length === 0 || 
-          relevantDates.every(date => 
-            match.relevantDates.includes(date)
+        let allDatesMatch = true;
+        if (relevantDates && relevantDates.length > 0) {
+          // Normalize dates by extracting key parts (months/years)
+          const extractDateParts = (date) => date.toLowerCase().replace(/[^a-z0-9]/gi, ' ').split(/\s+/).filter(Boolean);
+          
+          const inputDateParts = relevantDates.map(extractDateParts);
+          const matchDateParts = match.relevantDates.map(extractDateParts);
+          
+          // Check if dates have matching parts
+          allDatesMatch = inputDateParts.every((parts, i) => 
+            matchDateParts.some(matchParts => 
+              parts.every(part => matchParts.some(mPart => mPart === part))
+            )
           );
+          
+          console.log(`Input dates: ${JSON.stringify(relevantDates)}`);
+          console.log(`Match dates: ${JSON.stringify(match.relevantDates)}`);
+          console.log(`All dates match: ${allDatesMatch}`);
+        }
         
         return allCompaniesMatch && allDatesMatch;
       });
