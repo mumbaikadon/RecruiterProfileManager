@@ -67,7 +67,15 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
           });
           setStatus(selectedStatus);
           setIsDialogOpen(false);
-          setFeedback(""); // Reset feedback for next use
+          
+          // Update current feedback state if feedback was provided
+          if (selectedStatus === 'rejected' && feedback.trim()) {
+            setCurrentStatusFeedback(feedback.trim());
+          } else if (selectedStatus !== 'rejected') {
+            setCurrentStatusFeedback(null);
+          }
+          
+          setFeedback(""); // Reset feedback input for next use
         },
         onError: (error) => {
           toast({
@@ -153,14 +161,21 @@ const StatusSelect: React.FC<StatusSelectProps> = ({
           <div className="py-4">
             <div className="flex justify-between mb-2">
               <label className="text-sm font-medium">
-                Feedback (optional)
+                Feedback {selectedStatus === 'rejected' ? '(recommended)' : '(optional)'}
               </label>
               <span className="text-xs text-muted-foreground">
                 Press Enter to submit, Shift+Enter for new line
               </span>
             </div>
+            {selectedStatus === 'rejected' && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                When rejecting a submission, adding feedback like "fake" or "duplicate" helps track reasons.
+              </p>
+            )}
             <Textarea
-              placeholder="Add comments about this status change..."
+              placeholder={selectedStatus === 'rejected' 
+                ? "Why is this submission being rejected? (e.g., fake, duplicate, etc.)"
+                : "Add comments about this status change..."}
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               onKeyDown={(e) => {
