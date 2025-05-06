@@ -923,12 +923,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { candidateId, clientNames, relevantDates } = req.body;
       
+      console.log("======= CHECK SIMILAR EMPLOYMENT HISTORIES ========");
       console.log("Received request to check for similar employment histories");
       console.log(`Candidate ID: ${candidateId}`);
-      console.log(`Client Names: ${JSON.stringify(clientNames)}`);
-      console.log(`Relevant Dates: ${JSON.stringify(relevantDates)}`);
+      console.log(`Client Names (${clientNames?.length || 0}): ${JSON.stringify(clientNames)}`);
+      console.log(`Relevant Dates (${relevantDates?.length || 0}): ${JSON.stringify(relevantDates)}`);
       
       if (!clientNames || !Array.isArray(clientNames) || clientNames.length === 0) {
+        console.log("ERROR: Missing clientNames in request");
         return res.status(400).json({ 
           message: "Required fields missing: clientNames must be a non-empty array" 
         });
@@ -941,8 +943,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         candidateId // Exclude this candidate from the results
       );
       
+      console.log(`Found ${similarHistories.length} candidates with ANY similarity in employment history`);
+      
       // Filter for high similarity (80% or more)
       const highSimilarityMatches = similarHistories.filter(match => match.similarityScore >= 80);
+      console.log(`Found ${highSimilarityMatches.length} candidates with >80% similar employment history`);
+      
+      if (highSimilarityMatches.length > 0) {
+        console.log("High similarity matches:");
+        highSimilarityMatches.forEach((match, idx) => {
+          console.log(`Match #${idx+1}: Candidate ID ${match.candidateId}, Score: ${match.similarityScore}%`);
+          console.log(`- Companies: ${JSON.stringify(match.clientNames)}`);
+        });
+      }
       
       // Identify identical job chronology (same companies and dates)
       const identicalChronologyMatches = similarHistories.filter(match => {
@@ -950,39 +963,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const inputCompanyNames = clientNames.map(name => name.split(',')[0].toLowerCase().trim());
         const matchCompanyNames = match.clientNames.map(name => name.split(',')[0].toLowerCase().trim());
         
-        // Check if all normalized companies match
-        const allCompaniesMatch = inputCompanyNames.every(name => 
+        // Check if normalized companies match with some flexibility
+        // We require most companies to match, but allow for some variation
+        const matchingCompanies = inputCompanyNames.filter(name => 
           matchCompanyNames.some(matchName => matchName === name)
         );
+        
+        const companyMatchPercentage = (matchingCompanies.length / Math.max(inputCompanyNames.length, 1)) * 100;
+        const allCompaniesMatch = companyMatchPercentage >= 90; // Allow for minor variations (90% match)
         
         console.log(`Checking identical chronology for candidate ${match.candidateId}:`);
         console.log(`Input companies (normalized): ${JSON.stringify(inputCompanyNames)}`);
         console.log(`Match companies (normalized): ${JSON.stringify(matchCompanyNames)}`);
+        console.log(`Matching companies: ${matchingCompanies.length} of ${inputCompanyNames.length} (${companyMatchPercentage.toFixed(1)}%)`);
         console.log(`All companies match: ${allCompaniesMatch}`);
         
         // Check if all dates match (if dates are provided)
         let allDatesMatch = true;
-        if (relevantDates && relevantDates.length > 0) {
+        if (relevantDates && relevantDates.length > 0 && match.relevantDates && match.relevantDates.length > 0) {
           // Normalize dates by extracting key parts (months/years)
           const extractDateParts = (date) => date.toLowerCase().replace(/[^a-z0-9]/gi, ' ').split(/\s+/).filter(Boolean);
           
           const inputDateParts = relevantDates.map(extractDateParts);
           const matchDateParts = match.relevantDates.map(extractDateParts);
           
-          // Check if dates have matching parts
-          allDatesMatch = inputDateParts.every((parts, i) => 
-            matchDateParts.some(matchParts => 
-              parts.every(part => matchParts.some(mPart => mPart === part))
-            )
-          );
+          // Check if dates have matching parts (at least 80% match in date components)
+          let matchingDateComponents = 0;
+          let totalDateComponents = 0;
+          
+          inputDateParts.forEach(parts => {
+            totalDateComponents += parts.length;
+            matchDateParts.forEach(matchParts => {
+              const matchingParts = parts.filter(part => 
+                matchParts.some(mPart => mPart === part)
+              );
+              matchingDateComponents += matchingParts.length;
+            });
+          });
+          
+          const dateMatchPercentage = totalDateComponents > 0 
+            ? (matchingDateComponents / totalDateComponents) * 100 
+            : 0;
+            
+          allDatesMatch = dateMatchPercentage >= 80; // Allow for some variation in date formats
           
           console.log(`Input dates: ${JSON.stringify(relevantDates)}`);
           console.log(`Match dates: ${JSON.stringify(match.relevantDates)}`);
+          console.log(`Date match percentage: ${dateMatchPercentage.toFixed(1)}%`);
           console.log(`All dates match: ${allDatesMatch}`);
         }
         
         return allCompaniesMatch && allDatesMatch;
       });
+      
+      console.log(`Found ${identicalChronologyMatches.length} candidates with identical job chronology`);
+      
+      if (identicalChronologyMatches.length > 0) {
+        console.log("Identical chronology matches:");
+        identicalChronologyMatches.forEach((match, idx) => {
+          console.log(`Match #${idx+1}: Candidate ID ${match.candidateId}, Score: ${match.similarityScore}%`);
+          console.log(`- Companies: ${JSON.stringify(match.clientNames)}`);
+        });
+      }
       
       // Get associated candidate info for the matches
       const highSimilarityDetails = await Promise.all(
@@ -1007,10 +1049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      console.log(`Found ${highSimilarityMatches.length} candidates with >80% similar employment history`);
-      console.log(`Found ${identicalChronologyMatches.length} candidates with identical job chronology`);
-      
-      // Create a more informative warning message
+      // Create descriptive warning messages
       let warningMessage = "";
       if (identicalChronologyMatches.length > 0) {
         warningMessage = `⚠️ CRITICAL: Found ${identicalChronologyMatches.length} candidates with identical job chronology. This is a high fraud risk pattern.`;
@@ -1018,7 +1057,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         warningMessage = `⚠️ WARNING: Found ${highSimilarityMatches.length} candidates with >80% similar employment history. Review carefully.`;
       }
 
-      // Create detailed explanations based on what was found
+      // Create detailed explanations and next step recommendations
       const suspiciousPatterns = [];
       
       if (identicalChronologyMatches.length > 0) {
@@ -1026,7 +1065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: "IDENTICAL_CHRONOLOGY",
           severity: "HIGH",
           message: `${identicalChronologyMatches.length} other candidate(s) have identical employer sequence and dates`,
-          detail: "Same companies in same order with matching employment dates suggests copied resume"
+          detail: "Same companies in same order with matching employment dates strongly suggests resume fraud. Consider rejecting this candidate or requiring additional verification."
         });
       }
       
@@ -1035,11 +1074,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: "HIGH_SIMILARITY",
           severity: "MEDIUM",
           message: `${highSimilarityMatches.length} other candidate(s) have >80% matching employment histories`,
-          detail: "Extremely similar work histories may indicate resume fraud or template usage"
+          detail: "Extremely similar work histories may indicate resume fraud, template usage, or legitimate similar career paths. Review carefully and compare specific details."
         });
       }
       
-      return res.status(200).json({
+      const response = {
         message: warningMessage || "Employment history validation complete",
         hasSimilarHistories: highSimilarityMatches.length > 0,
         hasIdenticalChronology: identicalChronologyMatches.length > 0,
@@ -1047,7 +1086,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         identicalChronologyMatches: identicalChronologyDetails,
         totalCandidatesChecked: similarHistories.length,
         suspiciousPatterns: suspiciousPatterns
-      });
+      };
+      
+      console.log("Sending validation response with status:");
+      console.log(`- Has similar histories: ${response.hasSimilarHistories}`);
+      console.log(`- Has identical chronology: ${response.hasIdenticalChronology}`);
+      console.log(`- High similarity matches: ${response.highSimilarityMatches.length}`);
+      console.log(`- Identical chronology matches: ${response.identicalChronologyMatches.length}`);
+      console.log(`- Suspicious patterns: ${response.suspiciousPatterns.length}`);
+      
+      return res.status(200).json(response);
     } catch (error) {
       console.error("Error checking similar employment histories:", error);
       return res.status(500).json({ 

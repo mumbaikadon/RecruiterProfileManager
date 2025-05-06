@@ -121,6 +121,12 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
     
     setIsCheckingEmployment(true);
     try {
+      console.log("Sending similar employment histories check request with data:", {
+        candidateId,
+        clientNames: newResumeData.clientNames,
+        relevantDates: newResumeData.relevantDates
+      });
+      
       const responseData = await apiRequest<{
         message: string;
         hasSimilarHistories: boolean;
@@ -142,6 +148,12 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
           relevantDates: string[];
         }>;
         totalCandidatesChecked: number;
+        suspiciousPatterns?: Array<{
+          type: string;
+          severity: string;
+          message: string;
+          detail: string;
+        }>
       }>('/api/candidates/check-similar-employment', {
         method: 'POST',
         body: JSON.stringify({
@@ -152,13 +164,28 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
       });
       
       console.log("Employment history validation response:", responseData);
-      setEmploymentValidation(responseData);
+      setEmploymentValidation({
+        ...responseData,
+        hasIdenticalChronology: responseData.identicalChronologyMatches?.length > 0 || responseData.hasIdenticalChronology || false,
+        hasSimilarHistories: responseData.highSimilarityMatches?.length > 0 || responseData.hasSimilarHistories || false,
+      });
+      
+      // Log detailed match information
+      if (responseData.identicalChronologyMatches?.length > 0) {
+        console.log("IDENTICAL CHRONOLOGY MATCHES:", responseData.identicalChronologyMatches);
+      }
+      
+      if (responseData.highSimilarityMatches?.length > 0) {
+        console.log("HIGH SIMILARITY MATCHES:", responseData.highSimilarityMatches);
+      }
       
       // If there are suspicious patterns, automatically set a reason
-      if (responseData.hasIdenticalChronology) {
-        setReason(prev => prev || `Identical job chronology detected with ${responseData.identicalChronologyMatches.length} other candidate(s). Same companies and dates found.`);
-      } else if (responseData.hasSimilarHistories) {
-        setReason(prev => prev || `High similarity detected with ${responseData.highSimilarityMatches.length} other candidate(s). Employment history has ${responseData.highSimilarityMatches[0]?.similarityScore}% match.`);
+      if (responseData.identicalChronologyMatches?.length > 0) {
+        setReason(prev => prev || `CRITICAL: Identical job chronology detected with ${responseData.identicalChronologyMatches.length} other candidate(s). Same companies and dates found.`);
+        console.log(`Setting reason: Identical chronology detected with ${responseData.identicalChronologyMatches.length} candidates`);
+      } else if (responseData.highSimilarityMatches?.length > 0) {
+        setReason(prev => prev || `WARNING: High similarity detected with ${responseData.highSimilarityMatches.length} other candidate(s). Employment history has ${responseData.highSimilarityMatches[0]?.similarityScore}% match.`);
+        console.log(`Setting reason: High similarity detected with ${responseData.highSimilarityMatches.length} candidates`);
       }
     } catch (error) {
       console.error("Error checking similar employment histories:", error);
