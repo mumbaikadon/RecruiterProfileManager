@@ -20,7 +20,7 @@ import {
 import { FileUpload } from "@/components/ui/file-upload";
 import { Job, apiRequest } from "@/lib/api";
 import { Loader2 } from "lucide-react";
-import { formatDate, isOlderThanTwoWeeks } from "@/lib/utils";
+import { formatDate, isOlderThanTwoWeeks } from "@/lib/date-utils";
 
 interface ResubmitDialogProps {
   isOpen: boolean;
