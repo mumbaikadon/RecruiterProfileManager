@@ -3,10 +3,15 @@
  * This will analyze a resume against a payment industry job description
  */
 
-const fs = require('fs');
-const path = require('path');
-const OpenAI = require('openai');
-const mammoth = require('mammoth');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import OpenAI from 'openai';
+import mammoth from 'mammoth';
+
+// Get current directory with ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -140,9 +145,6 @@ async function analyzeDomainExpertise(resumeText, jobDescription) {
  */
 async function main() {
   try {
-    // Path to resume file (using Drew's CV as a test case)
-    const resumePath = path.join(__dirname, 'attached_assets', 'Drew Corrigan - CV.pdf');
-    
     // Define a payment processing related job description
     const paymentJobDescription = `
     Senior Payment Systems Analyst
@@ -176,14 +178,17 @@ async function main() {
     - Experience with international payment methods and cross-border transactions
     `;
     
-    // First check if we're using a DOCX file (use mammoth) or PDF (handle differently)
+    // For our test, we'll use the Jain-AI-Product Manager.docx file instead of the PDF
+    // since we don't have pdf-parse in this test script
+    const resumePath = path.join(__dirname, 'attached_assets', 'Jain-AI-Product Manager.docx');
+    console.log(`Using resume file: ${resumePath}`);
+    
+    // Extract text from the resume file
     let resumeText;
     if (resumePath.endsWith('.docx')) {
       resumeText = await extractTextFromDocx(resumePath);
-    } else if (resumePath.endsWith('.pdf')) {
-      console.log("PDF processing not implemented in this simple test script");
-      console.log("Please convert the PDF to text manually or use a DOCX file");
-      process.exit(1);
+      console.log("Successfully extracted text from DOCX file");
+      console.log(`Text length: ${resumeText.length} characters`);
     } else {
       // Assume it's a plain text file
       resumeText = fs.readFileSync(resumePath, 'utf8');
