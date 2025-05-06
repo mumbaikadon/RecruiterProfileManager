@@ -337,10 +337,18 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
               <span className="p-1 bg-red-100 dark:bg-red-800 rounded-full">
                 <AlertTriangle className="h-4 w-4" />
               </span>
-              Identical Job Chronology Detected
+              🚩 CRITICAL: Identical Job Chronology Detected
             </AlertTitle>
             <AlertDescription className="mt-1">
-              <p className="mb-2">Found <span className="font-bold">{employmentValidation.identicalChronologyMatches.length}</span> other candidate(s) with identical job chronology (same companies and dates).</p>
+              <p className="mb-2">Found <span className="font-bold">{employmentValidation.identicalChronologyMatches.length}</span> other candidate(s) with identical job chronology (same companies and dates). This pattern strongly suggests resume fraud.</p>
+              
+              {employmentValidation.suspiciousPatterns?.filter(p => p.type === "IDENTICAL_CHRONOLOGY").map((pattern, idx) => (
+                <div key={idx} className="bg-red-50 dark:bg-red-900/30 p-3 rounded-md mb-3 border border-red-200 dark:border-red-800">
+                  <p className="font-medium">{pattern.message}</p>
+                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">{pattern.detail}</p>
+                </div>
+              ))}
+              
               <div className="bg-white dark:bg-slate-800 rounded-md p-3 mt-2 max-h-48 overflow-y-auto border border-red-200 dark:border-red-800">
                 {employmentValidation.identicalChronologyMatches.map((match, idx) => (
                   <div key={match.candidateId} className={cn("flex flex-col p-2", idx !== 0 && "border-t border-red-100 dark:border-red-900 mt-2 pt-2")}>
@@ -351,6 +359,9 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                       </Badge>
                     </div>
                     <span className="text-sm text-red-600/80 dark:text-red-400/80">{match.candidateEmail || 'No email'}</span>
+                    <div className="mt-1 text-xs text-red-600/70 dark:text-red-400/70">
+                      <p><span className="font-medium">Companies:</span> {match.clientNames.join(", ")}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -365,10 +376,18 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
               <span className="p-1 bg-amber-100 dark:bg-amber-800 rounded-full">
                 <AlertTriangle className="h-4 w-4" />
               </span>
-              High Similarity Detected
+              ⚠️ WARNING: High Similarity Detected
             </AlertTitle>
             <AlertDescription className="mt-1">
-              <p className="mb-2">Found <span className="font-bold">{employmentValidation.highSimilarityMatches.length}</span> other candidate(s) with &gt;80% similar employment history.</p>
+              <p className="mb-2">Found <span className="font-bold">{employmentValidation.highSimilarityMatches.length}</span> other candidate(s) with &gt;80% similar employment history. This requires additional verification.</p>
+              
+              {employmentValidation.suspiciousPatterns?.filter(p => p.type === "HIGH_SIMILARITY").map((pattern, idx) => (
+                <div key={idx} className="bg-amber-50 dark:bg-amber-900/30 p-3 rounded-md mb-3 border border-amber-200 dark:border-amber-800">
+                  <p className="font-medium">{pattern.message}</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">{pattern.detail}</p>
+                </div>
+              ))}
+              
               <div className="bg-white dark:bg-slate-800 rounded-md p-3 mt-2 max-h-48 overflow-y-auto border border-amber-200 dark:border-amber-800">
                 {employmentValidation.highSimilarityMatches.map((match, idx) => (
                   <div key={match.candidateId} className={cn("flex flex-col p-2", idx !== 0 && "border-t border-amber-100 dark:border-amber-900 mt-2 pt-2")}>
@@ -379,6 +398,9 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                       </Badge>
                     </div>
                     <span className="text-sm text-amber-600/80 dark:text-amber-400/80">{match.candidateEmail || 'No email'}</span>
+                    <div className="mt-1 text-xs text-amber-600/70 dark:text-amber-400/70">
+                      <p><span className="font-medium">Companies:</span> {match.clientNames.join(", ")}</p>
+                    </div>
                   </div>
                 ))}
               </div>
