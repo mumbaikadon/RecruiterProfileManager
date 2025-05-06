@@ -181,10 +181,32 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
       
       // If there are suspicious patterns, automatically set a reason
       if (responseData.identicalChronologyMatches?.length > 0) {
-        setReason(prev => prev || `CRITICAL: Identical job chronology detected with ${responseData.identicalChronologyMatches.length} other candidate(s). Same companies and dates found.`);
+        // Get up to 3 candidate names to show in the reason
+        const matchedNames = responseData.identicalChronologyMatches
+          .filter(Boolean)
+          .slice(0, 3)
+          .map(match => match.candidateName)
+          .join(', ');
+          
+        const additionalCandidates = responseData.identicalChronologyMatches.length > 3 
+          ? ` and ${responseData.identicalChronologyMatches.length - 3} other(s)` 
+          : '';
+          
+        setReason(prev => prev || `CRITICAL: Identical job chronology detected with ${matchedNames}${additionalCandidates}. Same companies and dates found.`);
         console.log(`Setting reason: Identical chronology detected with ${responseData.identicalChronologyMatches.length} candidates`);
       } else if (responseData.highSimilarityMatches?.length > 0) {
-        setReason(prev => prev || `WARNING: High similarity detected with ${responseData.highSimilarityMatches.length} other candidate(s). Employment history has ${responseData.highSimilarityMatches[0]?.similarityScore}% match.`);
+        // Get up to 3 candidate names to show in the reason
+        const matchedNames = responseData.highSimilarityMatches
+          .filter(Boolean)
+          .slice(0, 3)
+          .map(match => match.candidateName)
+          .join(', ');
+          
+        const additionalCandidates = responseData.highSimilarityMatches.length > 3 
+          ? ` and ${responseData.highSimilarityMatches.length - 3} other(s)` 
+          : '';
+          
+        setReason(prev => prev || `WARNING: High similarity detected with ${matchedNames}${additionalCandidates}. Employment history has ${responseData.highSimilarityMatches[0]?.similarityScore}% match.`);
         console.log(`Setting reason: High similarity detected with ${responseData.highSimilarityMatches.length} candidates`);
       }
     } catch (error) {
