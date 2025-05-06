@@ -72,6 +72,10 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
       jobTitles: string[];
       relevantDates: string[];
     };
+    // Add suspicious fields for tracking potential fraud
+    isSuspicious?: boolean;
+    suspiciousReason?: string;
+    suspiciousSeverity?: "LOW" | "MEDIUM" | "HIGH";
   } | null>(null);
 
   // Function to get previous submission info for a candidate
@@ -247,13 +251,17 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             newData
           });
           
-          // Open validation dialog for the duplicate candidate
+          // Open validation dialog for the duplicate candidate with suspicious flags if available
           setValidationData({
             candidateId: data.candidateId,
             candidateName,
             resumeFileName: values.resumeData?.fileName || "Resume",
             existingResumeData: existingData,
-            newResumeData: newData
+            newResumeData: newData,
+            // Add any suspicious flags if they exist
+            isSuspicious: data.isSuspicious || false,
+            suspiciousReason: data.suspiciousReason,
+            suspiciousSeverity: data.suspiciousSeverity
           });
           setValidationDialogOpen(true);
           return;
@@ -363,13 +371,17 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           }
         });
         
-        // Open validation dialog with the safe data
+        // Open validation dialog with the safe data and suspicious flags if available
         setValidationData({
           candidateId: data.candidateId,
           candidateName,
           resumeFileName: values.resumeData?.fileName || "Resume",
           existingResumeData: safeExistingData,
-          newResumeData: safeNewData
+          newResumeData: safeNewData,
+          // Include suspicious flags if they exist in the validation data
+          isSuspicious: data.isSuspicious || false,
+          suspiciousReason: data.suspiciousReason,
+          suspiciousSeverity: data.suspiciousSeverity
         });
         
         // Important: Set dialog state to open AFTER setting the data
@@ -513,6 +525,10 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           newResumeData={validationData.newResumeData}
           validationType="resubmission"
           resumeFileName={validationData.resumeFileName}
+          // Pass suspicious flags from validation data
+          isSuspicious={validationData.isSuspicious}
+          suspiciousReason={validationData.suspiciousReason}
+          suspiciousSeverity={validationData.suspiciousSeverity}
           validateCandidate={(data) => {
             return new Promise((resolve, reject) => {
               validateCandidate({...data, validatedBy: recruiterId}, {
