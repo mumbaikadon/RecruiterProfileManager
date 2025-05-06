@@ -1792,6 +1792,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 clientNames: matchResult.clientNames || [],
                 jobTitles: matchResult.jobTitles || [],
                 relevantDates: matchResult.relevantDates || [],
+                // Include education data
+                education: matchResult.education || [],
                 // Maintain any existing skills or other resume data fields
                 skills: matchResult.skillsGapAnalysis?.matchingSkills || [],
               };
@@ -1845,6 +1847,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         relevantDates: Array.isArray(matchResult.relevantDates)
           ? matchResult.relevantDates
           : [],
+          
+        // Include education data
+        education: Array.isArray(matchResult.education)
+          ? matchResult.education
+          : [],
       };
 
       console.log("Resume analysis completed successfully");
@@ -1863,6 +1870,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         strengths: [],
         weaknesses: ["Error occurred during matching"],
         suggestions: ["Try a different resume format or contact support"],
+        clientNames: [],
+        jobTitles: [],
+        relevantDates: [],
+        education: [],
       });
     }
   });
