@@ -279,6 +279,22 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
     setValidationError(null);
 
     try {
+      // Determine if we should flag the submission as suspicious
+      const isSuspicious = result === "matching" && (
+        employmentValidation?.hasIdenticalChronology || 
+        employmentValidation?.hasSimilarHistories
+      );
+      
+      // If suspicious, prepare the suspicious details
+      const suspiciousData = isSuspicious ? {
+        isSuspicious: true,
+        suspiciousReason: employmentValidation?.hasIdenticalChronology 
+          ? `Identical job chronology with ${employmentValidation.identicalChronologyMatches.length} other candidate(s)` 
+          : `Similar employment history (>${employmentValidation?.highSimilarityMatches[0]?.similarityScore}%) with ${employmentValidation?.highSimilarityMatches.length} other candidate(s)`,
+        suspiciousSeverity: employmentValidation?.hasIdenticalChronology ? "HIGH" : "MEDIUM"
+      } : {};
+      
+      // Log validation data being sent
       console.log("Sending validation data:", {
         candidateId,
         jobId,
@@ -294,9 +310,11 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
           jobTitles: newResumeData.jobTitles.length,
           dates: newResumeData.relevantDates.length
         },
-        reason: result === "unreal" ? reason : undefined
+        reason: result === "unreal" ? reason : undefined,
+        ...(isSuspicious ? { suspiciousData } : {})
       });
       
+      // Prepare the validation data with suspicious flags if needed
       const validationData = {
         candidateId,
         jobId,
@@ -309,7 +327,8 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         newJobTitles: newResumeData.jobTitles,
         newDates: newResumeData.relevantDates,
         resumeFileName,
-        reason: result === "unreal" ? reason : undefined
+        reason: result === "unreal" ? reason : undefined,
+        ...suspiciousData
       };
       
       await validateCandidate(validationData);

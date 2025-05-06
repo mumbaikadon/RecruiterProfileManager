@@ -590,10 +590,23 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       console.log("Submitting candidate data with resume:", 
         resumeData ? `Resume data present (${resumeData.clientNames?.length || 0} companies)` : "No resume data");
       
+      // Add suspicious flags to the submission if there's a validation warning
+      const suspiciousData = validationWarning ? {
+        isSuspicious: true,
+        suspiciousReason: validationWarning.message,
+        suspiciousSeverity: validationWarning.severity
+      } : {};
+      
+      // Log if we're submitting with suspicious flags
+      if (validationWarning) {
+        console.log("Submitting with suspicious flags:", suspiciousData);
+      }
+      
       onSubmit({
         ...values,
         resumeData: resumeData,
-        matchResults: matchResults
+        matchResults: matchResults,
+        ...suspiciousData
       });
     } catch (error) {
       console.error("Error submitting candidate:", error);
