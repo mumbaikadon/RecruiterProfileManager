@@ -4,11 +4,13 @@ import { cn } from "@/lib/utils";
 interface StatusBadgeProps {
   status: string;
   size?: "sm" | "md";
+  feedback?: string | null;
 }
 
 const StatusBadge: React.FC<StatusBadgeProps> = ({ 
   status, 
-  size = "sm" 
+  size = "sm",
+  feedback = null
 }) => {
   // Map status to color
   const statusColors: Record<string, string> = {
@@ -39,6 +41,9 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
   
+  // Determine if we should show feedback (only for rejected status)
+  const showFeedback = status === 'rejected' && feedback;
+  
   return (
     <span 
       className={cn(
@@ -48,6 +53,11 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
       )}
     >
       {formattedStatus}
+      {showFeedback && (
+        <span className="ml-1.5 font-normal italic">
+          ({feedback})
+        </span>
+      )}
     </span>
   );
 };
