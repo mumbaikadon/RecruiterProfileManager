@@ -127,6 +127,12 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
           body: JSON.stringify({
             jobId: data.jobId,
             candidateId: data.candidateId,
+            // Include suspicious flags if they exist
+            ...(data.isSuspicious ? {
+              isSuspicious: data.isSuspicious,
+              suspiciousReason: data.suspiciousReason,
+              suspiciousSeverity: data.suspiciousSeverity,
+            } : {}),
           }),
         });
       }
