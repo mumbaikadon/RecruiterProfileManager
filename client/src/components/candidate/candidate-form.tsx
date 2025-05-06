@@ -467,11 +467,8 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                     matchedCandidates: firstPattern.matchedCandidates
                   });
                   
-                  // Set form error
-                  form.setError("firstName", {
-                    type: "manual",
-                    message: `WARNING: ${firstPattern.message} ${firstPattern.detail}`
-                  });
+                  // No longer setting form error since we have the prominent warning banner
+                  // The form error creates the redundant warning message below the form fields
                 }
               }
             }
