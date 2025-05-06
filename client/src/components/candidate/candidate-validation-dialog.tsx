@@ -38,11 +38,13 @@ interface CandidateValidationDialogProps {
     clientNames: string[];
     jobTitles: string[];
     relevantDates: string[];
+    education?: string[];
   };
   newResumeData: {
     clientNames: string[];
     jobTitles: string[];
     relevantDates: string[];
+    education?: string[];
   };
   validationType: "resubmission";
   resumeFileName?: string;
@@ -249,6 +251,11 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
       added: newResumeData.relevantDates.filter(date => !existingResumeData.relevantDates.includes(date)),
       removed: existingResumeData.relevantDates.filter(date => !newResumeData.relevantDates.includes(date)),
       unchanged: existingResumeData.relevantDates.filter(date => newResumeData.relevantDates.includes(date))
+    },
+    education: {
+      added: (newResumeData.education || []).filter(edu => !(existingResumeData.education || []).includes(edu)),
+      removed: (existingResumeData.education || []).filter(edu => !(newResumeData.education || []).includes(edu)),
+      unchanged: (existingResumeData.education || []).filter(edu => (newResumeData.education || []).includes(edu))
     }
   };
 
@@ -257,7 +264,8 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
     const totalOriginalItems = 
       existingResumeData.clientNames.length + 
       existingResumeData.jobTitles.length + 
-      existingResumeData.relevantDates.length;
+      existingResumeData.relevantDates.length +
+      (existingResumeData.education?.length || 0);
     
     const totalChangedItems = 
       comparisonData.companies.added.length + 
@@ -265,7 +273,9 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
       comparisonData.titles.added.length +
       comparisonData.titles.removed.length +
       comparisonData.dates.added.length +
-      comparisonData.dates.removed.length;
+      comparisonData.dates.removed.length +
+      comparisonData.education.added.length +
+      comparisonData.education.removed.length;
     
     if (totalOriginalItems === 0) return 0;
     return Math.round((totalChangedItems / (totalOriginalItems * 2)) * 100);
@@ -327,12 +337,14 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         previousData: {
           clientNames: existingResumeData.clientNames.length,
           jobTitles: existingResumeData.jobTitles.length,
-          dates: existingResumeData.relevantDates.length
+          dates: existingResumeData.relevantDates.length,
+          education: existingResumeData.education?.length || 0
         },
         newData: {
           clientNames: newResumeData.clientNames.length,
           jobTitles: newResumeData.jobTitles.length,
-          dates: newResumeData.relevantDates.length
+          dates: newResumeData.relevantDates.length,
+          education: newResumeData.education?.length || 0
         },
         reason: result === "unreal" ? reason : undefined,
         isSuspicious: isSuspiciousFlag,
@@ -349,9 +361,11 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         previousClientNames: existingResumeData.clientNames,
         previousJobTitles: existingResumeData.jobTitles,
         previousDates: existingResumeData.relevantDates,
+        previousEducation: existingResumeData.education || [],
         newClientNames: newResumeData.clientNames,
         newJobTitles: newResumeData.jobTitles,
         newDates: newResumeData.relevantDates,
+        newEducation: newResumeData.education || [],
         resumeFileName,
         reason: result === "unreal" ? reason : undefined,
         validatedBy, // Use validatedBy from props
@@ -669,7 +683,8 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
           {/* Missing items from previous resume */}
           {(comparisonData.companies.removed.length > 0 || 
             comparisonData.titles.removed.length > 0 || 
-            comparisonData.dates.removed.length > 0) && (
+            comparisonData.dates.removed.length > 0 ||
+            comparisonData.education.removed.length > 0) && (
             <Card className="border-red-200 bg-red-50 dark:bg-slate-800 dark:border-slate-700">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base text-red-700 dark:text-red-400 flex items-center">
@@ -712,6 +727,19 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
                       {comparisonData.dates.removed.map((date, idx) => (
                         <li key={`missing-date-${idx}`} className="mb-1 text-red-600 dark:text-red-400">
                           {date}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {comparisonData.education.removed.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-1 dark:text-red-300">Missing Education:</h4>
+                    <ul className="list-disc pl-5 text-sm dark:text-slate-200">
+                      {comparisonData.education.removed.map((edu, idx) => (
+                        <li key={`missing-edu-${idx}`} className="mb-1 text-red-600 dark:text-red-400">
+                          {edu}
                         </li>
                       ))}
                     </ul>
