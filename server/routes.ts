@@ -119,6 +119,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/jobs/:id/description", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid job ID" });
+      }
+
+      const { description } = req.body;
+      if (typeof description !== "string") {
+        return res.status(400).json({ message: "Description is required" });
+      }
+
+      const job = await storage.getJob(id);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      const updatedJob = await storage.updateJobDescription(id, description);
+      
+      // Create an activity for the description update
+      await storage.createActivity({
+        type: "job_updated",
+        jobId: id,
+        message: `Job description for ${job.title} (${job.jobId}) was updated.`,
+      });
+
+      res.json(updatedJob);
+    } catch (error) {
+      console.error("Error updating job description:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   app.put("/api/jobs/:id/status", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
