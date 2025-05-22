@@ -89,10 +89,37 @@ function calculateLocationMatch(job: Job, candidate: Candidate): { score: number
  * Check if candidate has experience with the same client
  */
 function checkClientExperience(job: Job, resumeData: ResumeData | null): { hasExperience: boolean; clientName: string | null } {
-  if (!resumeData || !resumeData.clientNames || !job.jobId) return { hasExperience: false, clientName: null };
+  if (!resumeData || !resumeData.clientNames || resumeData.clientNames.length === 0) {
+    return { hasExperience: false, clientName: null };
+  }
   
-  // Extract client name from job ID or title (simplified implementation)
-  // In a real system, you might have explicit client field or mapping
+  // First, check for direct client name match using the clientName field
+  if (job.clientName) {
+    const jobClientLower = job.clientName.toLowerCase();
+    
+    // Look for exact or partial match with candidate's client experience
+    for (const candidateClient of resumeData.clientNames) {
+      const candidateClientLower = candidateClient.toLowerCase();
+      
+      // Direct match (highest priority)
+      if (candidateClientLower === jobClientLower) {
+        return { hasExperience: true, clientName: candidateClient };
+      }
+      
+      // Partial match (one contains the other)
+      if (candidateClientLower.includes(jobClientLower) || 
+          jobClientLower.includes(candidateClientLower)) {
+        return { hasExperience: true, clientName: candidateClient };
+      }
+      
+      // Handle common abbreviations like "FIS" for "FIS Global"
+      if (jobClientLower.includes("fis") && candidateClientLower.includes("fis")) {
+        return { hasExperience: true, clientName: candidateClient };
+      }
+    }
+  }
+  
+  // Fallback to checking job title for client names (legacy approach)
   const jobWords = job.title.split(' ');
   
   for (const clientName of resumeData.clientNames) {
