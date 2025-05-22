@@ -1672,7 +1672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
     try {
-      const { resumeText, jobDescription } = req.body;
+      const { resumeText, jobDescription, jobId, clientFocus } = req.body;
 
       if (!resumeText || typeof resumeText !== "string") {
         return res.status(200).json({
@@ -1697,17 +1697,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Import the sanitization utility
       const { sanitizeHtml } = await import("./utils");
 
-      // Sanitize both the resume text and job description
+      // Sanitize inputs
       const sanitizedResumeText = sanitizeHtml(resumeText);
       const sanitizedJobDescription = sanitizeHtml(jobDescription);
+      
+      // Get client focus from database if jobId provided but clientFocus not directly provided
+      let sanitizedClientFocus = clientFocus ? sanitizeHtml(clientFocus) : "";
+      
+      if (jobId && !clientFocus) {
+        try {
+          const job = await storage.getJob(parseInt(jobId.toString()));
+          if (job && job.clientFocus) {
+            sanitizedClientFocus = sanitizeHtml(job.clientFocus);
+            console.log(`Retrieved client focus for job ${jobId}: ${sanitizedClientFocus.substring(0, 100)}...`);
+          }
+        } catch (error) {
+          console.warn(`Failed to get client focus from job ${jobId}:`, error);
+        }
+      }
 
       console.log("Match resume request received:");
       console.log("- Resume text length:", sanitizedResumeText.length);
       console.log("- Job description length:", sanitizedJobDescription.length);
+      console.log("- Client focus provided:", sanitizedClientFocus ? "Yes" : "No");
+      
+      if (sanitizedClientFocus) {
+        console.log("- Client focus length:", sanitizedClientFocus.length);
+      }
 
       console.log("Analyzing resume match...");
       
-      // Use OpenAI directly to extract employment history
+      // Use OpenAI directly to extract employment history and analyze match
       let matchResult;
       
       try {
@@ -1722,6 +1742,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const resumePreview = sanitizedResumeText.substring(0, 300);
         console.log("Resume text preview for analysis:", resumePreview);
         
+        // Build client focus section to include in prompt if available
+        const clientFocusSection = sanitizedClientFocus 
+          ? `\nClient Focus Areas (PRIORITIZE THESE SKILLS/EXPERIENCES):\n${sanitizedClientFocus}`
+          : "";
+        
         // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
         const response = await openai.chat.completions.create({
           model: "gpt-4o",
@@ -1733,7 +1758,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 "Your primary task is to extract REAL employment data from the resume - never generate fake or generic data. " +
                 "If you cannot find clear employment history, respond with empty arrays rather than making up placeholder data. " +
                 "Extract exact company names, job titles, and employment dates directly from the resume text. " +
-                "Be precise, accurate, and only use information actually present in the resume."
+                "Be precise, accurate, and only use information actually present in the resume. " +
+                "When evaluating matches, prioritize the client focus areas when provided - these are the most important skills/experiences for this particular role."
             },
             {
               role: "user",
@@ -1744,7 +1770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 ${sanitizedResumeText}
                 
                 Job Description:
-                ${sanitizedJobDescription}
+                ${sanitizedJobDescription}${clientFocusSection}
                 
                 IMPORTANT - EMPLOYMENT HISTORY EXTRACTION INSTRUCTIONS:
                 1. Carefully read the entire resume text
@@ -1759,6 +1785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                    - Extract education details including degrees, institutions, and graduation years
                 
                 5. Then analyze the fit between this resume and job description. Calculate an overall match percentage score (0-100).
+                ${sanitizedClientFocus ? "   - IMPORTANT: Give extra weight to the client focus areas when calculating the score. These are top priorities." : ""}
                 
                 Return your analysis in a structured JSON format with the following fields:
                 - clientNames (array of strings: extract EXACT company names from the resume)
@@ -1770,6 +1797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 - improvements: { content (array), formatting (array), language (array) }
                 - overallScore (number 0-100)
                 - confidenceScore (number 0-1)
+                ${sanitizedClientFocus ? '- clientFocusMatch: { score (number 0-100), matchingAreas (array), missingAreas (array) }' : ''}
                 
                 NOTICE: It is critical that you extract only actual employment data from the resume. NEVER invent company names, job titles, or dates. If you cannot find employment history, return empty arrays.`
             }
@@ -1798,6 +1826,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Education data - directly from OpenAI
           education: analysisResult.education || [],
+          
+          // Client focus match data - if available
+          clientFocusScore: analysisResult.clientFocusMatch?.score || 0,
+          clientFocusMatches: analysisResult.clientFocusMatch?.matchingAreas || [],
+          clientFocusMissing: analysisResult.clientFocusMatch?.missingAreas || [],
         };
       } 
       catch (openaiError) {
@@ -1893,6 +1926,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Include education data
         education: Array.isArray(matchResult.education)
           ? matchResult.education
+          : [],
+          
+        // Include client focus match data if available
+        clientFocusScore: typeof matchResult.clientFocusScore === "number" 
+          ? matchResult.clientFocusScore 
+          : 0,
+        clientFocusMatches: Array.isArray(matchResult.clientFocusMatches)
+          ? matchResult.clientFocusMatches
+          : [],
+        clientFocusMissing: Array.isArray(matchResult.clientFocusMissing)
+          ? matchResult.clientFocusMissing
           : [],
       };
 
