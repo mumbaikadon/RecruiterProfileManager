@@ -272,43 +272,65 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             }
           } else {
             // Handle various date formats with separators
-            // Look for MM/DD/YYYY format first
-            const mmddyyyyMatch = dobStr.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
-            // Then look for MM/DD format
-            const mmddMatch = dobStr.match(/(\d{1,2})[\/\-\.](\d{1,2})/);
+            // Look for date formats with year (MM/DD/YYYY or DD/MM/YYYY)
+            const dateWithYearMatch = dobStr.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+            // Then look for date formats without year (MM/DD or DD/MM)
+            const dateWithoutYearMatch = dobStr.match(/(\d{1,2})[\/\-\.](\d{1,2})/);
             // Also try to handle formats where DOB is just numbers directly (like "DOB: 06/07/1996")
             const directMatch = /(\d{1,2})[\/\-\.](\d{1,2})/.exec(dobStr);
             
             // Process the matches in order of specificity
-            if (mmddyyyyMatch) {
-              let month = parseInt(mmddyyyyMatch[1]);
-              let day = parseInt(mmddyyyyMatch[2]);
+            if (dateWithYearMatch) {
+              let month = parseInt(dateWithYearMatch[1]);
+              let day = parseInt(dateWithYearMatch[2]);
               
-              // Check if day and month need to be swapped (European format)
+              // Intelligently determine if we have DD/MM/YYYY or MM/DD/YYYY format
               if (month > 12 && day <= 12) {
+                // Clearly DD/MM/YYYY format
+                console.log("Detected DD/MM/YYYY format, swapping values");
                 [month, day] = [day, month];
+              } else if (month <= 12 && day <= 31) {
+                // Format could be either MM/DD/YYYY or DD/MM/YYYY
+                // Look for contextual clues
+                if (dobStr.includes("DD/MM") || dobStr.includes("day/month")) {
+                  console.log("Detected DD/MM/YYYY format based on context");
+                  [month, day] = [day, month];
+                }
+                // Default to MM/DD/YYYY as it's most common in the US
               }
               
-              console.log(`Setting DOB from MM/DD/YYYY: Month=${month}, Day=${day}`);
+              console.log(`Setting DOB from date with year: Month=${month}, Day=${day}`);
               form.setValue("dobMonth", month);
               form.setValue("dobDay", day);
-            } else if (mmddMatch) {
-              let month = parseInt(mmddMatch[1]);
-              let day = parseInt(mmddMatch[2]);
+            } else if (dateWithoutYearMatch) {
+              let month = parseInt(dateWithoutYearMatch[1]);
+              let day = parseInt(dateWithoutYearMatch[2]);
               
-              // Check if day and month need to be swapped (European format)
+              // Intelligently determine if we have DD/MM or MM/DD format
               if (month > 12 && day <= 12) {
+                // Clearly DD/MM format
+                console.log("Detected DD/MM format, swapping values");
                 [month, day] = [day, month];
+              } else if (month <= 12 && day <= 31) {
+                // Format could be either MM/DD or DD/MM
+                // Look for contextual clues
+                if (dobStr.includes("DD/MM") || dobStr.includes("day/month")) {
+                  console.log("Detected DD/MM format based on context");
+                  [month, day] = [day, month];
+                }
+                // Default to MM/DD as it's most common in the US
               }
               
-              console.log(`Setting DOB from MM/DD: Month=${month}, Day=${day}`);
+              console.log(`Setting DOB from date without year: Month=${month}, Day=${day}`);
               form.setValue("dobMonth", month);
               form.setValue("dobDay", day);
             } else if (directMatch) {
               let month = parseInt(directMatch[1]);
               let day = parseInt(directMatch[2]);
               
+              // Intelligently determine format for direct matches as well
               if (month > 12 && day <= 12) {
+                console.log("Detected DD/MM format in direct match, swapping values");
                 [month, day] = [day, month];
               }
               
