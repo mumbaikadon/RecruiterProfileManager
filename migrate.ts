@@ -15,11 +15,19 @@ async function runMigration() {
   // Initialize drizzle
   const db = drizzle(pool);
   
-  console.log('Adding missing columns to submissions table...');
+  console.log('Adding missing columns to tables...');
+  
+  // Add columns to submissions table
   await pool.query(`
     ALTER TABLE IF EXISTS submissions 
     ADD COLUMN IF NOT EXISTS feedback TEXT,
     ADD COLUMN IF NOT EXISTS last_updated_by INTEGER REFERENCES users(id);
+  `);
+  
+  // Add job_type column to jobs table
+  await pool.query(`
+    ALTER TABLE IF EXISTS jobs
+    ADD COLUMN IF NOT EXISTS job_type TEXT CHECK (job_type IN ('onsite', 'remote', 'hybrid'));
   `);
   
   console.log('Database migration completed successfully.');
