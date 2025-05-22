@@ -1,6 +1,6 @@
 import React from "react";
 import { useLocation } from "wouter";
-import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, MapPin, Briefcase } from "lucide-react";
 
 import {
   Table,
@@ -14,6 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Job } from "@shared/schema";
 import { formatDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface JobTableProps {
   jobs: Job[];
@@ -80,7 +86,37 @@ const JobTable: React.FC<JobTableProps> = ({
                 onClick={() => handleRowClick(job.id)}
               >
                 <TableCell className="font-medium">{job.jobId}</TableCell>
-                <TableCell className="font-medium md:font-normal">{job.title}</TableCell>
+                <TableCell className="font-medium md:font-normal">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help border-b border-dotted border-muted-foreground">
+                          {job.title}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs p-4">
+                        <div className="space-y-2">
+                          <h4 className="font-semibold">{job.title}</h4>
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <Briefcase className="h-4 w-4 mr-2" />
+                            <span className="capitalize">{job.jobType || 'Unspecified'}</span>
+                          </div>
+                          {(job.city || job.state) && (
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <MapPin className="h-4 w-4 mr-2" />
+                              <span>{[job.city, job.state].filter(Boolean).join(', ')}</span>
+                            </div>
+                          )}
+                          {job.clientFocus && (
+                            <div className="text-sm mt-2">
+                              <span className="font-medium">Key Focus:</span> {job.clientFocus}
+                            </div>
+                          )}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableCell>
                 <TableCell className="hidden md:table-cell">
                   {formatDate(job.createdAt)}
                 </TableCell>
