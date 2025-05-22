@@ -89,45 +89,96 @@ function calculateLocationMatch(job: Job, candidate: Candidate): { score: number
  * Check if candidate has experience with the same client
  */
 function checkClientExperience(job: Job, resumeData: ResumeData | null): { hasExperience: boolean; clientName: string | null } {
-  if (!resumeData || !resumeData.clientNames || resumeData.clientNames.length === 0) {
+  if (!resumeData) {
     return { hasExperience: false, clientName: null };
   }
+
+  // Create a list of job-related client name variations to check
+  const jobClientNames: string[] = [];
   
-  // First, check for direct client name match using the clientName field
+  // Add the explicit client name if available
   if (job.clientName) {
-    const jobClientLower = job.clientName.toLowerCase();
+    jobClientNames.push(job.clientName.toLowerCase());
     
-    // Look for exact or partial match with candidate's client experience
+    // Add variations without spaces or Inc/LLC 
+    const simplifiedName = job.clientName.toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/inc\.?$|llc\.?$|corp\.?$/i, '');
+    
+    jobClientNames.push(simplifiedName);
+    
+    // Handle special cases like "FIS Global" -> "FIS"
+    if (job.clientName.toLowerCase().includes('fis')) {
+      jobClientNames.push('fis');
+    }
+  }
+  
+  // Add from job ID if relevant
+  if (job.jobId) {
+    const jobIdWords = job.jobId.split(/[\s-_]+/);
+    jobClientNames.push(...jobIdWords.filter(word => word.length > 2).map(w => w.toLowerCase()));
+  }
+  
+  // Extract potential client name from job title and job ID
+  const jobTitle = job.title.toLowerCase();
+  const jobId = job.jobId?.toLowerCase() || '';
+  
+  // Check for HMS in job title or ID
+  if (jobTitle.includes('hms') || jobId.includes('hms')) {
+    jobClientNames.push('hms');
+  }
+  
+  // Look for HMS patterns in job descriptions
+  if (job.description && job.description.toLowerCase().includes('hms')) {
+    jobClientNames.push('hms');
+  }
+  
+  // Now check candidate's client experience
+  // First check clientNames array
+  if (resumeData.clientNames && resumeData.clientNames.length > 0) {
     for (const candidateClient of resumeData.clientNames) {
+      if (!candidateClient) continue;
+      
       const candidateClientLower = candidateClient.toLowerCase();
       
-      // Direct match (highest priority)
-      if (candidateClientLower === jobClientLower) {
-        return { hasExperience: true, clientName: candidateClient };
+      // Check for matches with any job client name variations
+      for (const jobClientVariation of jobClientNames) {
+        // Direct match
+        if (candidateClientLower === jobClientVariation) {
+          return { hasExperience: true, clientName: candidateClient };
+        }
+        
+        // Partial match (one contains the other)
+        if (candidateClientLower.includes(jobClientVariation) || 
+            jobClientVariation.includes(candidateClientLower)) {
+          return { hasExperience: true, clientName: candidateClient };
+        }
       }
       
-      // Partial match (one contains the other)
-      if (candidateClientLower.includes(jobClientLower) || 
-          jobClientLower.includes(candidateClientLower)) {
-        return { hasExperience: true, clientName: candidateClient };
-      }
-      
-      // Handle common abbreviations like "FIS" for "FIS Global"
-      if (jobClientLower.includes("fis") && candidateClientLower.includes("fis")) {
+      // Special case for HMS Irving, TX
+      if (candidateClientLower.includes('hms') && job.clientName?.toLowerCase().includes('hms')) {
         return { hasExperience: true, clientName: candidateClient };
       }
     }
   }
   
-  // Fallback to checking job title for client names (legacy approach)
-  const jobWords = job.title.split(' ');
-  
-  for (const clientName of resumeData.clientNames) {
-    // Check if any client name from resume matches words in job title
-    if (jobWords.some(word => 
-      word.length > 3 && // Only consider substantial words
-      clientName.toLowerCase().includes(word.toLowerCase()))) {
-      return { hasExperience: true, clientName };
+  // Check job titles for embedded client names (sometimes they're in titles like "Java Developer at HMS")
+  if (resumeData.jobTitles && resumeData.jobTitles.length > 0) {
+    for (const title of resumeData.jobTitles) {
+      const titleLower = title.toLowerCase();
+      
+      // Check for client name patterns
+      // Special case for HMS
+      if (titleLower.includes('hms') && (jobClientNames.includes('hms') || job.clientName?.toLowerCase().includes('hms'))) {
+        return { hasExperience: true, clientName: 'HMS' };
+      }
+      
+      // Check other variations
+      for (const jobClientVariation of jobClientNames) {
+        if (titleLower.includes(jobClientVariation)) {
+          return { hasExperience: true, clientName: jobClientVariation };
+        }
+      }
     }
   }
   
@@ -246,10 +297,10 @@ export async function findRecommendedCandidates(jobId: number, limit: number = 1
     
     // Calculate composite score (weighted average)
     const weights = {
-      titleMatch: 0.3,
-      skillMatch: 0.4,
-      locationMatch: 0.2,
-      clientExperience: 0.1
+      titleMatch: 0.25,       // Reduced from 0.3
+      skillMatch: 0.35,       // Reduced from 0.4
+      locationMatch: 0.15,    // Reduced from 0.2
+      clientExperience: 0.25  // Increased from 0.1 - much higher importance
     };
     
     const compositeScore = (
