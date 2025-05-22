@@ -119,11 +119,223 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
     if (pastedData.length > 0) {
       console.log("Attempting to parse pasted data:", pastedData.length, "characters");
       
-      // First, check if this looks like tabular data with markdown-style table
-      const isTabularData = pastedData.includes('|') && 
-                          (pastedData.includes('Field') || 
-                           pastedData.includes('Details') || 
-                           pastedData.match(/\|\s*[-]+\s*\|/));
+      // Try to detect JSON format first
+      let isJsonData = false;
+      let jsonData = null;
+      
+      try {
+        // Check if this is JSON data (either complete JSON or JSON-like format)
+        if ((pastedData.trim().startsWith('{') && pastedData.trim().endsWith('}')) ||
+            pastedData.includes('":"') || pastedData.includes('": "')) {
+          
+          // Clean up the data if it's not properly formatted
+          let cleanedData = pastedData;
+          
+          // Replace single quotes with double quotes if needed
+          if (cleanedData.includes("'") && !cleanedData.includes('"')) {
+            cleanedData = cleanedData.replace(/'/g, '"');
+          }
+          
+          // Try to parse as JSON
+          jsonData = JSON.parse(cleanedData);
+          isJsonData = true;
+          console.log("Detected JSON format:", jsonData);
+        }
+      } catch (e) {
+        console.log("Not valid JSON, trying other formats:", e);
+      }
+      
+      if (isJsonData && jsonData) {
+        // Process JSON format
+        console.log("Processing JSON format data");
+        
+        // Map common field names to our form fields
+        const nameFields = ['Name', 'name', 'full name', 'fullName', 'full_name', 'legal name', 'legalName'];
+        const firstNameFields = ['firstName', 'first name', 'first_name', 'fname'];
+        const middleNameFields = ['middleName', 'middle name', 'middle_name', 'mname'];
+        const lastNameFields = ['lastName', 'last name', 'last_name', 'lname'];
+        const locationFields = ['Location', 'location', 'address', 'current location', 'currentLocation'];
+        const emailFields = ['Email', 'email', 'email address', 'emailAddress', 'email_address'];
+        const phoneFields = ['Phone', 'phone', 'phone number', 'phoneNumber', 'phone_number', 'mobile'];
+        const linkedInFields = ['LinkedIn', 'linkedin', 'linkedin url', 'linkedinUrl', 'linkedin_url'];
+        const authFields = ['Visa Type', 'visa type', 'visaType', 'visa', 'workAuthorization', 'work authorization', 'authorization'];
+        const dobFields = ['DOB', 'dob', 'date of birth', 'dateOfBirth', 'birth date', 'birthDate'];
+        const ssnFields = ['SSN', 'ssn', 'last four ssn', 'lastFourSSN', 'Last Four SSN', 'ssn4', 'SSN4'];
+        
+        // Helper to find value by field names
+        const findValueByFields = (fields: string[]) => {
+          for (const field of fields) {
+            if (jsonData && jsonData[field] !== undefined) {
+              return jsonData[field];
+            }
+          }
+          return null;
+        };
+        
+        // Process name
+        let fullName = findValueByFields(nameFields);
+        const firstName = findValueByFields(firstNameFields);
+        const middleName = findValueByFields(middleNameFields);
+        const lastName = findValueByFields(lastNameFields);
+        
+        if (fullName) {
+          console.log("Found full name:", fullName);
+          const nameParts = fullName.trim().split(/\s+/);
+          if (nameParts.length >= 2) {
+            form.setValue("firstName", nameParts[0]);
+            form.setValue("lastName", nameParts[nameParts.length - 1]);
+            
+            if (nameParts.length > 2) {
+              form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
+            }
+          }
+        } else {
+          if (firstName) form.setValue("firstName", firstName);
+          if (middleName) form.setValue("middleName", middleName);
+          if (lastName) form.setValue("lastName", lastName);
+        }
+        
+        // Process location
+        const location = findValueByFields(locationFields);
+        if (location) {
+          console.log("Found location:", location);
+          form.setValue("location", location);
+        }
+        
+        // Process email
+        const email = findValueByFields(emailFields);
+        if (email) {
+          console.log("Found email:", email);
+          form.setValue("email", email);
+        }
+        
+        // Process phone
+        const phone = findValueByFields(phoneFields);
+        if (phone) {
+          console.log("Found phone:", phone);
+          let cleanPhone = phone.toString().replace(/\D/g, '');
+          form.setValue("phone", cleanPhone);
+        }
+        
+        // Process LinkedIn
+        const linkedin = findValueByFields(linkedInFields);
+        if (linkedin) {
+          console.log("Found LinkedIn:", linkedin);
+          form.setValue("linkedIn", linkedin);
+        }
+        
+        // Process Work Authorization
+        const authorization = findValueByFields(authFields);
+        if (authorization) {
+          console.log("Found authorization:", authorization);
+          const authLower = authorization.toString().toLowerCase();
+          
+          if (authLower.includes('usc') || authLower.includes('citizen')) {
+            form.setValue("workAuthorization", "citizen");
+          } else if (authLower.match(/green\s*card/i) || authLower.match(/permanent\s*resident/i)) {
+            form.setValue("workAuthorization", "green-card");
+          } else if (authLower.match(/h-?1-?b/i) || authLower.match(/h1-?b/i)) {
+            form.setValue("workAuthorization", "h1b");
+          } else if (authLower.match(/ead/i) && !authLower.match(/h-?4/i)) {
+            form.setValue("workAuthorization", "ead");
+          } else if (authLower.match(/h-?4\s*ead/i) || (authLower.match(/h-?4/i) && authLower.match(/ead/i))) {
+            form.setValue("workAuthorization", "other");
+            setShowOtherAuthorizationInput(true);
+            setOtherAuthorization("H4 EAD");
+          } else if (authLower.match(/h-?4/i)) {
+            form.setValue("workAuthorization", "other");
+            setShowOtherAuthorizationInput(true);
+            setOtherAuthorization("H4");
+          } else {
+            form.setValue("workAuthorization", "other");
+            setShowOtherAuthorizationInput(true);
+            setOtherAuthorization(authorization);
+          }
+        }
+        
+        // Process DOB
+        const dob = findValueByFields(dobFields);
+        if (dob) {
+          console.log("Found DOB:", dob);
+          const dobStr = dob.toString();
+          
+          // First try to parse as a direct number in MM/DD format (could be without separator)
+          if (/^\d{4}$/.test(dobStr)) {
+            // Format could be MMDD without separators
+            const month = parseInt(dobStr.substring(0, 2));
+            const day = parseInt(dobStr.substring(2, 4));
+            
+            if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+              console.log(`Setting DOB from 4-digit format: Month=${month}, Day=${day}`);
+              form.setValue("dobMonth", month);
+              form.setValue("dobDay", day);
+            }
+          } else {
+            // Handle various date formats with separators
+            // Look for MM/DD/YYYY format first
+            const mmddyyyyMatch = dobStr.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+            // Then look for MM/DD format
+            const mmddMatch = dobStr.match(/(\d{1,2})[\/\-\.](\d{1,2})/);
+            // Also try to handle formats where DOB is just numbers directly (like "DOB: 06/07/1996")
+            const directMatch = /(\d{1,2})[\/\-\.](\d{1,2})/.exec(dobStr);
+            
+            // Process the matches in order of specificity
+            if (mmddyyyyMatch) {
+              let month = parseInt(mmddyyyyMatch[1]);
+              let day = parseInt(mmddyyyyMatch[2]);
+              
+              // Check if day and month need to be swapped (European format)
+              if (month > 12 && day <= 12) {
+                [month, day] = [day, month];
+              }
+              
+              console.log(`Setting DOB from MM/DD/YYYY: Month=${month}, Day=${day}`);
+              form.setValue("dobMonth", month);
+              form.setValue("dobDay", day);
+            } else if (mmddMatch) {
+              let month = parseInt(mmddMatch[1]);
+              let day = parseInt(mmddMatch[2]);
+              
+              // Check if day and month need to be swapped (European format)
+              if (month > 12 && day <= 12) {
+                [month, day] = [day, month];
+              }
+              
+              console.log(`Setting DOB from MM/DD: Month=${month}, Day=${day}`);
+              form.setValue("dobMonth", month);
+              form.setValue("dobDay", day);
+            } else if (directMatch) {
+              let month = parseInt(directMatch[1]);
+              let day = parseInt(directMatch[2]);
+              
+              if (month > 12 && day <= 12) {
+                [month, day] = [day, month];
+              }
+              
+              console.log(`Setting DOB from direct match: Month=${month}, Day=${day}`);
+              form.setValue("dobMonth", month);
+              form.setValue("dobDay", day);
+            }
+          }
+        }
+        
+        // Process SSN
+        const ssn = findValueByFields(ssnFields);
+        if (ssn) {
+          console.log("Found SSN:", ssn);
+          const ssnDigits = ssn.toString().replace(/\D/g, '');
+          if (ssnDigits.length >= 4) {
+            form.setValue("ssn4", ssnDigits.slice(-4));
+          } else if (ssnDigits.length > 0) {
+            form.setValue("ssn4", ssnDigits);
+          }
+        }
+      }
+      // Check if this looks like tabular data with markdown-style table
+      const isTabularData = !isJsonData && pastedData.includes('|') && 
+              (pastedData.includes('Field') || 
+               pastedData.includes('Details') || 
+               pastedData.match(/\|\s*[-]+\s*\|/));
                            
       if (isTabularData) {
         console.log("Detected tabular data format - parsing markdown table");
