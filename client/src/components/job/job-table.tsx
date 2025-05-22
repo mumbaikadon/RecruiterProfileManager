@@ -87,14 +87,17 @@ const JobTable: React.FC<JobTableProps> = ({
               >
                 <TableCell className="font-medium">{job.jobId}</TableCell>
                 <TableCell className="font-medium md:font-normal">
-                  <TooltipProvider>
-                    <Tooltip>
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip defaultOpen={false}>
                       <TooltipTrigger asChild>
-                        <span className="cursor-help border-b border-dotted border-muted-foreground">
+                        <span 
+                          className="cursor-help border-b border-dotted border-muted-foreground inline-block"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {job.title}
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs p-4">
+                      <TooltipContent side="bottom" align="start" className="bg-background border border-border shadow-md p-3 max-w-xs z-50">
                         <div className="space-y-2">
                           <h4 className="font-semibold">{job.title}</h4>
                           <div className="flex items-center text-sm text-muted-foreground">
