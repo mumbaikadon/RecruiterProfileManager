@@ -69,6 +69,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
       description: "",
       city: "",
       state: "",
+      jobType: "onsite",
       status: "active",
       createdBy: 1, // In a real app, this would be the current user's ID
       recruiterIds: []
@@ -161,6 +162,35 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
               <div className="sm:col-span-3">
                 <FormField
                   control={form.control}
+                  name="jobType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Job Type</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select job type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="onsite">Onsite</SelectItem>
+                          <SelectItem value="remote">Remote</SelectItem>
+                          <SelectItem value="hybrid">Hybrid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Select the work arrangement for this position
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="sm:col-span-3">
+                <FormField
+                  control={form.control}
                   name="city"
                   render={({ field }) => (
                     <FormItem>
@@ -189,7 +219,6 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                           <SelectValue placeholder="Select state" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Remote">Remote</SelectItem>
                           <SelectItem value="AL">Alabama</SelectItem>
                           <SelectItem value="AK">Alaska</SelectItem>
                           <SelectItem value="AZ">Arizona</SelectItem>
