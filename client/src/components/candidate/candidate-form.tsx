@@ -698,15 +698,20 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       // Extract DOB - multiple formats
       // Format: "DOB: 11th December 1993" or similar variations
       const dobFormatA = pastedData.match(/DOB:?\s*(\d{1,2})(?:st|nd|rd|th)?\s+([a-zA-Z]+)\s+(\d{4})/i);
-      // Format: MM/DD/YYYY or MM/DD with variations including "DOB : 06/25"
+      // Format: MM/DD/YYYY or MM/DD with variations including "DOB : 06/25" 
+      // First version matches "DOB: 06/07/1996" pattern specifically
       const dobFormatB = pastedData.match(/DOB\s*:?\s*(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?/i);
+      // Direct pattern for just MM/DD/YYYY format in text
+      const dobFormatD = pastedData.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+      // Special format for "Date of Birth (MM/DD): 03/11" from the attached content format
+      const dobFormatE = pastedData.match(/Date\s+of\s+Birth\s*\(MM\/DD\).*?:\s*(\d{1,2})\/(\d{1,2})/i);
 
       // Month name format - e.g., "January 15"
       const dobFormatC = pastedData.match(/Birth Month[^:]*:?\s*([a-zA-Z]+)/i);
       const dobDayFormatC = pastedData.match(/Birth Day[^:]*:?\s*(\d{1,2})/i);
 
       // Debug logging for DOB formats
-      console.log("DEBUG - DOB patterns:", { dobFormatA, dobFormatB });
+      console.log("DEBUG - DOB patterns:", { dobFormatA, dobFormatB, dobFormatD, dobFormatE });
 
       const monthNameToNumber = (month: string): number => {
         const months: {[key: string]: number} = {
@@ -730,6 +735,22 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         // MM/DD format
         const month = parseInt(dobFormatB[1]);
         const day = parseInt(dobFormatB[2]);
+        if (month > 0 && day > 0) {
+          form.setValue("dobMonth", month);
+          form.setValue("dobDay", day);
+        }
+      } else if (dobFormatD) {
+        // Direct MM/DD/YYYY format
+        const month = parseInt(dobFormatD[1]);
+        const day = parseInt(dobFormatD[2]);
+        if (month > 0 && day > 0) {
+          form.setValue("dobMonth", month);
+          form.setValue("dobDay", day);
+        }
+      } else if (dobFormatE) {
+        // Special format for "Date of Birth (MM/DD): 03/11"
+        const month = parseInt(dobFormatE[1]);
+        const day = parseInt(dobFormatE[2]);
         if (month > 0 && day > 0) {
           form.setValue("dobMonth", month);
           form.setValue("dobDay", day);
@@ -821,8 +842,10 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       const workAuthPatterns = [
         // Format: "Work Authorization: GC EAD" or similar
         pastedData.match(/work\s*authorization[^:]*:?\s*([^\n\r,;]+)/i),
+        // Format: "Visa Type: H1B" or similar (needed for your specific format)
+        pastedData.match(/visa\s*type[^:]*:?\s*([^\n\r,;]+)/i),
         // GC EAD, H1B, etc. specific formats
-        pastedData.match(/(?:GC\s*EAD|Green\s*Card|H1-?B|EAD|VISA|Citizen|STEM\s*OPT)/i),
+        pastedData.match(/(?:USC|US Citizen|GC\s*EAD|Green\s*Card|H[1-4]-?[B]?|EAD|VISA|Citizen|STEM\s*OPT)/i),
         // Key phrases
         pastedData.match(/(?:authorized\s*to\s*work|visa\s*status|work\s*permit)[^:]*:?\s*([^\n\r,;]+)/i)
       ];
@@ -835,7 +858,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         const authLower = authText.toLowerCase().trim();
 
         // Map common authorization texts to our dropdown values
-        if (authLower.includes('citizen')) {
+        if (authLower.includes('usc') || authLower.includes('citizen') || authLower.includes('us citizen')) {
           form.setValue("workAuthorization", "citizen");
         } else if (authLower.match(/green\s*card/i) || authLower.match(/permanent\s*resident/i)) {
           form.setValue("workAuthorization", "green-card");
@@ -843,6 +866,15 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           form.setValue("workAuthorization", "h1b");
         } else if (authLower.match(/ead/) || authLower.match(/gc\s*ead/i)) {
           form.setValue("workAuthorization", "ead");
+        } else if (authLower.match(/h-?4\s*ead/i) || (authLower.match(/h-?4/i) && authLower.match(/ead/i))) {
+          // Handle H4 EAD specifically, which is a common combination
+          form.setValue("workAuthorization", "other");
+          setShowOtherAuthorizationInput(true);
+          setOtherAuthorization("H4 EAD");
+        } else if (authLower.match(/h-?4/i)) {
+          form.setValue("workAuthorization", "other");
+          setShowOtherAuthorizationInput(true);
+          setOtherAuthorization("H4");
         } else if (authLower.match(/stem\s*opt/i) || authLower.match(/opt/i)) {
           // Handle STEM OPT and OPT as a special case
           form.setValue("workAuthorization", "other");
