@@ -5,8 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { useCheckCandidate } from "@/hooks/use-candidates";
 import { analyzeResume, matchResumeToJob, ResumeAnalysisResult } from "@/lib/openai";
-// sanitizeHtml is no longer needed since we removed resume analysis
-// import { sanitizeHtml } from "@/lib/utils";
 
 import {
   Form,
@@ -120,76 +118,238 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
     // Attempt to extract data from pasted text
     if (pastedData.length > 0) {
       console.log("Attempting to parse pasted data:", pastedData.length, "characters");
-      console.log("DEBUG - Pasted data:", pastedData);
-
-      // Check for multiple text formats and patterns
-
-      // Format 1: Pattern with -Label: Value format (like the first example)
-      const firstNamePattern1 = pastedData.match(/[-]?Legal First Name:?\s*([^\n\r]*)/i) || 
-                                pastedData.match(/[-]?First Name:?\s*([^\n\r]*)/i);
-      const middleNamePattern1 = pastedData.match(/[-]?Legal Middle Name:?\s*([^\n\r]*)/i) || 
-                                 pastedData.match(/[-]?Middle Name:?\s*([^\n\r]*)/i);
-      const lastNamePattern1 = pastedData.match(/[-]?Legal Last Name:?\s*([^\n\r]*)/i) || 
-                              pastedData.match(/[-]?Last Name:?\s*([^\n\r]*)/i);
-
-      // Format 2: Full legal name format (as per passport)
-      const fullNameMatch = pastedData.match(/(?:full legal name|your full legal name|as per passport|legal name):?\s*([^\n\r]*)/i);
-
-      // Format 3: Direct extraction of "Your full legal name (As per passport): Name"
-      const fullNameAsPerPassportMatch = pastedData.match(/your full legal name\s*\(as per passport\):?\s*([^\n\r]*)/i);
-
-      console.log("DEBUG - Extracted patterns:", {
-        firstNamePattern1,
-        middleNamePattern1,
-        lastNamePattern1,
-        fullNameMatch,
-        fullNameAsPerPassportMatch
-      });
-
-      // Apply matches in priority order
-      if (firstNamePattern1 && firstNamePattern1[1].trim()) {
-        form.setValue("firstName", firstNamePattern1[1].trim());
-      }
-
-      if (middleNamePattern1 && middleNamePattern1[1].trim()) {
-        form.setValue("middleName", middleNamePattern1[1].trim());
-      }
-
-      if (lastNamePattern1 && lastNamePattern1[1].trim()) {
-        form.setValue("lastName", lastNamePattern1[1].trim());
-      }
-
-      // Handle the specific format from the example: "Your full legal name (As per passport): Swornim Malla"
-      if (fullNameAsPerPassportMatch && fullNameAsPerPassportMatch[1].trim()) {
-        console.log("DEBUG - Found full name format with 'As per passport':", fullNameAsPerPassportMatch[1]);
-
-        const nameParts = fullNameAsPerPassportMatch[1].trim().split(/\s+/);
-        if (nameParts.length >= 2) {
-          // First part is first name
-          form.setValue("firstName", nameParts[0]);
-
-          // Last part is last name
-          form.setValue("lastName", nameParts[nameParts.length - 1]);
-
-          // Middle parts (if any) are middle name
-          if (nameParts.length > 2) {
-            form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
+      
+      // First, check if this looks like tabular data with markdown-style table
+      const isTabularData = pastedData.includes('|') && 
+                          (pastedData.includes('Field') || 
+                           pastedData.includes('Details') || 
+                           pastedData.match(/\|\s*[-]+\s*\|/));
+                           
+      if (isTabularData) {
+        console.log("Detected tabular data format - parsing markdown table");
+        
+        // Extract field-value pairs from the markdown table
+        const tableRows = pastedData.split('\n').filter(line => line.includes('|'));
+        
+        // Create a map to store the extracted field-value pairs
+        const fieldMap: Record<string, string> = {};
+        
+        // Process each row to extract field and value
+        tableRows.forEach(row => {
+          const columns = row.split('|');
+          if (columns.length >= 3) {
+            const field = columns[1].replace(/\*\*/g, '').trim();
+            const value = columns[2].trim();
+            
+            if (field && value && !field.includes('---')) {
+              fieldMap[field.toLowerCase()] = value;
+            }
+          }
+        });
+        
+        console.log("Extracted field map:", fieldMap);
+        
+        // Process full name
+        const fullNameKey = Object.keys(fieldMap).find(key => 
+          key.includes('full legal name') || 
+          key.includes('full name') || 
+          key.includes('legal name')
+        );
+        
+        if (fullNameKey && fieldMap[fullNameKey]) {
+          const nameParts = fieldMap[fullNameKey].split(/\s+/);
+          if (nameParts.length >= 2) {
+            form.setValue("firstName", nameParts[0]);
+            form.setValue("lastName", nameParts[nameParts.length - 1]);
+            
+            if (nameParts.length > 2) {
+              form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
+            }
           }
         }
-      }
-      // If we have a full name match but not individual components, try to parse it
-      else if (fullNameMatch && (!firstNamePattern1 || !lastNamePattern1)) {
-        const nameParts = fullNameMatch[1].trim().split(/\s+/);
-        if (nameParts.length >= 2) {
-          // First part is first name
-          form.setValue("firstName", nameParts[0]);
+        
+        // Process phone
+        const phoneKey = Object.keys(fieldMap).find(key => 
+          key.includes('phone') || 
+          key.includes('contact number')
+        );
+        
+        if (phoneKey && fieldMap[phoneKey]) {
+          const phone = fieldMap[phoneKey].replace(/\D/g, '');
+          if (phone.length >= 10) {
+            form.setValue("phone", fieldMap[phoneKey]);
+          }
+        }
+        
+        // Process email
+        const emailKey = Object.keys(fieldMap).find(key => 
+          key.includes('email')
+        );
+        
+        if (emailKey && fieldMap[emailKey]) {
+          // Handle potential markdown link format [email](mailto:email)
+          const emailText = fieldMap[emailKey];
+          const emailMatch = emailText.match(/\[([^\]]+)\]/);
+          const emailValue = emailMatch ? emailMatch[1] : emailText;
+          form.setValue("email", emailValue);
+        }
+        
+        // Process location
+        const locationKey = Object.keys(fieldMap).find(key => 
+          key.includes('location') || 
+          key.includes('address') ||
+          key.includes('city')
+        );
+        
+        if (locationKey && fieldMap[locationKey]) {
+          form.setValue("location", fieldMap[locationKey]);
+        }
+        
+        // Process work authorization
+        const authKey = Object.keys(fieldMap).find(key => 
+          key.includes('work authorization') || 
+          key.includes('visa') ||
+          key.includes('work permit')
+        );
+        
+        if (authKey && fieldMap[authKey]) {
+          const authText = fieldMap[authKey];
+          const authLower = authText.toLowerCase();
+          
+          if (authLower.includes('citizen')) {
+            form.setValue("workAuthorization", "citizen");
+          } else if (authLower.match(/green\s*card/i) || authLower.match(/permanent\s*resident/i)) {
+            form.setValue("workAuthorization", "green-card");
+          } else if (authLower.match(/h-?1-?b/i) || authLower.match(/h1-?b/i)) {
+            form.setValue("workAuthorization", "h1b");
+          } else if (authLower.match(/ead/) || authLower.match(/gc\s*ead/i)) {
+            form.setValue("workAuthorization", "ead");
+          } else if (authLower.match(/h-?4/i)) {
+            form.setValue("workAuthorization", "other");
+            setShowOtherAuthorizationInput(true);
+            setOtherAuthorization(authText);
+          } else {
+            form.setValue("workAuthorization", "other");
+            setShowOtherAuthorizationInput(true);
+            setOtherAuthorization(authText);
+          }
+        }
+        
+        // Process DOB
+        const dobKey = Object.keys(fieldMap).find(key => 
+          key.includes('date of birth') || 
+          key.includes('dob') ||
+          key.includes('birth date')
+        );
+        
+        if (dobKey && fieldMap[dobKey]) {
+          const dobText = fieldMap[dobKey];
+          const mmddMatch = dobText.match(/(\d{1,2})[\/\-](\d{1,2})/);
+          
+          if (mmddMatch) {
+            const month = parseInt(mmddMatch[1]);
+            const day = parseInt(mmddMatch[2]);
+            
+            if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+              form.setValue("dobMonth", month);
+              form.setValue("dobDay", day);
+            }
+          }
+        }
+        
+        // Process LinkedIn
+        const linkedinKey = Object.keys(fieldMap).find(key => 
+          key.includes('linkedin')
+        );
+        
+        if (linkedinKey && fieldMap[linkedinKey]) {
+          const linkedinText = fieldMap[linkedinKey];
+          // Handle markdown link format [link](url)
+          const linkedinMatch = linkedinText.match(/\[([^\]]+)\]\(([^)]+)\)/);
+          let linkedinUrl = linkedinText;
+          
+          if (linkedinMatch) {
+            linkedinUrl = linkedinMatch[2];
+          } else if (!linkedinText.startsWith('http')) {
+            // If it's just the profile without http, add the prefix
+            linkedinUrl = linkedinText.includes('linkedin.com') 
+              ? `https://www.${linkedinText}` 
+              : `https://www.linkedin.com/in/${linkedinText}`;
+          }
+          
+          form.setValue("linkedIn", linkedinUrl);
+        }
+        
+        // Process SSN
+        const ssnKey = Object.keys(fieldMap).find(key => 
+          key.includes('ssn') ||
+          key.includes('social security')
+        );
+        
+        if (ssnKey && fieldMap[ssnKey]) {
+          const ssnText = fieldMap[ssnKey];
+          const ssnDigits = ssnText.replace(/\D/g, '');
+          
+          if (ssnDigits.length >= 4) {
+            form.setValue("ssn4", ssnDigits.slice(-4));
+          }
+        }
+      } else {
+        // Non-tabular format - use regex patterns
+        
+        // Extract name information
+        const firstNameMatch = pastedData.match(/[-]?Legal First Name:?\s*([^\n\r]*)/i) || 
+                              pastedData.match(/[-]?First Name:?\s*([^\n\r]*)/i);
+        const middleNameMatch = pastedData.match(/[-]?Legal Middle Name:?\s*([^\n\r]*)/i) || 
+                               pastedData.match(/[-]?Middle Name:?\s*([^\n\r]*)/i);
+        const lastNameMatch = pastedData.match(/[-]?Legal Last Name:?\s*([^\n\r]*)/i) || 
+                             pastedData.match(/[-]?Last Name:?\s*([^\n\r]*)/i);
+        
+        // Full name patterns
+        const fullNameMatch = pastedData.match(/(?:full legal name|your full legal name|as per passport|legal name):?\s*([^\n\r]*)/i);
+        const fullNameAsPerPassportMatch = pastedData.match(/your full legal name\s*\(as per passport\):?\s*([^\n\r]*)/i);
+        
+        // Apply name matches in priority order
+        if (firstNameMatch && firstNameMatch[1].trim()) {
+          form.setValue("firstName", firstNameMatch[1].trim());
+        }
+        
+        if (middleNameMatch && middleNameMatch[1].trim()) {
+          form.setValue("middleName", middleNameMatch[1].trim());
+        }
+        
+        if (lastNameMatch && lastNameMatch[1].trim()) {
+          form.setValue("lastName", lastNameMatch[1].trim());
+        }
 
-          // Last part is last name
-          form.setValue("lastName", nameParts[nameParts.length - 1]);
+        // Handle full name patterns
+        if (fullNameAsPerPassportMatch && fullNameAsPerPassportMatch[1].trim()) {
+          console.log("Found full name format with 'As per passport':", fullNameAsPerPassportMatch[1]);
 
-          // Middle parts (if any) are middle name
-          if (nameParts.length > 2) {
-            form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
+          const nameParts = fullNameAsPerPassportMatch[1].trim().split(/\s+/);
+          if (nameParts.length >= 2) {
+            form.setValue("firstName", nameParts[0]);
+            form.setValue("lastName", nameParts[nameParts.length - 1]);
+            
+            if (nameParts.length > 2) {
+              form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
+            }
+          }
+        }
+        // If we have a full name match but not individual components, try to parse it
+        else if (fullNameMatch) {
+          const nameParts = fullNameMatch[1].trim().split(/\s+/);
+          if (nameParts.length >= 2) {
+            // First part is first name
+            form.setValue("firstName", nameParts[0]);
+
+            // Last part is last name
+            form.setValue("lastName", nameParts[nameParts.length - 1]);
+
+            // Middle parts (if any) are middle name
+            if (nameParts.length > 2) {
+              form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
+            }
           }
         }
       }
