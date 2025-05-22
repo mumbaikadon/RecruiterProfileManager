@@ -41,6 +41,7 @@ const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   jobId: z.string().min(3, "Job ID must be at least 3 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
+  location: z.string().optional(),
   status: z.enum(["active", "reviewing", "closed"]).default("active"),
   createdBy: z.number().optional(),
   recruiterIds: z.array(z.number()).min(1, "You must assign at least one recruiter")
@@ -64,6 +65,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
       title: "",
       jobId: "",
       description: "",
+      location: "",
       status: "active",
       createdBy: 1, // In a real app, this would be the current user's ID
       recruiterIds: []
@@ -147,6 +149,44 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                       <FormControl>
                         <Input placeholder="e.g. JOB-2025-001" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="sm:col-span-6">
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location</FormLabel>
+                      <div className="flex space-x-2">
+                        <FormControl>
+                          <Input placeholder="e.g. San Francisco, CA" {...field} />
+                        </FormControl>
+                        <Select
+                          onValueChange={(value) => {
+                            if (value) field.onChange(value);
+                          }}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Remote">Remote</SelectItem>
+                            <SelectItem value="New York, NY">New York, NY</SelectItem>
+                            <SelectItem value="San Francisco, CA">San Francisco, CA</SelectItem>
+                            <SelectItem value="Seattle, WA">Seattle, WA</SelectItem>
+                            <SelectItem value="Austin, TX">Austin, TX</SelectItem>
+                            <SelectItem value="Chicago, IL">Chicago, IL</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <FormDescription>
+                        Select from common locations or enter a custom one.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
