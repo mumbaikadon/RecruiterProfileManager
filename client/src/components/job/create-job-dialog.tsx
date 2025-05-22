@@ -43,6 +43,7 @@ const formSchema = z.object({
   description: z.string().min(20, "Description must be at least 20 characters"),
   city: z.string().optional(),
   state: z.string().optional(),
+  jobType: z.enum(["onsite", "remote", "hybrid"]).default("onsite"),
   status: z.enum(["active", "reviewing", "closed"]).default("active"),
   createdBy: z.number().optional(),
   recruiterIds: z.array(z.number()).min(1, "You must assign at least one recruiter")
