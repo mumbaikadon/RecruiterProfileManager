@@ -202,7 +202,19 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         );
         
         if (locationKey && fieldMap[locationKey]) {
-          form.setValue("location", fieldMap[locationKey]);
+          // Location is often in "City, State" format (e.g., "Austin, TX")
+          const locationValue = fieldMap[locationKey];
+          console.log("Found location:", locationValue);
+          
+          // Try to intelligently parse the location
+          const cityStateMatch = locationValue.match(/([^,]+),\s*([A-Z]{2})/);
+          
+          if (cityStateMatch) {
+            // We have a format like "Austin, TX"
+            console.log(`Parsed location: City=${cityStateMatch[1]}, State=${cityStateMatch[2]}`);
+          }
+          
+          form.setValue("location", locationValue);
         }
         
         // Process work authorization
@@ -216,18 +228,25 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           const authText = fieldMap[authKey];
           const authLower = authText.toLowerCase();
           
+          console.log("Found work authorization:", authText);
+          
           if (authLower.includes('citizen')) {
             form.setValue("workAuthorization", "citizen");
           } else if (authLower.match(/green\s*card/i) || authLower.match(/permanent\s*resident/i)) {
             form.setValue("workAuthorization", "green-card");
           } else if (authLower.match(/h-?1-?b/i) || authLower.match(/h1-?b/i)) {
             form.setValue("workAuthorization", "h1b");
-          } else if (authLower.match(/ead/) || authLower.match(/gc\s*ead/i)) {
+          } else if (authLower.match(/ead/i) && !authLower.match(/h-?4/i)) {
             form.setValue("workAuthorization", "ead");
+          } else if (authLower.match(/h-?4\s*ead/i) || (authLower.match(/h-?4/i) && authLower.match(/ead/i))) {
+            // Handle H4 EAD specifically, which is a common combination
+            form.setValue("workAuthorization", "other");
+            setShowOtherAuthorizationInput(true);
+            setOtherAuthorization("H4 EAD");
           } else if (authLower.match(/h-?4/i)) {
             form.setValue("workAuthorization", "other");
             setShowOtherAuthorizationInput(true);
-            setOtherAuthorization(authText);
+            setOtherAuthorization("H4");
           } else {
             form.setValue("workAuthorization", "other");
             setShowOtherAuthorizationInput(true);
@@ -244,13 +263,23 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         
         if (dobKey && fieldMap[dobKey]) {
           const dobText = fieldMap[dobKey];
+          console.log("Found DOB text:", dobText);
+          
+          // Handle MM/DD format (most common in the tabular data)
           const mmddMatch = dobText.match(/(\d{1,2})[\/\-](\d{1,2})/);
           
           if (mmddMatch) {
-            const month = parseInt(mmddMatch[1]);
-            const day = parseInt(mmddMatch[2]);
+            let month = parseInt(mmddMatch[1]);
+            let day = parseInt(mmddMatch[2]);
+            
+            // Check if the format is actually DD/MM instead of MM/DD
+            if (month > 12 && day <= 12) {
+              // Swap if the first number is clearly a day (>12)
+              [month, day] = [day, month];
+            }
             
             if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+              console.log(`Setting DOB: Month=${month}, Day=${day}`);
               form.setValue("dobMonth", month);
               form.setValue("dobDay", day);
             }
