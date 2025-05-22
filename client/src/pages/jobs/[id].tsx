@@ -303,9 +303,10 @@ const JobDetailPage: React.FC = () => {
         {/* Right column - Tabs for description and submissions */}
         <div className="md:col-span-2">
           <Tabs defaultValue="description">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="description">Job Description</TabsTrigger>
               <TabsTrigger value="submissions">Candidate Submissions</TabsTrigger>
+              <TabsTrigger value="recommended">Recommended Candidates</TabsTrigger>
             </TabsList>
             
             <TabsContent value="description" className="mt-4">
@@ -357,6 +358,17 @@ const JobDetailPage: React.FC = () => {
                   />
                 </CardContent>
               </Card>
+            </TabsContent>
+            
+            <TabsContent value="recommended" className="mt-4">
+              <RecommendedCandidates 
+                jobId={numericId}
+                onSubmitCandidate={(candidateId) => {
+                  // When a candidate is selected from recommendations, open the submission dialog
+                  setIsSubmissionDialogOpen(true);
+                  // In a full implementation, we would pre-select this candidate in the dialog
+                }}
+              />
             </TabsContent>
           </Tabs>
         </div>
