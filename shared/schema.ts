@@ -21,6 +21,7 @@ export const jobs = pgTable("jobs", {
   description: text("description").notNull(),
   city: text("city"), // City for job location
   state: text("state"), // State for job location
+  jobType: text("job_type", { enum: ["onsite", "remote", "hybrid"] }), // Job type (onsite, remote, hybrid)
   status: text("status", { enum: ["active", "reviewing", "closed"] }).notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").references(() => users.id),
