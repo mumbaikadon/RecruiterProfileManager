@@ -41,6 +41,7 @@ const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   jobId: z.string().min(3, "Job ID must be at least 3 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
+  clientFocus: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   jobType: z.enum(["onsite", "remote", "hybrid"]).default("onsite"),
@@ -67,6 +68,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
       title: "",
       jobId: "",
       description: "",
+      clientFocus: "",
       city: "",
       state: "",
       jobType: "onsite",
@@ -294,6 +296,29 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                       </FormControl>
                       <FormDescription>
                         This description will be used for candidate matching.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="sm:col-span-6">
+                <FormField
+                  control={form.control}
+                  name="clientFocus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Client Focus Areas</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter specific skills or focus areas the client is prioritizing (e.g., payment integration experience, cloud migration, etc.)..." 
+                          rows={3} 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        <strong>Most important areas client is focusing on</strong> - These skills/experiences will be given extra weight in candidate matching.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

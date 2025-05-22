@@ -24,10 +24,11 @@ async function runMigration() {
     ADD COLUMN IF NOT EXISTS last_updated_by INTEGER REFERENCES users(id);
   `);
   
-  // Add job_type column to jobs table
+  // Add job_type and client_focus columns to jobs table
   await pool.query(`
     ALTER TABLE IF EXISTS jobs
-    ADD COLUMN IF NOT EXISTS job_type TEXT CHECK (job_type IN ('onsite', 'remote', 'hybrid'));
+    ADD COLUMN IF NOT EXISTS job_type TEXT CHECK (job_type IN ('onsite', 'remote', 'hybrid')),
+    ADD COLUMN IF NOT EXISTS client_focus TEXT;
   `);
   
   console.log('Database migration completed successfully.');
