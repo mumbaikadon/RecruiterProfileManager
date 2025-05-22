@@ -143,6 +143,22 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         }
       } catch (e) {
         console.log("Not valid JSON, trying other formats:", e);
+        // Try to normalize some common formatting issues in JSON
+        try {
+          // Handle trailing commas that cause JSON parse errors
+          if (pastedData.includes(',') && pastedData.includes('{') && pastedData.includes('}')) {
+            const normalizedData = pastedData
+              .replace(/,\s*}/g, '}')  // Remove trailing commas before closing braces
+              .replace(/,\s*\n\s*}/g, '\n}') // Remove trailing commas before newline then closing brace
+              .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":'); // Ensure property names are quoted
+            
+            jsonData = JSON.parse(normalizedData);
+            isJsonData = true;
+            console.log("Parsed normalized JSON format:", jsonData);
+          }
+        } catch(e2) {
+          console.log("Failed to normalize and parse JSON:", e2);
+        }
       }
       
       if (isJsonData && jsonData) {
@@ -230,7 +246,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           console.log("Found authorization:", authorization);
           const authLower = authorization.toString().toLowerCase();
           
-          if (authLower.includes('usc') || authLower.includes('citizen')) {
+          if (authLower.includes('usc') || authLower.includes('citizen') || authLower.includes('us citizen')) {
             form.setValue("workAuthorization", "citizen");
           } else if (authLower.match(/green\s*card/i) || authLower.match(/permanent\s*resident/i)) {
             form.setValue("workAuthorization", "green-card");
@@ -250,6 +266,41 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             form.setValue("workAuthorization", "other");
             setShowOtherAuthorizationInput(true);
             setOtherAuthorization(authorization);
+          }
+        }
+        
+        // Check for work authorization in any field if not found in specific work auth fields
+        if (!form.getValues("workAuthorization")) {
+          for (const key in jsonData) {
+            const value = jsonData[key];
+            if (typeof value === 'string') {
+              const valueStr = value.toString().toLowerCase();
+              
+              // Check common authorization words in any field
+              if (valueStr.includes('usc') || valueStr.includes('citizen') || valueStr.includes('us citizen')) {
+                console.log(`Found US Citizen work authorization in field ${key}: ${value}`);
+                form.setValue("workAuthorization", "citizen");
+                break;
+              } else if (valueStr.match(/green\s*card/i) || valueStr.match(/permanent\s*resident/i)) {
+                console.log(`Found Green Card work authorization in field ${key}: ${value}`);
+                form.setValue("workAuthorization", "green-card");
+                break;
+              } else if (valueStr.match(/h-?1-?b/i) || valueStr.match(/h1-?b/i)) {
+                console.log(`Found H1B work authorization in field ${key}: ${value}`);
+                form.setValue("workAuthorization", "h1b");
+                break;
+              } else if (valueStr.match(/h-?4\s*ead/i) || (valueStr.match(/h-?4/i) && valueStr.match(/ead/i))) {
+                console.log(`Found H4 EAD work authorization in field ${key}: ${value}`);
+                form.setValue("workAuthorization", "other");
+                setShowOtherAuthorizationInput(true);
+                setOtherAuthorization("H4 EAD");
+                break;
+              } else if (valueStr.match(/\bead\b/i) && !valueStr.match(/h-?4/i)) {
+                console.log(`Found EAD work authorization in field ${key}: ${value}`);
+                form.setValue("workAuthorization", "ead");
+                break;
+              }
+            }
           }
         }
         
@@ -273,7 +324,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           } else {
             // Handle various date formats with separators
             // Look for date formats with year (MM/DD/YYYY or DD/MM/YYYY)
-            const dateWithYearMatch = dobStr.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+            const dateWithYearMatch = dobStr.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
             // Then look for date formats without year (MM/DD or DD/MM)
             const dateWithoutYearMatch = dobStr.match(/(\d{1,2})[\/\-\.](\d{1,2})/);
             // Also try to handle formats where DOB is just numbers directly (like "DOB: 06/07/1996")
@@ -337,6 +388,33 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
               console.log(`Setting DOB from direct match: Month=${month}, Day=${day}`);
               form.setValue("dobMonth", month);
               form.setValue("dobDay", day);
+            }
+          }
+        } 
+        
+        // Handle DOB values formatted as MM/DD/YYYY where the fields are together with no key
+        // Example: DOB: 06/07/1996 (where we need to extract the month and day)
+        if (!form.getValues("dobMonth") || !form.getValues("dobDay")) {
+          // Look for date patterns in any object values
+          for (const key in jsonData) {
+            const value = jsonData[key];
+            if (typeof value === 'string' || typeof value === 'number') {
+              const valueStr = value.toString();
+              // Check for date patterns in the value
+              const dateMatch = valueStr.match(/(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{2,4}))?/);
+              if (dateMatch) {
+                let month = parseInt(dateMatch[1]);
+                let day = parseInt(dateMatch[2]);
+                
+                // If the value looks like a date and no DOB has been set yet, use it
+                if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                  console.log(`Found potential date in field ${key}: ${valueStr}`);
+                  console.log(`Setting DOB from field value: Month=${month}, Day=${day}`);
+                  form.setValue("dobMonth", month);
+                  form.setValue("dobDay", day);
+                  break;
+                }
+              }
             }
           }
         }
