@@ -20,6 +20,8 @@ interface ResumeAnalyzerProps {
  */
 const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({ 
   jobDescription, 
+  jobId,
+  clientFocus,
   onAnalysisComplete 
 }) => {
   const [file, setFile] = useState<File | null>(null);
@@ -56,7 +58,7 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
           variant: "destructive",
         });
         
-        // Provide empty match result if no job description
+        // Provide empty match result if no job description (with client focus fields for consistency)
         const emptyMatchResult = {
           score: 0,
           strengths: [],
@@ -65,6 +67,13 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
           technicalGaps: [],
           matchingSkills: [],
           missingSkills: [],
+          
+          // Include empty client focus fields for consistency
+          clientFocusScore: 0,
+          clientFocusMatches: [],
+          clientFocusMissing: [],
+          
+          // Legacy fields
           clientExperience: "",
           confidence: 0
         };
@@ -78,16 +87,36 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
       console.log("Resume text:", result.text.substring(0, 100) + "...");
       console.log("Job description:", jobDescription.substring(0, 100) + "...");
       
-      const matchResult = await matchResumeToJob(result.text, jobDescription);
+      const matchResult = await matchResumeToJob(
+        result.text, 
+        jobDescription,
+        undefined, // candidateId (optional)
+        jobId,     // pass the job ID if available
+        clientFocus // pass client focus if available
+      );
       
       console.log("Match result:", matchResult);
       
-      // Update the analysis object with the structured employment history from the match result
+      // Log client focus matching details if available
+      if (clientFocus) {
+        console.log("Client focus used for matching:", clientFocus);
+        console.log("Client focus score:", matchResult.clientFocusScore);
+        console.log("Client focus matches:", matchResult.clientFocusMatches);
+        console.log("Client focus missing skills:", matchResult.clientFocusMissing);
+      }
+      
+      // Update the analysis object with the structured employment history and client focus match data
       const updatedAnalysis = {
         ...result.analysis,
+        // Employment history data
         clientNames: matchResult.clientNames || [],
         jobTitles: matchResult.jobTitles || [],
-        relevantDates: matchResult.relevantDates || []
+        relevantDates: matchResult.relevantDates || [],
+        
+        // Client focus match data
+        clientFocusScore: matchResult.clientFocusScore || 0,
+        clientFocusMatches: matchResult.clientFocusMatches || [],
+        clientFocusMissing: matchResult.clientFocusMissing || []
       };
       
       console.log("Complete resume analysis with employment history:", updatedAnalysis);
@@ -95,9 +124,17 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
       // Pass updated results to parent component
       onAnalysisComplete(updatedAnalysis, matchResult);
 
+      // Prepare a more detailed toast message that includes client focus information when available
+      let toastMessage = `Resume analyzed with match score of ${matchResult.score}%.`;
+      
+      // Add client focus information if available
+      if (clientFocus && matchResult.clientFocusScore) {
+        toastMessage += ` Client focus match: ${matchResult.clientFocusScore}%.`;
+      }
+      
       toast({
         title: "Resume Analyzed",
-        description: `Resume analyzed with match score of ${matchResult.score}%.`,
+        description: toastMessage,
       });
     } catch (error) {
       console.error("Error processing resume:", error);
@@ -107,7 +144,7 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
         variant: "destructive",
       });
       
-      // Provide error match result
+      // Provide error match result with client focus fields for consistency
       const errorMatchResult = {
         score: 0,
         strengths: [],
@@ -116,6 +153,13 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
         technicalGaps: [],
         matchingSkills: [],
         missingSkills: [],
+        
+        // Include empty client focus fields for consistency
+        clientFocusScore: 0,
+        clientFocusMatches: [],
+        clientFocusMissing: [],
+        
+        // Legacy fields
         clientExperience: "",
         confidence: 0
       };
@@ -123,13 +167,19 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
       // If resume was successfully processed but matching failed, still pass the resume data
       if (file) {
         const basicInfo = {
+          // Basic resume data
           clientNames: [],
           jobTitles: [],
           relevantDates: [],
           skills: [],
           education: [],
           extractedText: `Resume file: ${file.name}`,
-          fileName: file.name
+          fileName: file.name,
+          
+          // Include empty client focus fields for consistency
+          clientFocusScore: 0,
+          clientFocusMatches: [],
+          clientFocusMissing: []
         };
         
         onAnalysisComplete(basicInfo, errorMatchResult);
