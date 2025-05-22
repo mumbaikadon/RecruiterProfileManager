@@ -19,6 +19,7 @@ export const jobs = pgTable("jobs", {
   jobId: text("job_id").notNull().unique(), // External job ID (e.g., JOB-2023-001)
   title: text("title").notNull(),
   description: text("description").notNull(),
+  clientFocus: text("client_focus"), // Key skills/areas that client is focusing on
   city: text("city"), // City for job location
   state: text("state"), // State for job location
   jobType: text("job_type", { enum: ["onsite", "remote", "hybrid"] }), // Job type (onsite, remote, hybrid)
