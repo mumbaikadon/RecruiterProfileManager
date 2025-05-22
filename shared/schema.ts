@@ -19,7 +19,8 @@ export const jobs = pgTable("jobs", {
   jobId: text("job_id").notNull().unique(), // External job ID (e.g., JOB-2023-001)
   title: text("title").notNull(),
   description: text("description").notNull(),
-  location: text("location"), // City, State for job location
+  city: text("city"), // City for job location
+  state: text("state"), // State for job location
   status: text("status", { enum: ["active", "reviewing", "closed"] }).notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").references(() => users.id),
