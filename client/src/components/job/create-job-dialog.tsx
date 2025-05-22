@@ -41,7 +41,8 @@ const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   jobId: z.string().min(3, "Job ID must be at least 3 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
-  location: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
   status: z.enum(["active", "reviewing", "closed"]).default("active"),
   createdBy: z.number().optional(),
   recruiterIds: z.array(z.number()).min(1, "You must assign at least one recruiter")
@@ -65,7 +66,8 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
       title: "",
       jobId: "",
       description: "",
-      location: "",
+      city: "",
+      state: "",
       status: "active",
       createdBy: 1, // In a real app, this would be the current user's ID
       recruiterIds: []
@@ -155,38 +157,91 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                 />
               </div>
 
-              <div className="sm:col-span-6">
+              <div className="sm:col-span-3">
                 <FormField
                   control={form.control}
-                  name="location"
+                  name="city"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <div className="flex space-x-2">
-                        <FormControl>
-                          <Input placeholder="e.g. San Francisco, CA" {...field} />
-                        </FormControl>
-                        <Select
-                          onValueChange={(value) => {
-                            if (value) field.onChange(value);
-                          }}
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Select location" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Remote">Remote</SelectItem>
-                            <SelectItem value="New York, NY">New York, NY</SelectItem>
-                            <SelectItem value="San Francisco, CA">San Francisco, CA</SelectItem>
-                            <SelectItem value="Seattle, WA">Seattle, WA</SelectItem>
-                            <SelectItem value="Austin, TX">Austin, TX</SelectItem>
-                            <SelectItem value="Chicago, IL">Chicago, IL</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <FormDescription>
-                        Select from common locations or enter a custom one.
-                      </FormDescription>
+                      <FormLabel>City</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. San Francisco" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="sm:col-span-3">
+                <FormField
+                  control={form.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select state" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Remote">Remote</SelectItem>
+                          <SelectItem value="AL">Alabama</SelectItem>
+                          <SelectItem value="AK">Alaska</SelectItem>
+                          <SelectItem value="AZ">Arizona</SelectItem>
+                          <SelectItem value="AR">Arkansas</SelectItem>
+                          <SelectItem value="CA">California</SelectItem>
+                          <SelectItem value="CO">Colorado</SelectItem>
+                          <SelectItem value="CT">Connecticut</SelectItem>
+                          <SelectItem value="DE">Delaware</SelectItem>
+                          <SelectItem value="FL">Florida</SelectItem>
+                          <SelectItem value="GA">Georgia</SelectItem>
+                          <SelectItem value="HI">Hawaii</SelectItem>
+                          <SelectItem value="ID">Idaho</SelectItem>
+                          <SelectItem value="IL">Illinois</SelectItem>
+                          <SelectItem value="IN">Indiana</SelectItem>
+                          <SelectItem value="IA">Iowa</SelectItem>
+                          <SelectItem value="KS">Kansas</SelectItem>
+                          <SelectItem value="KY">Kentucky</SelectItem>
+                          <SelectItem value="LA">Louisiana</SelectItem>
+                          <SelectItem value="ME">Maine</SelectItem>
+                          <SelectItem value="MD">Maryland</SelectItem>
+                          <SelectItem value="MA">Massachusetts</SelectItem>
+                          <SelectItem value="MI">Michigan</SelectItem>
+                          <SelectItem value="MN">Minnesota</SelectItem>
+                          <SelectItem value="MS">Mississippi</SelectItem>
+                          <SelectItem value="MO">Missouri</SelectItem>
+                          <SelectItem value="MT">Montana</SelectItem>
+                          <SelectItem value="NE">Nebraska</SelectItem>
+                          <SelectItem value="NV">Nevada</SelectItem>
+                          <SelectItem value="NH">New Hampshire</SelectItem>
+                          <SelectItem value="NJ">New Jersey</SelectItem>
+                          <SelectItem value="NM">New Mexico</SelectItem>
+                          <SelectItem value="NY">New York</SelectItem>
+                          <SelectItem value="NC">North Carolina</SelectItem>
+                          <SelectItem value="ND">North Dakota</SelectItem>
+                          <SelectItem value="OH">Ohio</SelectItem>
+                          <SelectItem value="OK">Oklahoma</SelectItem>
+                          <SelectItem value="OR">Oregon</SelectItem>
+                          <SelectItem value="PA">Pennsylvania</SelectItem>
+                          <SelectItem value="RI">Rhode Island</SelectItem>
+                          <SelectItem value="SC">South Carolina</SelectItem>
+                          <SelectItem value="SD">South Dakota</SelectItem>
+                          <SelectItem value="TN">Tennessee</SelectItem>
+                          <SelectItem value="TX">Texas</SelectItem>
+                          <SelectItem value="UT">Utah</SelectItem>
+                          <SelectItem value="VT">Vermont</SelectItem>
+                          <SelectItem value="VA">Virginia</SelectItem>
+                          <SelectItem value="WA">Washington</SelectItem>
+                          <SelectItem value="WV">West Virginia</SelectItem>
+                          <SelectItem value="WI">Wisconsin</SelectItem>
+                          <SelectItem value="WY">Wyoming</SelectItem>
+                          <SelectItem value="DC">District of Columbia</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
