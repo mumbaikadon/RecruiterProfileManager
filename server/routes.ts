@@ -10,6 +10,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
+import { findRecommendedCandidates } from "./recommendation-engine";
 import fs from "fs";
 import multer from "multer";
 
@@ -96,6 +97,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = insertJobSchema.parse(req.body);
       const job = await storage.createJob(validatedData);
+      
+      // After job creation, we'll find suitable candidates in the background
+      // This won't block the response to the client
+      findRecommendedCandidates(job.id, 10).catch(error => {
+        console.error("Error finding recommended candidates:", error);
+      });
 
       // Assign recruiters if provided
       if (req.body.recruiterIds && Array.isArray(req.body.recruiterIds)) {
