@@ -40,6 +40,7 @@ import { Plus } from "lucide-react";
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   jobId: z.string().min(3, "Job ID must be at least 3 characters"),
+  clientName: z.string().optional(),
   description: z.string().min(20, "Description must be at least 20 characters"),
   clientFocus: z.string().optional(),
   city: z.string().optional(),
@@ -67,6 +68,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
     defaultValues: {
       title: "",
       jobId: "",
+      clientName: "",
       description: "",
       clientFocus: "",
       city: "",
@@ -154,6 +156,22 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                       <FormLabel>Job ID</FormLabel>
                       <FormControl>
                         <Input placeholder="e.g. JOB-2025-001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="sm:col-span-3">
+                <FormField
+                  control={form.control}
+                  name="clientName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Client Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Acme Corporation" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -17,6 +17,7 @@ export const users = pgTable("users", {
 export const jobs = pgTable("jobs", {
   id: serial("id").primaryKey(),
   jobId: text("job_id").notNull().unique(), // External job ID (e.g., JOB-2023-001)
+  clientName: text("client_name"), // Client name for the job
   title: text("title").notNull(),
   description: text("description").notNull(),
   clientFocus: text("client_focus"), // Key skills/areas that client is focusing on
