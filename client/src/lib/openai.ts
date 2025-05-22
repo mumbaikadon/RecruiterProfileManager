@@ -35,6 +35,11 @@ export interface MatchScoreResult {
   relevantDates?: string[];
   education?: string[]; // Education data
   
+  // Client focus match information
+  clientFocusScore?: number;
+  clientFocusMatches?: string[];
+  clientFocusMissing?: string[];
+  
   // Legacy fields
   clientExperience?: string;
   confidence?: number;
@@ -61,12 +66,16 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
  * @param resumeText The extracted resume text
  * @param jobDescription The job description to match against
  * @param candidateId Optional candidate ID to associate the analysis with
+ * @param jobId Optional job ID to retrieve client focus from database
+ * @param clientFocus Optional client focus areas to directly provide
  * @returns Match result with score and insights
  */
 export async function matchResumeToJob(
   resumeText: string, 
   jobDescription: string,
-  candidateId?: number
+  candidateId?: number,
+  jobId?: number,
+  clientFocus?: string
 ): Promise<MatchScoreResult> {
   try {
     // Basic validation
@@ -83,6 +92,8 @@ export async function matchResumeToJob(
       resumeText: string;
       jobDescription: string;
       candidateId?: number;
+      jobId?: number;
+      clientFocus?: string;
     } = {
       resumeText,
       jobDescription
@@ -92,6 +103,18 @@ export async function matchResumeToJob(
     if (candidateId && candidateId > 0) {
       console.log(`Including candidateId ${candidateId} in resume match request`);
       payload.candidateId = candidateId;
+    }
+    
+    // Add jobId if provided - this will allow server to retrieve client focus from database
+    if (jobId && jobId > 0) {
+      console.log(`Including jobId ${jobId} in resume match request`);
+      payload.jobId = jobId;
+    }
+    
+    // Add client focus if directly provided
+    if (clientFocus && clientFocus.trim().length > 0) {
+      console.log(`Including client focus in resume match request (${clientFocus.length} chars)`);
+      payload.clientFocus = clientFocus;
     }
     
     // Call the server-side endpoint to match the resume

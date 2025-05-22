@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 
 interface ResumeAnalyzerProps {
   jobDescription: string;
+  jobId?: number;
+  clientFocus?: string;
   onAnalysisComplete: (resumeData: any, matchResults: any) => void;
 }
 
