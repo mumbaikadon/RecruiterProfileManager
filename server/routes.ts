@@ -84,6 +84,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: (error as Error).message });
     }
   });
+  
+  // API endpoint to get recommended candidates for a job
+  app.get("/api/jobs/:id/recommended-candidates", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid job ID" });
+      }
+      
+      // Get job to verify it exists
+      const job = await storage.getJob(id);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+      
+      // Get limit from query params, default to 10
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      
+      // Find recommended candidates
+      const recommendations = await findRecommendedCandidates(id, limit);
+      
+      res.json(recommendations);
+    } catch (error) {
+      console.error("Error finding recommended candidates:", error);
+      res.status(500).json({ 
+        message: "Failed to find recommended candidates",
+        error: (error as Error).message 
+      });
+    }
+  });
 
   app.post("/api/jobs", async (req: Request, res: Response) => {
     try {
