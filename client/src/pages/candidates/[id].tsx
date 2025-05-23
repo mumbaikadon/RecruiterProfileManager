@@ -238,27 +238,6 @@ function CandidateDetailPage() {
                 )}
               </CardContent>
             </Card>
-            
-            {/* New Education Card */}
-            <Card className="md:col-span-3">
-              <CardHeader>
-                <CardTitle>Education</CardTitle>
-                <CardDescription>Educational background and qualifications</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {transformedResumeData?.education && transformedResumeData.education.length > 0 ? (
-                  <div className="space-y-4">
-                    {transformedResumeData.education.map((edu, idx) => (
-                      <div key={idx} className="pl-4 border-l-2 border-primary/20">
-                        <p className="font-medium">{edu}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground py-4">No education information detected</p>
-                )}
-              </CardContent>
-            </Card>
           </div>
         </TabsContent>
         
