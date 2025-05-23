@@ -1,0 +1,69 @@
+/**
+ * Resume Data Transform Middleware
+ * Automatically transforms resume data between DB and UI formats
+ */
+
+import { transformDatabaseToUIFormat } from '../shared/transformers/resumeDataTransformer';
+
+/**
+ * Middleware to transform a candidate's resume data from DB format to UI format
+ * @param candidate The candidate object from the database
+ * @returns The candidate with transformed resume data
+ */
+export function transformCandidateResumeData(candidate: any) {
+  // If no candidate or no resume data, return as is
+  if (!candidate || !candidate.resumeData) {
+    return candidate;
+  }
+
+  try {
+    // Get the DB format resume data
+    const dbResumeData = {
+      clientNames: candidate.resumeData.clientNames || [],
+      jobTitles: candidate.resumeData.jobTitles || [],
+      relevantDates: candidate.resumeData.relevantDates || [],
+      skills: candidate.resumeData.skills || [],
+      education: candidate.resumeData.education || [],
+      extractedText: candidate.resumeData.extractedText || '',
+      fileName: candidate.resumeData.fileName || '',
+      uploadedAt: candidate.resumeData.uploadedAt
+    };
+
+    // Transform to structured UI format
+    const structuredResumeData = transformDatabaseToUIFormat(dbResumeData);
+
+    // Create a new object to avoid modifying the original
+    return {
+      ...candidate,
+      // Keep the original resume data for compatibility
+      resumeData: {
+        ...candidate.resumeData,
+        // Add the structured data
+        experience: structuredResumeData.experience || [],
+        skills: structuredResumeData.skills || {
+          technical: [],
+          soft: [],
+          certifications: []
+        },
+        education: structuredResumeData.education || []
+      }
+    };
+  } catch (error) {
+    console.error('Error transforming resume data:', error);
+    // Return original data if transformation fails
+    return candidate;
+  }
+}
+
+/**
+ * Middleware to transform multiple candidates' resume data
+ * @param candidates Array of candidate objects from the database
+ * @returns The candidates with transformed resume data
+ */
+export function transformCandidatesResumeData(candidates: any[]) {
+  if (!candidates || !Array.isArray(candidates)) {
+    return candidates;
+  }
+
+  return candidates.map(candidate => transformCandidateResumeData(candidate));
+}
