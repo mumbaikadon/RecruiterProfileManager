@@ -29,11 +29,12 @@ const CareersPage: React.FC = () => {
   const filteredJobs = jobs?.filter(job => {
     const matchesSearch = !filters.search || 
       job.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-      (job.description && job.description.toLowerCase().includes(filters.search.toLowerCase())) ||
+      job.description.toLowerCase().includes(filters.search.toLowerCase()) ||
       (job.clientName && job.clientName.toLowerCase().includes(filters.search.toLowerCase()));
     
     const matchesLocation = !filters.location || 
-      (job.location && job.location.toLowerCase().includes(filters.location.toLowerCase()));
+      (job.city && job.city.toLowerCase().includes(filters.location.toLowerCase())) ||
+      (job.state && job.state.toLowerCase().includes(filters.location.toLowerCase()));
     
     return matchesSearch && matchesLocation;
   });
