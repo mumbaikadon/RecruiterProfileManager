@@ -76,46 +76,125 @@ export function transformDatabaseToUIFormat(dbData: DatabaseResumeData): Structu
 
   // Transform skills (categorize skills into technical/soft/certifications)
   const allSkills = dbData.skills || [];
-  // Simple heuristic: assuming skills with technical keywords are technical
-  const technicalKeywords = ['java', 'python', 'javascript', 'typescript', 'react', 'node', '.net', 'c#', 'c++', 
-    'sql', 'database', 'aws', 'cloud', 'docker', 'kubernetes', 'ai', 'ml', 'css', 'html'];
   
-  // Simple heuristic: assuming skills with soft skill keywords are soft
-  const softSkillKeywords = ['communication', 'leadership', 'teamwork', 'problem-solving', 'time management', 
-    'collaboration', 'adaptability', 'creativity', 'critical thinking', 'presentation', 'organization'];
+  // Enhanced heuristic: expanded technical keywords for better detection
+  const technicalKeywords = [
+    'java', 'python', 'javascript', 'typescript', 'react', 'node', '.net', 'c#', 'c++', 'c', 'php',
+    'sql', 'database', 'aws', 'cloud', 'docker', 'kubernetes', 'ai', 'ml', 'css', 'html',
+    'express', 'angular', 'next.js', 'nest.js', 'bootstrap', 'tailwind', 'material-ui', 'webpack',
+    'redux', 'graphql', 'mongodb', 'mysql', 'postgresql', 'dynamodb', 'nosql', 'rest', 'api',
+    'git', 'jenkins', 'github', 'circleci', 'datadog', 'terraform', 'serverless', 'kafka', 'redis',
+    'spring', 'boot', 'testing', 'jest', 'cypress', 'junit', 'selenium', 'devops', 'ci/cd', 'agile',
+    'framework', 'library', 'architecture', 'component', 'front-end', 'back-end', 'full-stack',
+    'microservice', 'mvc', 'orm', 'responsive', 'design', 'frontend', 'backend', 'development'
+  ];
   
-  // Simple heuristic: assuming skills with certification keywords are certifications
-  const certificationKeywords = ['certified', 'certificate', 'certification', 'license', 'aws certified', 
-    'microsoft certified', 'oracle certified', 'pmp', 'scrum', 'itil', 'cissp', 'cisa'];
+  // Enhanced heuristic: expanded soft skill keywords
+  const softSkillKeywords = [
+    'communication', 'leadership', 'teamwork', 'problem-solving', 'time management', 
+    'collaboration', 'adaptability', 'creativity', 'critical thinking', 'presentation', 'organization',
+    'management', 'mentoring', 'coordination', 'planning', 'analytical', 'negotiation', 'conflict',
+    'documentation', 'reporting', 'prioritization', 'attention to detail', 'multitasking'
+  ];
+  
+  // Enhanced heuristic: expanded certification keywords and patterns
+  const certificationKeywords = [
+    'certified', 'certificate', 'certification', 'license', 'aws certified', 'microsoft certified', 
+    'oracle certified', 'pmp', 'scrum', 'itil', 'cissp', 'cisa', 'openjs', 'jsnad', 'practitioner', 'advanced',
+    'foundation', 'professional', 'associate', 'expert', 'specialist', 'credential', 'credential',
+    'accreditation', 'badge', 'diploma', 'qualification'
+  ];
 
+  // First check for specific certifications in entire list - if entry starts with a certification-like keyword or contains specific patterns
+  const certificationPattern = /^(certified|certificate in|certification in|license in|advanced|professional|associate|foundation)/i;
+  const certificationPatternAnywhere = /(certified|certification|certificate|credential|qualification|accreditation)/i;
+  
+  const certifications = allSkills.filter(skill => 
+    certificationPattern.test(skill) || 
+    certificationKeywords.some(keyword => skill.toLowerCase().includes(keyword)) ||
+    // Check for patterns that look like certifications (e.g., "OpenJS Node.js Application Developer")
+    (skill.includes('Developer') && certificationPatternAnywhere.test(skill))
+  );
+  
+  // Remove certifications from further classification
+  const skillsWithoutCerts = allSkills.filter(skill => !certifications.includes(skill));
+  
+  // Now classify remaining skills
   const skills = {
-    technical: allSkills.filter(skill => 
+    technical: skillsWithoutCerts.filter(skill => 
       technicalKeywords.some(keyword => skill.toLowerCase().includes(keyword))
     ),
-    soft: allSkills.filter(skill => 
+    soft: skillsWithoutCerts.filter(skill => 
       softSkillKeywords.some(keyword => skill.toLowerCase().includes(keyword))
     ),
-    certifications: allSkills.filter(skill => 
-      certificationKeywords.some(keyword => skill.toLowerCase().includes(keyword))
-    )
+    certifications: certifications
   };
 
   // Add remaining skills to technical (default category)
   const categorizedSkills = [...skills.technical, ...skills.soft, ...skills.certifications];
-  const remainingSkills = allSkills.filter(skill => !categorizedSkills.includes(skill));
-  skills.technical = [...skills.technical, ...remainingSkills];
+  const uncategorizedSkills = allSkills.filter(skill => !categorizedSkills.includes(skill));
+  skills.technical = [...skills.technical, ...uncategorizedSkills];
 
   // Transform education data
   const education = (dbData.education || []).map(edu => {
-    // Try to parse education string into components
-    // Common formats: "Degree, Institution, Year" or "Degree from Institution, Year"
-    const degreeMatch = edu.match(/^(.*?)(?:,|\sfrom\s|\sat\s)(.*?)(?:,|\s)(\d{4}|\d{4}-\d{4}|\d{4}-\d{2})$/i);
+    // Try to parse education string using multiple patterns
+    
+    // Pattern 1: "Degree, Institution, Year" or "Degree from Institution, Year"
+    const standardPattern = /^(.*?)(?:,|\sfrom\s|\sat\s)(.*?)(?:,|\s)(\d{4}|\d{4}-\d{4}|\d{4}-\d{2})$/i;
+    const degreeMatch = edu.match(standardPattern);
     
     if (degreeMatch && degreeMatch.length >= 4) {
       return {
         degree: degreeMatch[1].trim(),
         institution: degreeMatch[2].trim(),
         year: degreeMatch[3].trim()
+      };
+    }
+    
+    // Pattern 2: "Degree | Institution" followed by "Year" info (typical resume format)
+    const pipePattern = /(.*?)\s*\|\s*(.*?)(?:\s+|$)(.*)/i;
+    const pipeMatch = edu.match(pipePattern);
+    
+    if (pipeMatch && pipeMatch.length >= 3) {
+      // Extract year from the remaining text
+      const yearPattern = /.*?(\d{4}(?:\s*-\s*\d{4}|\s*-\s*\d{2})?)/;
+      const yearMatch = pipeMatch[3] ? pipeMatch[3].match(yearPattern) : null;
+      
+      return {
+        degree: pipeMatch[1].trim(),
+        institution: pipeMatch[2].trim(),
+        year: yearMatch && yearMatch[1] ? yearMatch[1].trim() : pipeMatch[3] ? pipeMatch[3].trim() : ""
+      };
+    }
+    
+    // Pattern 3: Try to identify degree, institution, and date in any order
+    const degreeKeywords = /bachelor|master|ms|bs|ba|phd|diploma|certification|degree|b\.tech|m\.tech|b\.s\.|m\.s\./i;
+    const yearPattern = /\b(19|20)\d{2}(?:\s*-\s*(?:19|20)?\d{2,4})?\b/;
+    
+    const hasDegree = degreeKeywords.test(edu);
+    const yearMatch = edu.match(yearPattern);
+    
+    if (hasDegree) {
+      // Split by common separators and try to identify parts
+      const parts = edu.split(/[,|]/);
+      let degree = "", institution = "", year = "";
+      
+      parts.forEach(part => {
+        const trimmed = part.trim();
+        if (degreeKeywords.test(trimmed) && !degree) {
+          degree = trimmed;
+        } else if (yearPattern.test(trimmed) && !year) {
+          const match = trimmed.match(yearPattern);
+          year = match ? match[0] : '';
+        } else if (!institution && trimmed) {
+          institution = trimmed;
+        }
+      });
+      
+      return {
+        degree: degree || parts[0]?.trim() || "",
+        institution: institution || "",
+        year: year || (yearMatch ? yearMatch[0] : "")
       };
     }
     
