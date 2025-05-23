@@ -101,15 +101,16 @@ export function transformDatabaseToUIFormat(dbData: DatabaseResumeData): Structu
   const certificationKeywords = [
     'certified', 'certificate', 'certification', 'license', 'aws certified', 'microsoft certified', 
     'oracle certified', 'pmp', 'scrum', 'itil', 'cissp', 'cisa', 'openjs', 'jsnad', 'practitioner', 'advanced',
-    'foundation', 'professional', 'associate', 'expert', 'specialist', 'credential', 'credential',
-    'accreditation', 'badge', 'diploma', 'qualification'
+    'foundation', 'professional', 'associate', 'expert', 'specialist', 'credential', 'accreditation',
+    'badge', 'diploma', 'qualification'
   ];
 
   // First check for specific certifications in entire list - if entry starts with a certification-like keyword or contains specific patterns
   const certificationPattern = /^(certified|certificate in|certification in|license in|advanced|professional|associate|foundation)/i;
   const certificationPatternAnywhere = /(certified|certification|certificate|credential|qualification|accreditation)/i;
   
-  const certifications = allSkills.filter(skill => 
+  // Find certification-like skills
+  const certSkills = allSkills.filter(skill => 
     certificationPattern.test(skill) || 
     certificationKeywords.some(keyword => skill.toLowerCase().includes(keyword)) ||
     // Check for patterns that look like certifications (e.g., "OpenJS Node.js Application Developer")
@@ -117,23 +118,27 @@ export function transformDatabaseToUIFormat(dbData: DatabaseResumeData): Structu
   );
   
   // Remove certifications from further classification
-  const skillsWithoutCerts = allSkills.filter(skill => !certifications.includes(skill));
+  const nonCertSkills = allSkills.filter(skill => !certSkills.includes(skill));
   
-  // Now classify remaining skills
+  // Find technical and soft skills
+  const techSkills = nonCertSkills.filter(skill => 
+    technicalKeywords.some(keyword => skill.toLowerCase().includes(keyword))
+  );
+  
+  const softSkills = nonCertSkills.filter(skill => 
+    softSkillKeywords.some(keyword => skill.toLowerCase().includes(keyword))
+  );
+  
+  // Find any remaining skills that weren't categorized
+  const categorized = [...techSkills, ...softSkills, ...certSkills];
+  const otherSkills = allSkills.filter(skill => !categorized.includes(skill));
+  
+  // Create the final skills object
   const skills = {
-    technical: skillsWithoutCerts.filter(skill => 
-      technicalKeywords.some(keyword => skill.toLowerCase().includes(keyword))
-    ),
-    soft: skillsWithoutCerts.filter(skill => 
-      softSkillKeywords.some(keyword => skill.toLowerCase().includes(keyword))
-    ),
-    certifications: certifications
+    technical: [...techSkills, ...otherSkills], // Uncategorized skills default to technical
+    soft: softSkills,
+    certifications: certSkills
   };
-
-  // Add remaining skills to technical (default category)
-  const categorizedSkills = [...skills.technical, ...skills.soft, ...skills.certifications];
-  const uncategorizedSkills = allSkills.filter(skill => !categorizedSkills.includes(skill));
-  skills.technical = [...skills.technical, ...uncategorizedSkills];
 
   // Transform education data
   const education = (dbData.education || []).map(edu => {
