@@ -748,6 +748,64 @@ export class DatabaseStorage implements IStorage {
       submissionsThisWeek: submissionsThisWeekResult?.count ?? 0
     };
   }
+
+  // Job Applications Methods
+  async getJobApplications(filters?: { jobId?: number, status?: string }): Promise<JobApplication[]> {
+    let query = db.select().from(jobApplications).orderBy(desc(jobApplications.appliedAt));
+    
+    if (filters) {
+      if (filters.jobId) {
+        query = query.where(eq(jobApplications.jobId, filters.jobId));
+      }
+      
+      if (filters.status) {
+        query = query.where(eq(jobApplications.status, filters.status));
+      }
+    }
+    
+    return await query;
+  }
+  
+  async getJobApplication(id: number): Promise<JobApplication | undefined> {
+    const [application] = await db
+      .select()
+      .from(jobApplications)
+      .where(eq(jobApplications.id, id));
+    
+    return application;
+  }
+  
+  async createJobApplication(application: InsertJobApplication): Promise<JobApplication> {
+    const [newApplication] = await db
+      .insert(jobApplications)
+      .values(application)
+      .returning();
+    
+    return newApplication;
+  }
+  
+  async updateJobApplicationStatus(id: number, status: string, notes?: string, reviewedBy?: number): Promise<JobApplication> {
+    const updateData: any = { 
+      status,
+      reviewedAt: new Date()
+    };
+    
+    if (notes) {
+      updateData.notes = notes;
+    }
+    
+    if (reviewedBy) {
+      updateData.reviewedBy = reviewedBy;
+    }
+    
+    const [updatedApplication] = await db
+      .update(jobApplications)
+      .set(updateData)
+      .where(eq(jobApplications.id, id))
+      .returning();
+    
+    return updatedApplication;
+  }
 }
 
 // Export an instance to use throughout the app
