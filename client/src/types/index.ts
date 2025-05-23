@@ -3,16 +3,15 @@ export interface Job {
   id: number;
   jobId: string;
   title: string;
-  description?: string;
-  location?: string;
-  jobType?: string;
-  clientName?: string;
-  clientFocus?: string[];
-  requirements?: string;
-  responsibilities?: string;
-  status: string;
-  createdAt: string;
-  updatedAt?: string;
+  description: string;
+  city: string | null;
+  state: string | null;
+  jobType: "onsite" | "remote" | "hybrid" | null;
+  clientName: string | null;
+  clientFocus: string | null;
+  status: "active" | "reviewing" | "closed";
+  createdAt: Date;
+  createdBy: number | null;
 }
 
 // Candidate type definition

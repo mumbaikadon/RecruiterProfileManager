@@ -4,7 +4,7 @@ import { MapPin, Briefcase, Building } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Job } from "@/types";
+import { Job } from "@/types/index";
 
 interface JobCardProps {
   job: Job;
@@ -23,10 +23,10 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
         <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">{job.title}</h3>
         
         <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
-          {job.location && (
+          {(job.city || job.state) && (
             <div className="flex items-center">
               <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span>{job.location}</span>
+              <span>{[job.city, job.state].filter(Boolean).join(", ")}</span>
             </div>
           )}
           
