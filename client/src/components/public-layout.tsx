@@ -1,75 +1,85 @@
-import React from "react";
 import { Link } from "wouter";
+import { Button } from "./ui/button";
 
 interface PublicLayoutProps {
   children: React.ReactNode;
 }
 
-const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
+export default function PublicLayout({ children }: PublicLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Public Header */}
-      <header className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+      {/* Header/Navigation */}
+      <header className="bg-background border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/careers">
-            <div className="flex items-center cursor-pointer">
-              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center mr-2">
-                <span className="text-white font-bold">RT</span>
-              </div>
-              <span className="text-xl font-semibold text-gray-900 dark:text-gray-100">RecruiterTracker</span>
+            <div className="flex items-center gap-2 cursor-pointer">
+              <span className="font-bold text-xl">RQS</span>
+              <span className="text-muted-foreground">Careers</span>
             </div>
           </Link>
           
-          <nav className="flex items-center space-x-6">
+          <nav className="flex items-center gap-6">
             <Link href="/careers">
-              <span className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors cursor-pointer">
-                Jobs
-              </span>
+              <span className="text-sm font-medium hover:text-primary cursor-pointer">Job Listings</span>
             </Link>
-            <Link href="/careers/about">
-              <span className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors cursor-pointer">
-                About Us
-              </span>
-            </Link>
-            <Link href="/">
-              <span className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors cursor-pointer">
-                Recruiter Login
-              </span>
-            </Link>
+            <Button asChild variant="outline">
+              <Link href="/">
+                <span>Recruiter Login</span>
+              </Link>
+            </Button>
           </nav>
         </div>
       </header>
-
-      {/* Main Content */}
-      <main className="flex-grow bg-gray-50 dark:bg-gray-900">
+      
+      {/* Main content */}
+      <main className="flex-1 bg-slate-50">
         {children}
       </main>
-
+      
       {/* Footer */}
-      <footer className="bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 py-8">
+      <footer className="bg-background border-t py-8">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-4 md:mb-0">
-              <p className="text-gray-500 dark:text-gray-400">
-                &copy; {new Date().getFullYear()} RecruiterTracker. All rights reserved.
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <h3 className="font-semibold mb-3">About Us</h3>
+              <p className="text-sm text-muted-foreground">
+                RQS connects talented professionals with leading organizations worldwide.
               </p>
             </div>
-            <div className="flex space-x-6">
-              <a href="#" className="text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary">
-                Privacy Policy
-              </a>
-              <a href="#" className="text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary">
-                Terms of Service
-              </a>
-              <a href="#" className="text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary">
-                Contact Us
-              </a>
+            
+            <div>
+              <h3 className="font-semibold mb-3">Candidates</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="/careers"><span className="hover:text-primary cursor-pointer">Browse Jobs</span></Link></li>
+                <li><span className="hover:text-primary cursor-pointer">Resume Tips</span></li>
+                <li><span className="hover:text-primary cursor-pointer">Career Resources</span></li>
+              </ul>
             </div>
+            
+            <div>
+              <h3 className="font-semibold mb-3">Employers</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><span className="hover:text-primary cursor-pointer">Post a Job</span></li>
+                <li><span className="hover:text-primary cursor-pointer">Recruitment Solutions</span></li>
+                <li><span className="hover:text-primary cursor-pointer">Client Success Stories</span></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="font-semibold mb-3">Contact</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><span className="hover:text-primary cursor-pointer">info@rqs.com</span></li>
+                <li><span className="hover:text-primary cursor-pointer">1-800-555-0123</span></li>
+                <li><span className="hover:text-primary cursor-pointer">Support</span></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="mt-8 pt-6 border-t text-center text-sm text-muted-foreground">
+            <p>&copy; {new Date().getFullYear()} RQS Recruitment. All rights reserved.</p>
           </div>
         </div>
       </footer>
     </div>
   );
-};
-
-export default PublicLayout;
+}
