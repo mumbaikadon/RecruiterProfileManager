@@ -303,9 +303,10 @@ const JobDetailPage: React.FC = () => {
         {/* Right column - Tabs for description and submissions */}
         <div className="md:col-span-2">
           <Tabs defaultValue="description">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="description">Job Description</TabsTrigger>
               <TabsTrigger value="submissions">Candidate Submissions</TabsTrigger>
+              <TabsTrigger value="applied">Applied Candidates</TabsTrigger>
               <TabsTrigger value="recommended">Recommended Candidates</TabsTrigger>
             </TabsList>
             
@@ -356,6 +357,26 @@ const JobDetailPage: React.FC = () => {
                     submissions={submissions || []} 
                     isLoading={isSubmissionsLoading} 
                   />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="applied" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Applied Candidates</CardTitle>
+                  <CardDescription>
+                    Candidates who have applied directly through the public job board
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* For now, display a placeholder since we need to implement the API endpoint */}
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No applications received yet.</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      When candidates apply through the public job board, they'll appear here.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
