@@ -151,6 +151,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       onClose();
     },
     onError: (error: Error) => {
+      console.error("Submission error details:", error);
       toast({
         title: "Error",
         description: `Failed to resubmit candidate: ${error.message}`,
