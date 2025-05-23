@@ -1,5 +1,5 @@
 import { 
-  users, jobs, jobAssignments, candidates, resumeData, submissions, activities, candidateValidations,
+  users, jobs, jobAssignments, candidates, resumeData, submissions, activities, candidateValidations, jobApplications,
   type User, type InsertUser, 
   type Job, type InsertJob, 
   type JobAssignment, type InsertJobAssignment, 
@@ -7,7 +7,8 @@ import {
   type ResumeData, type InsertResumeData, 
   type Submission, type InsertSubmission, 
   type Activity, type InsertActivity,
-  type CandidateValidation, type InsertCandidateValidation
+  type CandidateValidation, type InsertCandidateValidation,
+  type JobApplication, type InsertJobApplication
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql, gte, lte } from "drizzle-orm";
@@ -30,6 +31,12 @@ export interface IStorage {
   assignRecruitersToJob(jobId: number, recruiterIds: number[]): Promise<JobAssignment[]>;
   getJobAssignments(jobId: number): Promise<JobAssignment[]>;
   getUserAssignedJobs(userId: number): Promise<Job[]>;
+  
+  // Job application operations
+  getJobApplications(filters?: { jobId?: number, status?: string }): Promise<JobApplication[]>;
+  getJobApplication(id: number): Promise<JobApplication | undefined>;
+  createJobApplication(application: InsertJobApplication): Promise<JobApplication>;
+  updateJobApplicationStatus(id: number, status: string, notes?: string, reviewedBy?: number): Promise<JobApplication>;
 
   // Candidate operations
   getCandidates(): Promise<Candidate[]>;
