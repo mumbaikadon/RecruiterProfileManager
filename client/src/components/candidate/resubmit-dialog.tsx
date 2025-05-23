@@ -21,6 +21,8 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { Job, apiRequest } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import { formatDate, isOlderThanTwoWeeks } from "@/lib/date-utils";
+import { compareResumeVersions } from "@/lib/resume-comparison";
+import ResumeValidationResults from "./resume-validation-results";
 
 interface ResubmitDialogProps {
   isOpen: boolean;
@@ -43,6 +45,10 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     suspiciousReason: string | null;
     suspiciousSeverity: string | null;
   } | null>(null);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [previousResumeData, setPreviousResumeData] = useState<any>(null);
+  const [currentResumeData, setCurrentResumeData] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -64,6 +70,19 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     queryKey: ["/api/submissions", { candidateId }],
     enabled: isOpen && !!candidateId,
     select: (data: any) => data.filter((s: any) => s.candidateId === candidateId)
+  });
+  
+  // Fetch the candidate's latest resume data
+  const {
+    data: candidateResumeData,
+    isLoading: isResumeDataLoading,
+  } = useQuery({
+    queryKey: ["/api/candidates", candidateId, "resume"],
+    enabled: isOpen && !!candidateId,
+    queryFn: async () => {
+      const candidateData = await apiRequest<any>(`/api/candidates/${candidateId}`);
+      return candidateData.resumeData;
+    }
   });
 
   // Submit candidate mutation
@@ -199,8 +218,95 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       }
     }
   }, [selectedJobId, submissions, toast]);
+  
+  // Store previous resume data when it's loaded
+  useEffect(() => {
+    if (candidateResumeData) {
+      setPreviousResumeData({
+        clientNames: candidateResumeData.clientNames || [],
+        jobTitles: candidateResumeData.jobTitles || [],
+        relevantDates: candidateResumeData.relevantDates || []
+      });
+    }
+  }, [candidateResumeData]);
 
-  const handleSubmit = () => {
+  // Function to analyze new resume and compare with previous data
+  const analyzeNewResume = async (resumeFile: File) => {
+    if (!previousResumeData) return null;
+    
+    setIsValidating(true);
+    try {
+      // Upload and parse the resume 
+      const formData = new FormData();
+      formData.append("file", resumeFile);
+      
+      const parsedResume = await fetch("/api/parse-document", {
+        method: "POST",
+        body: formData,
+      }).then(res => res.json());
+      
+      if (!parsedResume.success) {
+        throw new Error("Failed to parse resume");
+      }
+      
+      // Get job details for resume analysis
+      const jobId = Number(selectedJobId);
+      const jobDetails = await apiRequest<any>(`/api/jobs/${jobId}`);
+      
+      // Match resume with job description
+      const matchResult = await apiRequest<any>("/api/openai/match-resume", {
+        method: "POST",
+        body: JSON.stringify({
+          resumeText: parsedResume.text,
+          jobDescription: jobDetails.description,
+        }),
+      });
+      
+      // Store the current resume data
+      const newResumeData = {
+        clientNames: matchResult.clientNames || [],
+        jobTitles: matchResult.jobTitles || [],
+        relevantDates: matchResult.relevantDates || []
+      };
+      
+      setCurrentResumeData(newResumeData);
+      
+      // Compare previous and current resume data
+      const comparisonResult = compareResumeVersions(
+        previousResumeData,
+        newResumeData
+      );
+      
+      setValidationResult(comparisonResult);
+      
+      // If there are significant changes, highlight them to the recruiter
+      if (comparisonResult.hasChanges && comparisonResult.overallRisk !== 'none') {
+        // Potentially add flags for significant discrepancies
+        if (comparisonResult.overallRisk === 'high' || comparisonResult.removedEmployers.length > 0) {
+          setSuspiciousFlags({
+            isSuspicious: true,
+            suspiciousReason: "Significant resume discrepancies detected",
+            suspiciousSeverity: comparisonResult.overallRisk === 'high' ? "HIGH" : "MEDIUM"
+          });
+        }
+      }
+      
+      return matchResult;
+      
+    } catch (error) {
+      console.error("Error analyzing resume:", error);
+      toast({
+        title: "Resume Analysis Error",
+        description: "There was a problem analyzing the resume. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const handleSubmit = async () => {
     if (!selectedJobId) {
       toast({
         title: "Error",
@@ -232,23 +338,52 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       return;
     }
     
+    // If we have a new resume file, analyze it first
+    let matchResult = null;
+    if (file) {
+      matchResult = await analyzeNewResume(file);
+      if (!matchResult) {
+        // If analysis failed, stop the submission process
+        return;
+      }
+    }
+    
+    // Now submit with the match result if available
     submitMutation.mutate({
       jobId: jobId,
       candidateId: candId,
       resumeFile: file || undefined,
-      ...suspiciousFlags ? {
+      ...(matchResult ? {
+        matchScore: matchResult.score,
+        matchStrengths: matchResult.strengths,
+        matchWeaknesses: matchResult.weaknesses,
+        matchSuggestions: matchResult.suggestions
+      } : {}),
+      ...(suspiciousFlags ? {
         isSuspicious: suspiciousFlags.isSuspicious,
         suspiciousReason: suspiciousFlags.suspiciousReason,
         suspiciousSeverity: suspiciousFlags.suspiciousSeverity
-      } : {}
+      } : {})
     });
   };
 
-  const isLoading = isJobsLoading || isSubmissionsLoading || submitMutation.isPending;
+  const isLoading = isJobsLoading || isSubmissionsLoading || isResumeDataLoading || submitMutation.isPending;
+
+  // Handle file selection and trigger resume validation
+  const handleFileChange = async (newFile: File | null) => {
+    setFile(newFile);
+    // Reset validation when file changes
+    setValidationResult(null);
+    
+    // If we have previous resume data and a new file, validate automatically
+    if (newFile && previousResumeData && !isValidating) {
+      await analyzeNewResume(newFile);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Resubmit Candidate</DialogTitle>
           <DialogDescription>
@@ -291,24 +426,41 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
               <FileUpload
                 accept=".pdf,.doc,.docx"
                 maxSize={5242880} // 5MB
-                onFileChange={setFile}
-                disabled={isLoading}
+                onFileChange={handleFileChange}
+                disabled={isLoading || isValidating}
+              />
+            </div>
+          )}
+          
+          {/* Resume validation results section */}
+          {(isValidating || validationResult) && (
+            <div className="mt-4">
+              <h3 className="text-sm font-medium mb-2">Resume Validation</h3>
+              <ResumeValidationResults 
+                validationResult={validationResult}
+                isLoading={isValidating}
               />
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+          <Button variant="outline" onClick={onClose} disabled={isLoading || isValidating}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? (
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isLoading || isValidating}
+            variant={validationResult?.overallRisk === 'high' ? "destructive" : "default"}
+          >
+            {isLoading || isValidating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
+                {isValidating ? "Validating Resume..." : "Processing..."}
               </>
             ) : (
-              "Resubmit"
+              validationResult?.overallRisk === 'high' 
+                ? "Resubmit With Warning" 
+                : "Resubmit"
             )}
           </Button>
         </DialogFooter>
