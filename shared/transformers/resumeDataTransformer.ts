@@ -1,0 +1,171 @@
+/**
+ * Resume Data Transformer
+ * Transforms resume data between database format (flat arrays) and UI format (structured objects)
+ */
+export {}
+
+export interface DatabaseResumeData {
+  clientNames?: string[];
+  jobTitles?: string[];
+  relevantDates?: string[];
+  skills?: string[];
+  education?: string[];
+  extractedText?: string;
+  fileName?: string;
+  uploadedAt?: Date;
+}
+
+export interface StructuredResumeData {
+  experience: Array<{
+    company: string;
+    position: string;
+    dates: string;
+    responsibilities: string[];
+  }>;
+  skills: {
+    technical: string[];
+    soft: string[];
+    certifications: string[];
+  };
+  education: Array<{
+    degree: string;
+    institution: string;
+    year: string;
+  }>;
+  projects?: Array<{
+    name: string;
+    description: string;
+    technologies: string[];
+  }>;
+}
+
+/**
+ * Transform flat database resume data into structured UI format
+ */
+export function transformDatabaseToUIFormat(dbData: DatabaseResumeData): StructuredResumeData {
+  // Default empty structure
+  const defaultStructure: StructuredResumeData = {
+    experience: [],
+    skills: {
+      technical: [],
+      soft: [],
+      certifications: []
+    },
+    education: []
+  };
+
+  // If no data, return default structure
+  if (!dbData) return defaultStructure;
+
+  // Transform experience data (combine company, title, dates)
+  const experience = [];
+  const maxLength = Math.max(
+    dbData.clientNames?.length || 0,
+    dbData.jobTitles?.length || 0,
+    dbData.relevantDates?.length || 0
+  );
+
+  for (let i = 0; i < maxLength; i++) {
+    experience.push({
+      company: dbData.clientNames?.[i] || "",
+      position: dbData.jobTitles?.[i] || "",
+      dates: dbData.relevantDates?.[i] || "",
+      responsibilities: [] // No responsibilities in flat format
+    });
+  }
+
+  // Transform skills (categorize skills into technical/soft/certifications)
+  const allSkills = dbData.skills || [];
+  // Simple heuristic: assuming skills with technical keywords are technical
+  const technicalKeywords = ['java', 'python', 'javascript', 'typescript', 'react', 'node', '.net', 'c#', 'c++', 
+    'sql', 'database', 'aws', 'cloud', 'docker', 'kubernetes', 'ai', 'ml', 'css', 'html'];
+  
+  // Simple heuristic: assuming skills with soft skill keywords are soft
+  const softSkillKeywords = ['communication', 'leadership', 'teamwork', 'problem-solving', 'time management', 
+    'collaboration', 'adaptability', 'creativity', 'critical thinking', 'presentation', 'organization'];
+  
+  // Simple heuristic: assuming skills with certification keywords are certifications
+  const certificationKeywords = ['certified', 'certificate', 'certification', 'license', 'aws certified', 
+    'microsoft certified', 'oracle certified', 'pmp', 'scrum', 'itil', 'cissp', 'cisa'];
+
+  const skills = {
+    technical: allSkills.filter(skill => 
+      technicalKeywords.some(keyword => skill.toLowerCase().includes(keyword))
+    ),
+    soft: allSkills.filter(skill => 
+      softSkillKeywords.some(keyword => skill.toLowerCase().includes(keyword))
+    ),
+    certifications: allSkills.filter(skill => 
+      certificationKeywords.some(keyword => skill.toLowerCase().includes(keyword))
+    )
+  };
+
+  // Add remaining skills to technical (default category)
+  const categorizedSkills = [...skills.technical, ...skills.soft, ...skills.certifications];
+  const remainingSkills = allSkills.filter(skill => !categorizedSkills.includes(skill));
+  skills.technical = [...skills.technical, ...remainingSkills];
+
+  // Transform education data
+  const education = (dbData.education || []).map(edu => {
+    // Try to parse education string into components
+    // Common formats: "Degree, Institution, Year" or "Degree from Institution, Year"
+    const degreeMatch = edu.match(/^(.*?)(?:,|\sfrom\s|\sat\s)(.*?)(?:,|\s)(\d{4}|\d{4}-\d{4}|\d{4}-\d{2})$/i);
+    
+    if (degreeMatch && degreeMatch.length >= 4) {
+      return {
+        degree: degreeMatch[1].trim(),
+        institution: degreeMatch[2].trim(),
+        year: degreeMatch[3].trim()
+      };
+    }
+    
+    // Fallback: just use the full string as degree
+    return {
+      degree: edu,
+      institution: "",
+      year: ""
+    };
+  });
+
+  return {
+    experience,
+    skills,
+    education
+  };
+}
+
+/**
+ * Transform structured UI resume data into flat database format
+ */
+export function transformUIToDatabaseFormat(uiData: StructuredResumeData): DatabaseResumeData {
+  if (!uiData) return {};
+
+  // Extract client names from experience
+  const clientNames = uiData.experience?.map(exp => exp.company) || [];
+  
+  // Extract job titles from experience
+  const jobTitles = uiData.experience?.map(exp => exp.position) || [];
+  
+  // Extract dates from experience
+  const relevantDates = uiData.experience?.map(exp => exp.dates) || [];
+  
+  // Combine all skills into a single array
+  const skills = [
+    ...(uiData.skills?.technical || []),
+    ...(uiData.skills?.soft || []),
+    ...(uiData.skills?.certifications || [])
+  ];
+  
+  // Format education entries
+  const education = uiData.education?.map(edu => 
+    `${edu.degree}, ${edu.institution}, ${edu.year}`.trim().replace(/, $/, "")
+  ) || [];
+
+  return {
+    clientNames,
+    jobTitles,
+    relevantDates,
+    skills,
+    education
+  };
+}

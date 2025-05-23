@@ -13,6 +13,7 @@ import { analyzeResumeText, matchResumeToJob } from "./openai";
 import { findRecommendedCandidates } from "./recommendation-engine";
 import fs from "fs";
 import multer from "multer";
+import { transformCandidateResumeData, transformCandidatesResumeData } from "./transformMiddleware";
 
 // Configure multer for file uploads 
 const multerStorage = multer.memoryStorage();
