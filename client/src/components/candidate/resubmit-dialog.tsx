@@ -76,6 +76,10 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       suspiciousReason?: string | null;
       suspiciousSeverity?: string | null;
     }) => {
+      // Ensure IDs are numbers before proceeding
+      const jobId = Number(data.jobId);
+      const candidateId = Number(data.candidateId);
+      
       if (data.resumeFile) {
         // Upload and parse the resume if provided
         const formData = new FormData();
@@ -90,7 +94,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
           throw new Error("Failed to parse resume");
         }
         
-        const jobDetails = await apiRequest<any>(`/api/jobs/${data.jobId}`);
+        const jobDetails = await apiRequest<any>(`/api/jobs/${jobId}`);
         
         // Match resume with job description
         const matchResult = await apiRequest<any>("/api/openai/match-resume", {
@@ -105,8 +109,8 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
         return apiRequest<any>("/api/submissions", {
           method: "POST",
           body: JSON.stringify({
-            jobId: data.jobId,
-            candidateId: data.candidateId,
+            jobId: jobId,
+            candidateId: candidateId,
             resumeFileName: data.resumeFile.name,
             matchScore: matchResult.score,
             matchStrengths: matchResult.strengths,
@@ -210,13 +214,22 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       return;
     }
 
-    // Include suspicious flags if they exist
-    // Ensure jobId is a number (not a string) before sending to the API
-    const jobId = typeof selectedJobId === 'string' ? parseInt(selectedJobId, 10) : selectedJobId;
+    // Ensure job ID is properly converted to a number
+    const jobId = Number(selectedJobId);
+    const candId = Number(candidateId);
+    
+    if (isNaN(jobId)) {
+      toast({
+        title: "Error",
+        description: "Invalid job ID",
+        variant: "destructive",
+      });
+      return;
+    }
     
     submitMutation.mutate({
       jobId: jobId,
-      candidateId: Number(candidateId), // Also ensure candidateId is a number
+      candidateId: candId,
       resumeFile: file || undefined,
       ...suspiciousFlags ? {
         isSuspicious: suspiciousFlags.isSuspicious,
