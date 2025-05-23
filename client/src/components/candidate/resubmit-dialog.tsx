@@ -112,6 +112,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
             jobId: jobId,
             candidateId: candidateId,
             recruiterId: 1, // Current user ID (assuming user 1 is the default user)
+            status: "New", // Required status field
             resumeFileName: data.resumeFile.name,
             matchScore: matchResult.score,
             matchStrengths: matchResult.strengths,
@@ -130,8 +131,10 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
         return apiRequest<any>("/api/submissions", {
           method: "POST",
           body: JSON.stringify({
-            jobId: data.jobId,
-            candidateId: data.candidateId,
+            jobId: jobId,
+            candidateId: candidateId,
+            recruiterId: 1, // Current user ID (assuming user 1 is the default user)
+            status: "New", // Required status field
             // Include suspicious flags if they exist
             ...(data.isSuspicious ? {
               isSuspicious: data.isSuspicious,
