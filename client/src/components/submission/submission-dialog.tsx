@@ -178,6 +178,17 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           return;
         }
         
+        // Check if this is a duplicate submission (candidate already submitted to this job)
+        if (data.submissionId) {
+          setSubmissionError("This candidate has already been submitted for this job");
+          toast({
+            title: "Duplicate submission",
+            description: "This candidate has already been submitted for this job",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         if (data.candidateId) {
           // Get candidate details
           const candidateDetailsResponse = await fetch(`/api/candidates/${data.candidateId}`);
@@ -197,7 +208,8 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           // Get previous submissions for this candidate
           const previousSubmissions = await getPreviousSubmissions(data.candidateId);
           
-          // Check if this candidate is already submitted to this job
+          // Double-check if this candidate is already submitted to this job
+          // This is a safety check since the backend should have already returned submissionId if there was a duplicate
           const alreadySubmittedToThisJob = previousSubmissions.some(
             sub => sub.submissionId && sub.jobTitle === jobTitle
           );
