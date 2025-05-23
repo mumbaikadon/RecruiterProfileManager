@@ -295,7 +295,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/candidates", async (_req: Request, res: Response) => {
     try {
       const candidates = await storage.getCandidates();
-      res.json(candidates);
+      
+      // For each candidate, get their resume data
+      const candidatesWithResumeData = await Promise.all(
+        candidates.map(async (candidate) => {
+          const resumeData = await storage.getResumeData(candidate.id);
+          return {
+            ...candidate,
+            resumeData
+          };
+        })
+      );
+
+      // Transform all candidates' resume data to structured format
+      const transformedCandidates = candidatesWithResumeData.map(candidate => 
+        transformCandidateResumeData(candidate)
+      );
+      
+      res.json(transformedCandidates);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
@@ -349,9 +366,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }),
       );
 
-      res.json({
+      // Add resume data to the candidate object
+      const candidateWithResumeData = {
         ...candidate,
-        resumeData,
+        resumeData: resumeData || {
+          id: 0,
+          candidateId: candidate.id,
+          clientNames: [],
+          jobTitles: [],
+          relevantDates: [],
+          skills: [],
+          education: [],
+          extractedText: null,
+          fileName: null,
+          uploadedAt: new Date()
+        }
+      };
+
+      // Transform the resume data from flat arrays to structured format
+      const transformedCandidate = transformCandidateResumeData(candidateWithResumeData);
+
+      res.json({
+        ...transformedCandidate,
         submissions: enhancedSubmissions,
       });
     } catch (error) {
