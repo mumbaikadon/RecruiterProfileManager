@@ -1,36 +1,61 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BriefcaseIcon, ClockIcon, BuildingIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { transformResumeData } from "@/lib/resume-data-transformer";
+
+interface EmploymentRecord {
+  company: string;
+  title: string;
+  period: string;
+}
 
 interface EmploymentHistoryCardProps {
-  clientNames: string[];
-  jobTitles: string[];
-  relevantDates: string[];
+  // Support both the original flat format and the new structured format
+  clientNames?: string[];
+  jobTitles?: string[];
+  relevantDates?: string[];
+  experience?: EmploymentRecord[];
+  resumeData?: any; // Full resume data object
   className?: string;
 }
 
 export function EmploymentHistoryCard({
-  clientNames,
-  jobTitles,
-  relevantDates,
+  clientNames = [],
+  jobTitles = [],
+  relevantDates = [],
+  experience = [],
+  resumeData,
   className = "",
 }: EmploymentHistoryCardProps) {
+  // If resumeData is provided, use our transformer to get structured data
+  let employmentRecords: EmploymentRecord[] = [];
+  
+  if (resumeData) {
+    // Use the transformer to get structured data
+    const transformedData = transformResumeData(resumeData);
+    employmentRecords = transformedData.experience;
+  } else if (experience && experience.length > 0) {
+    // If structured experience data is already provided, use it
+    employmentRecords = experience;
+  } else {
+    // Fall back to the original implementation using separate arrays
+    // Find the max length for the arrays to iterate over
+    const maxLength = Math.max(
+      clientNames.length,
+      jobTitles.length,
+      relevantDates.length
+    );
+    
+    // Create combined employment records
+    employmentRecords = Array.from({ length: maxLength }, (_, index) => ({
+      company: clientNames[index] || "Unknown Company",
+      title: jobTitles[index] || "Position not specified",
+      period: relevantDates[index] || "Dates not specified",
+    }));
+  }
+  
   // Determine if we have any employment history to display
-  const hasEmploymentHistory = clientNames.length > 0 || jobTitles.length > 0 || relevantDates.length > 0;
-  
-  // Find the max length for the arrays to iterate over
-  const maxLength = Math.max(
-    clientNames.length,
-    jobTitles.length,
-    relevantDates.length
-  );
-  
-  // Create combined employment records
-  const employmentRecords = Array.from({ length: maxLength }, (_, index) => ({
-    company: clientNames[index] || "Unknown Company",
-    title: jobTitles[index] || "Position not specified",
-    period: relevantDates[index] || "Dates not specified",
-  }));
+  const hasEmploymentHistory = employmentRecords.length > 0;
 
   return (
     <Card className={`overflow-hidden ${className}`}>

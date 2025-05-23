@@ -247,9 +247,7 @@ function CandidateDetailPage() {
               {/* Use our new component for employment history */}
               <div className="md:col-span-2">
                 <EmploymentHistoryCard 
-                  clientNames={candidate.resumeData.clientNames || []}
-                  jobTitles={candidate.resumeData.jobTitles || []}
-                  relevantDates={candidate.resumeData.relevantDates || []}
+                  resumeData={candidate.resumeData}
                 />
               </div>
               
