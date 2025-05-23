@@ -154,6 +154,24 @@ export const candidateValidations = pgTable("candidate_validations", {
   validatedBy: integer("validated_by").notNull().references(() => users.id),
 });
 
+// Job Applications table (for tracking candidates who applied through the public portal)
+export const jobApplications = pgTable("job_applications", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").notNull().references(() => jobs.id),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  resumeFileName: text("resume_file_name"),
+  coverLetter: text("cover_letter"),
+  workAuthorization: text("work_authorization"),
+  status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+  notes: text("notes"),
+  appliedAt: timestamp("applied_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+});
+
 // Activities table (for activity feed)
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
@@ -167,13 +185,16 @@ export const activities = pgTable("activities", {
       "duplicate_detected", 
       "submission_status_changed",
       "system_integration",
-      "candidate_validated"  // New activity type for candidate validation
+      "candidate_validated",  // New activity type for candidate validation
+      "application_received", // New activity type for job applications
+      "application_processed" // New activity type for processed applications
     ] 
   }).notNull(),
   userId: integer("user_id").references(() => users.id),
   jobId: integer("job_id").references(() => jobs.id),
   candidateId: integer("candidate_id").references(() => candidates.id),
   submissionId: integer("submission_id").references(() => submissions.id),
+  applicationId: integer("application_id").references(() => jobApplications.id),
   message: text("message").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -187,6 +208,7 @@ export const insertResumeDataSchema = createInsertSchema(resumeData).omit({ id: 
 export const insertSubmissionSchema = createInsertSchema(submissions).omit({ id: true, submittedAt: true, updatedAt: true });
 export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, createdAt: true });
 export const insertCandidateValidationSchema = createInsertSchema(candidateValidations).omit({ id: true, validatedAt: true });
+export const insertJobApplicationSchema = createInsertSchema(jobApplications).omit({ id: true, appliedAt: true, reviewedAt: true });
 
 // Export types
 export type User = typeof users.$inferSelect;
@@ -212,3 +234,6 @@ export type InsertActivity = z.infer<typeof insertActivitySchema>;
 
 export type CandidateValidation = typeof candidateValidations.$inferSelect;
 export type InsertCandidateValidation = z.infer<typeof insertCandidateValidationSchema>;
+
+export type JobApplication = typeof jobApplications.$inferSelect;
+export type InsertJobApplication = z.infer<typeof insertJobApplicationSchema>;
