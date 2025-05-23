@@ -338,13 +338,36 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       return;
     }
     
-    // If we have a new resume file, analyze it first
+    // Use the existing validation results if available, otherwise analyze now
     let matchResult = null;
-    if (file) {
+    if (file && !currentResumeData) {
       matchResult = await analyzeNewResume(file);
       if (!matchResult) {
         // If analysis failed, stop the submission process
         return;
+      }
+    } else if (file && currentResumeData) {
+      // Get job details to perform the match again without re-running the comparison
+      const jobDetails = await apiRequest<any>(`/api/jobs/${jobId}`);
+      
+      // Use the existing file to get the resume text
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const parsedResume = await fetch("/api/parse-document", {
+        method: "POST",
+        body: formData,
+      }).then(res => res.json());
+      
+      if (parsedResume.success) {
+        // Just get the match score without re-validating the resume
+        matchResult = await apiRequest<any>("/api/openai/match-resume", {
+          method: "POST",
+          body: JSON.stringify({
+            resumeText: parsedResume.text,
+            jobDescription: jobDetails.description,
+          }),
+        });
       }
     }
     
