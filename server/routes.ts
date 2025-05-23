@@ -7,6 +7,7 @@ import {
   insertSubmissionSchema,
   insertResumeDataSchema,
   insertActivitySchema,
+  insertJobApplicationSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
@@ -2248,6 +2249,187 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error during gap analysis test"
       });
+    }
+  });
+  
+  // Job Applications routes
+  app.get("/api/applications", async (req: Request, res: Response) => {
+    try {
+      const { jobId, status } = req.query;
+      
+      const filters: { jobId?: number; status?: string } = {};
+      
+      if (jobId && typeof jobId === "string") {
+        filters.jobId = parseInt(jobId);
+      }
+      
+      if (status && typeof status === "string") {
+        filters.status = status;
+      }
+      
+      const applications = await storage.getJobApplications(filters);
+      
+      // For each application, get job details
+      const applicationsWithJobDetails = await Promise.all(
+        applications.map(async (application) => {
+          const job = await storage.getJob(application.jobId);
+          return {
+            ...application,
+            job: job ? {
+              id: job.id,
+              title: job.title,
+              clientName: job.clientName,
+              jobType: job.jobType
+            } : null
+          };
+        })
+      );
+      
+      res.json(applicationsWithJobDetails);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+  
+  app.get("/api/applications/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid application ID" });
+      }
+      
+      const application = await storage.getJobApplication(id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      // Get job details
+      const job = await storage.getJob(application.jobId);
+      
+      res.json({
+        ...application,
+        job: job ? {
+          id: job.id,
+          title: job.title,
+          clientName: job.clientName,
+          jobType: job.jobType
+        } : null
+      });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+  
+  // Handle public job applications 
+  app.post("/api/public/applications", fileUpload.single('resume'), async (req: Request, res: Response) => {
+    try {
+      const { jobId, firstName, lastName, email, phone, workAuthorization, coverLetter } = req.body;
+      
+      if (!jobId || !firstName || !lastName || !email || !phone) {
+        return res.status(400).json({ message: "Missing required application details" });
+      }
+      
+      // Convert jobId to number
+      const numericJobId = parseInt(jobId);
+      
+      // Verify the job exists and is active
+      const job = await storage.getJob(numericJobId);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+      
+      if (job.status !== 'active') {
+        return res.status(400).json({ message: "This job is no longer accepting applications" });
+      }
+      
+      // Handle resume file
+      let resumeFileName = null;
+      if (req.file) {
+        // Save the file
+        const fileExt = req.file.originalname.split('.').pop();
+        resumeFileName = `${Date.now()}_${firstName}_${lastName}.${fileExt}`;
+        
+        // Create uploads directory if it doesn't exist
+        const uploadsDir = './uploads';
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        
+        // Write the file
+        fs.writeFileSync(`${uploadsDir}/${resumeFileName}`, req.file.buffer);
+      }
+      
+      // Create application
+      const newApplication = await storage.createJobApplication({
+        jobId: numericJobId,
+        firstName,
+        lastName,
+        email,
+        phone,
+        workAuthorization,
+        coverLetter,
+        resumeFileName,
+        status: 'pending'
+      });
+      
+      // Create activity
+      await storage.createActivity({
+        type: 'application_received',
+        jobId: numericJobId,
+        applicationId: newApplication.id,
+        message: `${firstName} ${lastName} applied for ${job.title}`
+      });
+      
+      res.status(201).json({
+        message: "Application submitted successfully",
+        applicationId: newApplication.id
+      });
+    } catch (error) {
+      console.error("Error processing application:", error);
+      res.status(500).json({ message: "Failed to process your application" });
+    }
+  });
+  
+  // Update application status
+  app.patch("/api/applications/:id/status", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid application ID" });
+      }
+      
+      const { status, notes } = req.body;
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+      
+      // Get the application to ensure it exists
+      const application = await storage.getJobApplication(id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      // Use 1 as the reviewer ID for now (in a real app, this would be the current user)
+      const reviewerId = 1;
+      
+      // Update application status
+      const updatedApplication = await storage.updateJobApplicationStatus(id, status, notes, reviewerId);
+      
+      // Get job details for the activity
+      const job = await storage.getJob(application.jobId);
+      
+      // Create activity for the status change
+      await storage.createActivity({
+        type: 'application_processed',
+        userId: reviewerId,
+        jobId: application.jobId,
+        applicationId: id,
+        message: `Application from ${application.firstName} ${application.lastName} for ${job?.title || 'job'} has been ${status}`
+      });
+      
+      res.json(updatedApplication);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
     }
   });
 
