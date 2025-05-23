@@ -111,6 +111,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
           body: JSON.stringify({
             jobId: jobId,
             candidateId: candidateId,
+            recruiterId: 1, // Current user ID (assuming user 1 is the default user)
             resumeFileName: data.resumeFile.name,
             matchScore: matchResult.score,
             matchStrengths: matchResult.strengths,
