@@ -403,15 +403,10 @@ export class DatabaseStorage implements IStorage {
     // Get resume data - but with early filtering to reduce processing
     const allResumeData = await this.getAllResumeData();
     
-    // Filter out: 1) candidates with no data, 2) the one we're validating, and 3) any duplicates of the same candidate
+    // Filter out candidates with no data and the one we're validating
     const validCandidatesData = allResumeData.filter(data => {
-      // Always exclude the candidate being validated 
-      if (excludeCandidateId && data.candidateId === excludeCandidateId) {
-        return false;
-      }
-      
-      // Ensure we have data to match
-      return (data.clientNames?.length > 0 || data.relevantDates?.length > 0);
+      return (!excludeCandidateId || data.candidateId !== excludeCandidateId) && 
+             (data.clientNames?.length > 0 || data.relevantDates?.length > 0);
     });
     
     console.log(`Comparing against ${validCandidatesData.length} candidates with resume data`);
