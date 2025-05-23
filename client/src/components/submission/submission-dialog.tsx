@@ -544,9 +544,27 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           validateCandidate={(data) => {
             return new Promise((resolve, reject) => {
               validateCandidate({...data, validatedBy: recruiterId}, {
-                onSuccess: () => {
-                  // If validation was successful and candidate is matching, create a submission
+                onSuccess: (response) => {
+                  console.log("Validation response:", response);
+                  
+                  // Check if a submission was already created during validation
+                  const submissionAlreadyCreated = response.submission && response.submission.id;
+                  
+                  // If validation was successful and candidate is matching
                   if (data.validationResult === "matching") {
+                    if (submissionAlreadyCreated) {
+                      // Submission was already created in the backend during validation
+                      console.log("Submission was already created during validation with ID:", submissionAlreadyCreated);
+                      toast({
+                        title: "Submission successful",
+                        description: `Candidate has been validated and submitted for ${jobTitle}`,
+                      });
+                      if (onSuccess) onSuccess();
+                      resolve(true);
+                      return; // Important: return early to avoid duplicate submission
+                    }
+                    
+                    // Only create submission if one wasn't already created during validation
                     createSubmission({
                       jobId,
                       candidateId: data.candidateId,
