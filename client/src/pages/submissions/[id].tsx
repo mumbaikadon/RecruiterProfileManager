@@ -18,6 +18,7 @@ import { formatDate, formatDateTime, formatRate } from "@/lib/date-utils";
 import StatusBadge from "@/components/submission/status-badge";
 import StatusSelect from "@/components/submission/status-select";
 import WorkExperienceCard from "@/components/candidate/work-experience-card";
+import { transformResumeData } from "@/lib/resume-data-transformer";
 
 const SubmissionDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -70,7 +71,9 @@ const SubmissionDetailPage: React.FC = () => {
   const job = fullJobData || submission.job;
   const candidate = submission.candidate;
   const recruiter = submission.recruiter;
-  const resumeData = submission.resumeData || {
+  
+  // Initialize with empty data if no resume data is available
+  const rawResumeData = submission.resumeData || {
     clientNames: [],
     jobTitles: [],
     relevantDates: [],
@@ -85,6 +88,16 @@ const SubmissionDetailPage: React.FC = () => {
     contentSuggestions: [],
     formattingSuggestions: [],
     languageSuggestions: []
+  };
+  
+  // Transform the resume data to get a consistent structure
+  const transformedResumeData = transformResumeData(rawResumeData);
+  
+  // Keep original for backward compatibility with existing code
+  const resumeData = {
+    ...rawResumeData,
+    // Ensure we have workExperience from the transformer
+    workExperience: transformedResumeData.workExperience || rawResumeData.workExperience
   };
   
   return (
@@ -448,26 +461,58 @@ const SubmissionDetailPage: React.FC = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Skills Section with Visual Enhancement */}
-                    {resumeData.skills && resumeData.skills.length > 0 && (
+                    {transformedResumeData.skills.technical && transformedResumeData.skills.technical.length > 0 && (
                       <div className="bg-background border border-border p-4 rounded-md">
-                        <h3 className="text-md font-medium mb-3">Technical Skills</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {resumeData.skills.map((skill: string, i: number) => (
-                            <Badge key={i} variant="outline" className="bg-accent/30">
-                              {skill}
-                            </Badge>
-                          ))}
+                        <h3 className="text-md font-medium mb-3">Skills & Technologies</h3>
+                        
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium mb-2">Technical Skills</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {transformedResumeData.skills.technical.map((skill: string, i: number) => (
+                                <Badge key={i} variant="outline" className="bg-primary/10">
+                                  {skill}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {transformedResumeData.skills.soft.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-medium mb-2">Soft Skills</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {transformedResumeData.skills.soft.map((skill: string, i: number) => (
+                                  <Badge key={i} variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                    {skill}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {transformedResumeData.skills.certifications.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-medium mb-2">Certifications</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {transformedResumeData.skills.certifications.map((cert: string, i: number) => (
+                                  <Badge key={i} variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                    {cert}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
                     
                     {/* Education Section */}
-                    {resumeData.education && resumeData.education.length > 0 && (
+                    {transformedResumeData.education && transformedResumeData.education.length > 0 && (
                       <div className="bg-background border border-border p-4 rounded-md">
                         <h3 className="text-md font-medium mb-3">Education</h3>
-                        <ul className="list-disc list-inside text-sm space-y-1">
-                          {resumeData.education.map((edu: string, i: number) => (
-                            <li key={i}>{edu}</li>
+                        <ul className="list-disc list-inside text-sm space-y-3">
+                          {transformedResumeData.education.map((edu: string, i: number) => (
+                            <li key={i} className="pl-2 border-l-2 border-primary/20">{edu}</li>
                           ))}
                         </ul>
                       </div>
