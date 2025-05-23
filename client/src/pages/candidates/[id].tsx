@@ -17,15 +17,22 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import { transformResumeData } from "@/lib/resume-data-transformer";
+
 function CandidateDetailPage() {
   const { id } = useParams();
   const candidateId = parseInt(id);
   
   const { data: candidate, isLoading, error } = useCandidate(candidateId);
   
+  // Transform resume data from flat arrays to structured format
+  const transformedResumeData = candidate?.resumeData ? 
+    transformResumeData(candidate.resumeData) : undefined;
+  
   // Log the candidate data for debugging
   console.log("Candidate data:", candidate);
-  console.log("Resume data:", candidate?.resumeData);
+  console.log("Original resume data:", candidate?.resumeData);
+  console.log("Transformed resume data:", transformedResumeData);
   
   if (isLoading) {
     return (
@@ -252,13 +259,44 @@ function CandidateDetailPage() {
                   <CardDescription>Technical expertise and competencies</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {candidate.resumeData.skills && candidate.resumeData.skills.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {candidate.resumeData.skills.map((skill, idx) => (
-                        <Badge key={idx} variant="outline" className="bg-primary/10">
-                          {skill}
-                        </Badge>
-                      ))}
+                  {transformedResumeData?.skills.technical && transformedResumeData.skills.technical.length > 0 ? (
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-sm font-medium mb-2">Technical Skills</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {transformedResumeData.skills.technical.map((skill, idx) => (
+                            <Badge key={idx} variant="outline" className="bg-primary/10">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {transformedResumeData.skills.soft.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-medium mb-2">Soft Skills</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {transformedResumeData.skills.soft.map((skill, idx) => (
+                              <Badge key={idx} variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {transformedResumeData.skills.certifications.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-medium mb-2">Certifications</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {transformedResumeData.skills.certifications.map((cert, idx) => (
+                              <Badge key={idx} variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                {cert}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <p className="text-muted-foreground py-4">No skills detected</p>
@@ -267,7 +305,7 @@ function CandidateDetailPage() {
               </Card>
               
               <div className="md:col-span-2">
-                <WorkExperienceCard workExperience={candidate.resumeData.workExperience} />
+                <WorkExperienceCard workExperience={transformedResumeData?.workExperience || []} />
               </div>
               
               <Card className="md:col-span-2">
@@ -276,10 +314,10 @@ function CandidateDetailPage() {
                   <CardDescription>Educational background and qualifications</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {candidate.resumeData.education && candidate.resumeData.education.length > 0 ? (
+                  {transformedResumeData?.education && transformedResumeData.education.length > 0 ? (
                     <div className="space-y-4">
-                      {candidate.resumeData.education.map((edu, idx) => (
-                        <div key={idx} className="pl-4">
+                      {transformedResumeData.education.map((edu, idx) => (
+                        <div key={idx} className="pl-4 border-l-2 border-primary/20">
                           <p className="font-medium">{edu}</p>
                         </div>
                       ))}

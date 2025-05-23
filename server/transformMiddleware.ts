@@ -3,14 +3,42 @@
  * Automatically transforms resume data between DB and UI formats
  */
 
-import { transformDatabaseToUIFormat } from '../shared/transformers/resumeDataTransformer';
+import { transformDatabaseToUIFormat, DatabaseResumeData } from '../shared/transformers/resumeDataTransformer';
+import { Candidate, ResumeData } from '@shared/schema';
+
+interface StructuredSkills {
+  technical: string[];
+  soft: string[];
+  certifications: string[];
+}
+
+interface ExperienceEntry {
+  company: string;
+  position: string;
+  dates: string;
+  responsibilities: string[];
+}
+
+interface EducationEntry {
+  degree: string;
+  institution: string;
+  year: string;
+}
+
+interface CandidateWithResumeData extends Candidate {
+  resumeData?: ResumeData & {
+    experience?: ExperienceEntry[];
+    skills?: StructuredSkills;
+    education?: EducationEntry[];
+  };
+}
 
 /**
  * Middleware to transform a candidate's resume data from DB format to UI format
  * @param candidate The candidate object from the database
  * @returns The candidate with transformed resume data
  */
-export function transformCandidateResumeData(candidate: any) {
+export function transformCandidateResumeData(candidate: CandidateWithResumeData) {
   // If no candidate or no resume data, return as is
   if (!candidate || !candidate.resumeData) {
     return candidate;
