@@ -211,9 +211,12 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     }
 
     // Include suspicious flags if they exist
+    // Ensure jobId is a number (not a string) before sending to the API
+    const jobId = typeof selectedJobId === 'string' ? parseInt(selectedJobId, 10) : selectedJobId;
+    
     submitMutation.mutate({
-      jobId: selectedJobId,
-      candidateId,
+      jobId: jobId,
+      candidateId: Number(candidateId), // Also ensure candidateId is a number
       resumeFile: file || undefined,
       ...suspiciousFlags ? {
         isSuspicious: suspiciousFlags.isSuspicious,
