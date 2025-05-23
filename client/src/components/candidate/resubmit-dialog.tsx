@@ -281,13 +281,29 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       
       // If there are significant changes, highlight them to the recruiter
       if (comparisonResult.hasChanges && comparisonResult.overallRisk !== 'none') {
-        // Potentially add flags for significant discrepancies
+        // Major discrepancies should be flagged as suspicious - this uses our existing suspicious flag system
         if (comparisonResult.overallRisk === 'high' || comparisonResult.removedEmployers.length > 0) {
+          const isMajorDiscrepancy = comparisonResult.overallRisk === 'high' || 
+                                    (comparisonResult.removedEmployers.length > 0 && 
+                                     comparisonResult.newEmployers.length > 0);
+          
           setSuspiciousFlags({
             isSuspicious: true,
-            suspiciousReason: "Significant resume discrepancies detected",
-            suspiciousSeverity: comparisonResult.overallRisk === 'high' ? "HIGH" : "MEDIUM"
+            suspiciousReason: isMajorDiscrepancy 
+              ? "Major employment history discrepancies detected - possible fraudulent submission" 
+              : "Significant resume discrepancies detected",
+            suspiciousSeverity: isMajorDiscrepancy ? "HIGH" : "MEDIUM"
           });
+          
+          // Show urgent warning for major discrepancies
+          if (isMajorDiscrepancy) {
+            toast({
+              title: "WARNING: Major Resume Discrepancies",
+              description: "This resume contains completely different employment history which may indicate a fraudulent submission or incorrect candidate.",
+              variant: "destructive",
+              duration: 10000 // Show for longer
+            });
+          }
         }
       }
       
@@ -340,6 +356,23 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     
     // Use the existing validation results if available, otherwise analyze now
     let matchResult = null;
+    
+    // Check if this is a major discrepancy case (different employers) - don't update candidate data
+    const isMajorDiscrepancy = validationResult && 
+                             validationResult.overallRisk === 'high' || 
+                             (validationResult && validationResult.removedEmployers.length > 0 && 
+                              validationResult.newEmployers.length > 0);
+                              
+    if (isMajorDiscrepancy) {
+      // For major discrepancies, warn the user again before proceeding
+      toast({
+        title: "Warning: Submitting Discrepant Resume",
+        description: "This resume has major discrepancies and will be flagged as suspicious. It will NOT update candidate data.",
+        variant: "destructive",
+        duration: 5000
+      });
+    }
+    
     if (file && !currentResumeData) {
       matchResult = await analyzeNewResume(file);
       if (!matchResult) {
