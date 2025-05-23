@@ -1,5 +1,5 @@
 import { 
-  users, jobs, jobAssignments, candidates, resumeData, submissions, activities, candidateValidations, jobApplications,
+  users, jobs, jobAssignments, candidates, resumeData, submissions, activities, candidateValidations,
   type User, type InsertUser, 
   type Job, type InsertJob, 
   type JobAssignment, type InsertJobAssignment, 
@@ -7,8 +7,7 @@ import {
   type ResumeData, type InsertResumeData, 
   type Submission, type InsertSubmission, 
   type Activity, type InsertActivity,
-  type CandidateValidation, type InsertCandidateValidation,
-  type JobApplication, type InsertJobApplication
+  type CandidateValidation, type InsertCandidateValidation
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql, gte, lte } from "drizzle-orm";
@@ -71,28 +70,12 @@ export interface IStorage {
   getActivities(limit?: number): Promise<Activity[]>;
   createActivity(activity: InsertActivity): Promise<Activity>;
   
-  // Job applications operations (public portal submissions)
-  getJobApplications(filters?: { jobId?: number, status?: string }): Promise<JobApplication[]>;
-  getJobApplication(id: number): Promise<JobApplication | undefined>;
-  createJobApplication(application: InsertJobApplication): Promise<JobApplication>;
-  updateJobApplicationStatus(
-    id: number, 
-    status: string, 
-    reason?: string, 
-    processedBy?: number
-  ): Promise<JobApplication>;
-  convertApplicationToCandidate(applicationId: number, processedBy: number): Promise<{
-    candidate: Candidate;
-    resumeData?: ResumeData;
-  }>;
-  
   // Dashboard data
   getDashboardStats(): Promise<{
     activeJobs: number;
     totalSubmissions: number;
     assignedActiveJobs: number;
     submissionsThisWeek: number;
-    pendingApplications?: number;
   }>;
 }
 
@@ -696,137 +679,11 @@ export class DatabaseStorage implements IStorage {
     return activity;
   }
 
-  // Job Application methods
-  async getJobApplications(filters?: { jobId?: number; status?: string }): Promise<JobApplication[]> {
-    let query = db.select().from(jobApplications);
-    
-    if (filters) {
-      if (filters.jobId) {
-        query = query.where(eq(jobApplications.jobId, filters.jobId));
-      }
-      
-      if (filters.status) {
-        query = query.where(eq(jobApplications.status, filters.status));
-      }
-    }
-    
-    return query.orderBy(desc(jobApplications.createdAt));
-  }
-  
-  async getJobApplication(id: number): Promise<JobApplication | undefined> {
-    const [application] = await db
-      .select()
-      .from(jobApplications)
-      .where(eq(jobApplications.id, id));
-    
-    return application;
-  }
-  
-  async createJobApplication(application: InsertJobApplication): Promise<JobApplication> {
-    const [newApplication] = await db
-      .insert(jobApplications)
-      .values(application)
-      .returning();
-    
-    return newApplication;
-  }
-  
-  async updateJobApplicationStatus(
-    id: number, 
-    status: string, 
-    reason?: string, 
-    processedBy?: number
-  ): Promise<JobApplication> {
-    const now = new Date();
-    const updateData: any = { 
-      status, 
-      updatedAt: now
-    };
-    
-    if (reason !== undefined) {
-      updateData.statusReason = reason;
-    }
-    
-    if (processedBy !== undefined) {
-      updateData.processedBy = processedBy;
-      updateData.processedAt = now;
-    }
-    
-    const [application] = await db
-      .update(jobApplications)
-      .set(updateData)
-      .where(eq(jobApplications.id, id))
-      .returning();
-    
-    return application;
-  }
-  
-  async convertApplicationToCandidate(applicationId: number, processedBy: number): Promise<{
-    candidate: Candidate;
-    resumeData?: ResumeData;
-  }> {
-    // 1. Get the application details
-    const application = await this.getJobApplication(applicationId);
-    if (!application) {
-      throw new Error("Application not found");
-    }
-    
-    // 2. Create a new candidate from the application
-    const candidateInsert: InsertCandidate = {
-      firstName: application.firstName,
-      middleName: application.middleName,
-      lastName: application.lastName,
-      email: application.email,
-      phone: application.phone,
-      location: application.location || "Unknown",
-      workAuthorization: application.workAuthorization,
-      // Default values for required fields that aren't in the application
-      dobMonth: 1, // These will need to be updated later
-      dobDay: 1,   // These will need to be updated later
-      ssn4: "0000", // This will need to be updated later
-      createdBy: processedBy
-    };
-    
-    const candidate = await this.createCandidate(candidateInsert);
-    
-    // 3. If application has resume data, create resume data for the new candidate
-    let resumeDataRecord: ResumeData | undefined = undefined;
-    
-    if (application.resumeText) {
-      const resumeDataInsert: InsertResumeData = {
-        candidateId: candidate.id,
-        extractedText: application.resumeText,
-        fileName: application.resumeFileName || "uploaded-resume.txt",
-        // Parse education data if available (AI extracted)
-        education: application.relevantExperience || [],
-        // Parse skills if available (AI extracted)
-        skills: application.skillsMatched || [],
-      };
-      
-      resumeDataRecord = await this.createResumeData(resumeDataInsert);
-    }
-    
-    // 4. Update the job application status to approved
-    await this.updateJobApplicationStatus(
-      applicationId,
-      "approved",
-      "Converted to candidate record",
-      processedBy
-    );
-    
-    // 5. Return the created objects
-    return {
-      candidate,
-      resumeData: resumeDataRecord
-    };
-  }
-
   async getDashboardStats(): Promise<{
     activeJobs: number;
     totalSubmissions: number;
     assignedActiveJobs: number;
     submissionsThisWeek: number;
-    pendingApplications: number;
   }> {
     // Get active jobs count
     const [activeJobsResult] = await db
