@@ -22,19 +22,19 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
           
           <nav className="flex items-center space-x-6">
             <Link href="/careers">
-              <a className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
+              <span className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors cursor-pointer">
                 Jobs
-              </a>
+              </span>
             </Link>
             <Link href="/careers/about">
-              <a className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
+              <span className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors cursor-pointer">
                 About Us
-              </a>
+              </span>
             </Link>
             <Link href="/">
-              <a className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors">
+              <span className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors cursor-pointer">
                 Recruiter Login
-              </a>
+              </span>
             </Link>
           </nav>
         </div>

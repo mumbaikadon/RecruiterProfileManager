@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,52 +16,46 @@ import SubmissionDetailPage from "@/pages/submissions/[id]";
 // Public pages
 import CareersPage from "@/pages/careers/index";
 import PublicJobDetailPage from "@/pages/careers/jobs/[id]";
+import PublicLayout from "@/components/public-layout";
 
 function Router() {
-  // Detect if we're on a public page
-  const isPublicPage = window.location.pathname.startsWith('/careers');
+  const [location] = useLocation();
+  const isPublicPage = location.startsWith('/careers');
   
-  // If it's a public page, we don't wrap it in the admin Layout
-  if (isPublicPage) {
-    return (
+  // Public routes (with public layout) vs Admin routes (with admin layout)
+  return isPublicPage ? (
+    // Public routes with public layout
+    <PublicLayout>
       <Switch>
         <Route path="/careers" component={CareersPage} />
         <Route path="/careers/jobs/:id" component={PublicJobDetailPage} />
         <Route component={NotFound} />
       </Switch>
-    );
-  }
-  
-  // Admin/recruiter routes that are wrapped in the admin Layout
-  return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/jobs" component={JobsPage} />
-      <Route path="/jobs/:id" component={JobDetailPage} />
-      <Route path="/candidates" component={CandidatesPage} />
-      <Route path="/candidates/:id" component={CandidateDetailPage} />
-      <Route path="/submissions" component={SubmissionsPage} />
-      <Route path="/submissions/:id" component={SubmissionDetailPage} />
-      <Route component={NotFound} />
-    </Switch>
+    </PublicLayout>
+  ) : (
+    // Admin routes wrapped in admin Layout
+    <Layout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/jobs" component={JobsPage} />
+        <Route path="/jobs/:id" component={JobDetailPage} />
+        <Route path="/candidates" component={CandidatesPage} />
+        <Route path="/candidates/:id" component={CandidateDetailPage} />
+        <Route path="/submissions" component={SubmissionsPage} />
+        <Route path="/submissions/:id" component={SubmissionDetailPage} />
+        <Route component={NotFound} />
+      </Switch>
+    </Layout>
   );
 }
 
 function App() {
-  // Detect if we're on a public page
-  const isPublicPage = window.location.pathname.startsWith('/careers');
-  
+  // We'll handle the public vs admin layout in the Router component
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        {isPublicPage ? (
-          <Router />
-        ) : (
-          <Layout>
-            <Router />
-          </Layout>
-        )}
+        <Router />
       </TooltipProvider>
     </QueryClientProvider>
   );
