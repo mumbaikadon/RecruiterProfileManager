@@ -7,6 +7,7 @@ import {
   insertSubmissionSchema,
   insertResumeDataSchema,
   insertActivitySchema,
+  insertJobApplicationSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
@@ -1086,6 +1087,319 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(recruiters);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Public API endpoints for job applications
+  
+  // Get public job listings (for careers page)
+  app.get("/api/public/jobs", async (req: Request, res: Response) => {
+    try {
+      // Only show active jobs with public = true status
+      const jobs = await storage.getJobs({ status: "active" });
+      
+      // Return a simplified version of jobs for public consumption
+      const publicJobs = jobs.map(job => ({
+        id: job.id,
+        title: job.title,
+        clientName: job.clientName,
+        location: job.city && job.state ? `${job.city}, ${job.state}` : (job.city || job.state || "Remote"),
+        jobType: job.jobType || "Not specified",
+        postedDate: job.createdAt
+      }));
+      
+      res.json(publicJobs);
+    } catch (error) {
+      console.error("Error fetching public jobs:", error);
+      res.status(500).json({ message: "Failed to retrieve job listings" });
+    }
+  });
+  
+  // Get public job details (for careers/jobs/[id] page)
+  app.get("/api/public/jobs/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid job ID" });
+      }
+      
+      const job = await storage.getJob(id);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+      
+      // Only return active jobs
+      if (job.status !== "active") {
+        return res.status(404).json({ message: "Job is no longer active" });
+      }
+      
+      // Sanitize the job description
+      const { sanitizeHtml } = await import("./utils");
+      const sanitizedDescription = job.description ? sanitizeHtml(job.description) : "";
+      
+      // Return a public-safe version of the job
+      const publicJob = {
+        id: job.id,
+        title: job.title,
+        clientName: job.clientName,
+        description: sanitizedDescription,
+        location: job.city && job.state ? `${job.city}, ${job.state}` : (job.city || job.state || "Remote"),
+        jobType: job.jobType || "Not specified",
+        postedDate: job.createdAt
+      };
+      
+      res.json(publicJob);
+    } catch (error) {
+      console.error("Error fetching public job details:", error);
+      res.status(500).json({ message: "Failed to retrieve job details" });
+    }
+  });
+  
+  // Submit a job application (from careers/jobs/[id] page)
+  app.post("/api/public/jobs/:id/apply", fileUpload.single('resume'), async (req: Request, res: Response) => {
+    try {
+      const jobId = parseInt(req.params.id);
+      if (isNaN(jobId)) {
+        return res.status(400).json({ message: "Invalid job ID" });
+      }
+      
+      // Verify job exists and is active
+      const job = await storage.getJob(jobId);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+      
+      if (job.status !== "active") {
+        return res.status(400).json({ message: "This job is no longer accepting applications" });
+      }
+      
+      // Parse form data
+      const applicationData = {
+        jobId,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        email: req.body.email,
+        phone: req.body.phone,
+        middleName: req.body.middleName || null,
+        location: req.body.location || null,
+        workAuthorization: req.body.workAuthorization || "unknown",
+        coverLetter: req.body.coverLetter || null,
+      };
+      
+      // Validate the application data
+      const validatedData = insertJobApplicationSchema.parse(applicationData);
+      
+      // Process resume if uploaded
+      let resumeText = null;
+      let resumeFileName = null;
+      let aiAnalysisResults = null;
+      
+      if (req.file) {
+        try {
+          resumeFileName = req.file.originalname;
+          
+          // Extract text from resume file
+          if (req.file.buffer) {
+            const { text, analysis } = await analyzeResumeText(req.file.buffer);
+            resumeText = text;
+            
+            // If we have OpenAI analysis, match the resume against the job
+            if (analysis && job.description) {
+              // Match resume against job description
+              const matchResults = await matchResumeToJob(resumeText, job.description);
+              aiAnalysisResults = matchResults;
+            }
+          }
+        } catch (error) {
+          console.error("Error processing resume:", error);
+          // Continue without resume data - application can still be submitted
+        }
+      }
+      
+      // Create the job application record
+      const application = await storage.createJobApplication({
+        ...validatedData,
+        resumeText,
+        resumeFileName,
+        // Add AI analysis results if available
+        matchScore: aiAnalysisResults?.matchScore,
+        relevantExperience: aiAnalysisResults?.relevantExperience,
+        skillsMatched: aiAnalysisResults?.skillsMatched,
+        possibleRedFlags: aiAnalysisResults?.possibleRedFlags,
+      });
+      
+      // Create activity record for tracking
+      await storage.createActivity({
+        type: "new_application",
+        jobId,
+        applicationId: application.id,
+        message: `New application received from ${application.firstName} ${application.lastName} for job ${job.title} (${job.jobId})`,
+      });
+      
+      // Return success response
+      res.status(201).json({
+        message: "Application submitted successfully",
+        applicationId: application.id,
+        applicationDate: application.createdAt,
+      });
+    } catch (error) {
+      console.error("Error submitting job application:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid application data",
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: "Failed to submit application. Please try again." });
+    }
+  });
+  
+  // API endpoints for managing job applications (admin side)
+  
+  // Get all job applications (with optional filtering)
+  app.get("/api/applications", async (req: Request, res: Response) => {
+    try {
+      const { jobId, status } = req.query;
+      
+      const filters: { jobId?: number; status?: string } = {};
+      
+      if (jobId && !isNaN(Number(jobId))) {
+        filters.jobId = Number(jobId);
+      }
+      
+      if (status && typeof status === "string") {
+        filters.status = status;
+      }
+      
+      const applications = await storage.getJobApplications(filters);
+      
+      // Get job details for each application
+      const applicationsWithJobDetails = await Promise.all(
+        applications.map(async (app) => {
+          const job = await storage.getJob(app.jobId);
+          return {
+            ...app,
+            jobTitle: job?.title || "Unknown",
+            clientName: job?.clientName || "Unknown",
+          };
+        })
+      );
+      
+      res.json(applicationsWithJobDetails);
+    } catch (error) {
+      console.error("Error fetching job applications:", error);
+      res.status(500).json({ message: "Failed to retrieve applications" });
+    }
+  });
+  
+  // Get a specific job application
+  app.get("/api/applications/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid application ID" });
+      }
+      
+      const application = await storage.getJobApplication(id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      // Get related job details
+      const job = await storage.getJob(application.jobId);
+      
+      res.json({
+        ...application,
+        jobTitle: job?.title || "Unknown",
+        clientName: job?.clientName || "Unknown",
+      });
+    } catch (error) {
+      console.error("Error fetching application details:", error);
+      res.status(500).json({ message: "Failed to retrieve application details" });
+    }
+  });
+  
+  // Update a job application status (approve/reject)
+  app.put("/api/applications/:id/status", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid application ID" });
+      }
+      
+      const { status, reason, processedBy } = req.body;
+      
+      if (!status || !["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be 'approved' or 'rejected'" });
+      }
+      
+      // Get application to check current status
+      const application = await storage.getJobApplication(id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      // Prevent double-processing
+      if (application.status !== "new") {
+        return res.status(400).json({ 
+          message: `Application has already been ${application.status}` 
+        });
+      }
+      
+      // Update application status
+      const updatedApplication = await storage.updateJobApplicationStatus(
+        id,
+        status,
+        reason,
+        processedBy
+      );
+      
+      // Create activity record
+      const activityType = status === "approved" 
+        ? "application_approved" 
+        : "application_rejected";
+      
+      await storage.createActivity({
+        type: activityType,
+        applicationId: id,
+        jobId: application.jobId,
+        userId: processedBy,
+        message: `Application from ${application.firstName} ${application.lastName} was ${status}${reason ? `: ${reason}` : ""}`,
+      });
+      
+      // If application is approved, convert it to a candidate
+      let candidateData = null;
+      if (status === "approved" && processedBy) {
+        try {
+          candidateData = await storage.convertApplicationToCandidate(id, processedBy);
+          
+          // Create a submission for the new candidate
+          if (candidateData.candidate) {
+            await storage.createSubmission({
+              jobId: application.jobId,
+              candidateId: candidateData.candidate.id,
+              recruiterId: processedBy,
+              status: "New",
+              matchScore: application.matchScore || 65,
+              notes: "Auto-created from approved job application",
+            });
+          }
+        } catch (error) {
+          console.error("Error converting application to candidate:", error);
+          // We'll still return success even if conversion fails, just log the error
+        }
+      }
+      
+      res.json({
+        application: updatedApplication,
+        candidate: candidateData?.candidate || null,
+        message: `Application ${status} successfully`
+      });
+    } catch (error) {
+      console.error("Error updating application status:", error);
+      res.status(500).json({ message: "Failed to update application status" });
     }
   });
 
