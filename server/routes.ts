@@ -725,7 +725,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const submissionData = req.body;
       let candidateId: number;
-      const jobId = submissionData.jobId;
+      
+      // Ensure jobId is converted to a number
+      const jobId = typeof submissionData.jobId === 'string' 
+        ? parseInt(submissionData.jobId, 10) 
+        : submissionData.jobId;
 
       if (!jobId) {
         return res.status(400).json({ message: "Job ID is required" });
