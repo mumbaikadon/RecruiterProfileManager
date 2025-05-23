@@ -587,6 +587,24 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
                         resolve(true);
                       },
                       onError: (error) => {
+                        // Check if this is a "candidate already submitted" error (409 Conflict)
+                        if (error.message && (
+                            error.message.includes("already submitted") || 
+                            error.message.includes("already in our past submitted list") ||
+                            error.message.includes("Conflict")
+                          )) {
+                          console.log("Detected existing submission - this candidate was already submitted to this job");
+                          // Treat this as a success since the submission exists
+                          toast({
+                            title: "Submission already exists",
+                            description: `This candidate has already been submitted for ${jobTitle}`,
+                          });
+                          if (onSuccess) onSuccess();
+                          resolve(true);
+                          return;
+                        }
+                        
+                        // Otherwise, show the real error
                         setSubmissionError(error.message);
                         toast({
                           title: "Submission failed",
