@@ -1493,7 +1493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               candidateId: candidateId,
               recruiterId: validatedBy,
               status: "New",
-              agreedRate: req.body.hourlyRate ? parseFloat(req.body.hourlyRate) * 100 : 0, // Store as cents
+              agreedRate: req.body.hourlyRate ? parseInt(req.body.hourlyRate) : 0,
               isSuspicious: isSuspicious,
               suspiciousReason: suspiciousReason || null,
               suspiciousSeverity: suspiciousSeverity || null,
