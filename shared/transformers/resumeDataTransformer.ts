@@ -107,15 +107,30 @@ export function transformDatabaseToUIFormat(dbData: DatabaseResumeData): Structu
 
   // Transform education data
   const education = (dbData.education || []).map(edu => {
-    // Try to parse education string into components
+    // Try to parse education string into components - First attempt
     // Common formats: "Degree, Institution, Year" or "Degree from Institution, Year"
-    const degreeMatch = edu.match(/^(.*?)(?:,|\sfrom\s|\sat\s)(.*?)(?:,|\s)(\d{4}|\d{4}-\d{4}|\d{4}-\d{2})$/i);
+    let degreeMatch = edu.match(/^(.*?)(?:,|\sfrom\s|\sat\s)(.*?)(?:,|\s)(\d{4}|\d{4}-\d{4}|\d{4}-\d{2})$/i);
     
     if (degreeMatch && degreeMatch.length >= 4) {
       return {
         degree: degreeMatch[1].trim(),
         institution: degreeMatch[2].trim(),
         year: degreeMatch[3].trim()
+      };
+    }
+    
+    // Second attempt - For formats like "Master's in Computer Science University of Missouri, Kansas City, May 2023"
+    degreeMatch = edu.match(/(Master\'s|Bachelor\'s|Associate\'s|Ph\.D\.|Doctorate|MBA)(\sin\s|\sof\s)(.*?)(University|College|Institute|School)(.*?)(May|June|July|August|September|October|November|December|January|February|March|April)(\s)(\d{4})/i);
+    
+    if (degreeMatch && degreeMatch.length >= 8) {
+      const degree = `${degreeMatch[1]}${degreeMatch[2]}${degreeMatch[3]}`.trim();
+      const institution = `${degreeMatch[4]}${degreeMatch[5]}`.trim();
+      const year = `${degreeMatch[6]} ${degreeMatch[8]}`.trim();
+      
+      return {
+        degree: degree,
+        institution: institution,
+        year: year
       };
     }
     
