@@ -166,6 +166,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       }
     },
     onSuccess: () => {
+      setProcessingStage(null);
       toast({
         title: "Success",
         description: "Candidate has been resubmitted successfully",
@@ -175,6 +176,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       onClose();
     },
     onError: (error: Error) => {
+      setProcessingStage(null);
       console.error("Submission error details:", error);
       toast({
         title: "Error",
@@ -352,6 +354,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     const candId = Number(candidateId);
     
     if (isNaN(jobId)) {
+      setProcessingStage(null);
       toast({
         title: "Error",
         description: "Invalid job ID",
@@ -380,16 +383,20 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     }
     
     if (file && !currentResumeData) {
+      setProcessingStage("Analyzing resume...");
       matchResult = await analyzeNewResume(file);
       if (!matchResult) {
         // If analysis failed, stop the submission process
+        setProcessingStage(null);
         return;
       }
     } else if (file && currentResumeData) {
       // Get job details to perform the match again without re-running the comparison
+      setProcessingStage("Fetching job details...");
       const jobDetails = await apiRequest<any>(`/api/jobs/${jobId}`);
       
       // Use the existing file to get the resume text
+      setProcessingStage("Parsing resume document...");
       const formData = new FormData();
       formData.append("file", file);
       
@@ -400,6 +407,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       
       if (parsedResume.success) {
         // Just get the match score without re-validating the resume
+        setProcessingStage("Analyzing job match...");
         matchResult = await apiRequest<any>("/api/openai/match-resume", {
           method: "POST",
           body: JSON.stringify({
@@ -407,10 +415,19 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
             jobDescription: jobDetails.description,
           }),
         });
+      } else {
+        setProcessingStage(null);
+        toast({
+          title: "Error",
+          description: "Failed to parse resume document",
+          variant: "destructive",
+        });
+        return;
       }
     }
     
     // Now submit with the match result if available
+    setProcessingStage("Creating submission...");
     submitMutation.mutate({
       jobId: jobId,
       candidateId: candId,
