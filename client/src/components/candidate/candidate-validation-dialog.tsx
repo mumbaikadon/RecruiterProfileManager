@@ -118,6 +118,15 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
     }>;
     totalCandidatesChecked: number;
   } | null>(null);
+  
+  // For storing job match data
+  const [jobMatchData, setJobMatchData] = useState<{
+    score: number;
+    strengths: string[];
+    weaknesses: string[];
+    suggestions: string[];
+    resumeText?: string;
+  } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -373,12 +382,12 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         resumeFileName,
         reason: result === "unreal" ? reason : undefined,
         validatedBy, // Use validatedBy from props
-        // Store matchResult to avoid re-analyzing in resubmit
-        matchResult: matchResult,
-        matchScore: matchResult?.score,
-        strengths: matchResult?.strengths,
-        weaknesses: matchResult?.weaknesses,
-        suggestions: matchResult?.suggestions,
+        // Store match data to avoid re-analyzing in resubmit
+        matchResult: jobMatchData,
+        matchScore: jobMatchData?.score,
+        strengths: jobMatchData?.strengths,
+        weaknesses: jobMatchData?.weaknesses,
+        suggestions: jobMatchData?.suggestions,
         parsedResume: jobMatchData?.resumeText,
         // Add suspicious flags directly as properties with the processed values
         isSuspicious: isSuspiciousFlag,

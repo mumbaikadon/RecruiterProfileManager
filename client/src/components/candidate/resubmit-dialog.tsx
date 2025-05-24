@@ -382,60 +382,28 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       });
     }
     
-    // If we already have validation results, use them instead of re-analyzing
-    if (validationResult && validationResult.matchResult) {
-      setProcessingStage("Using existing validation results...");
-      matchResult = validationResult.matchResult;
-    } else if (file && !currentResumeData) {
-      // Only analyze if we don't have validation results yet
-      setProcessingStage("Analyzing resume...");
-      matchResult = await analyzeNewResume(file);
-      if (!matchResult) {
-        // If analysis failed, stop the submission process
-        setProcessingStage(null);
-        return;
-      }
-    } else if (file && currentResumeData) {
-      // Streamlined processing for existing candidates
-      setProcessingStage("Processing submission...");
-      // Use the existing validation data if available
-      if (validationResult && validationResult.parsedResume) {
-        matchResult = {
-          score: validationResult.matchScore || 0,
-          strengths: validationResult.strengths || [],
-          weaknesses: validationResult.weaknesses || [],
-          suggestions: validationResult.suggestions || []
-        };
-      } else {
-        // Fallback to fetching job details and parsing resume only if needed
-        const jobDetails = await apiRequest<any>(`/api/jobs/${jobId}`);
-        
-        const formData = new FormData();
-        formData.append("file", file);
-        
-        const parsedResume = await fetch("/api/parse-document", {
-          method: "POST",
-          body: formData,
-        }).then(res => res.json());
-        
-        if (parsedResume.success) {
-          matchResult = await apiRequest<any>("/api/openai/match-resume", {
-            method: "POST",
-            body: JSON.stringify({
-              resumeText: parsedResume.text,
-              jobDescription: jobDetails.description,
-            }),
-          });
-        } else {
-          setProcessingStage(null);
-          toast({
-            title: "Error",
-            description: "Failed to parse resume document",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
+    // Skip ALL resume analysis - we already did it during validation
+    // This completely eliminates the double processing issue
+    setProcessingStage("Preparing submission...");
+    
+    // Just use the existing validation results
+    if (validationResult) {
+      console.log("Using validation results directly for submission");
+      matchResult = {
+        score: validationResult.matchScore || 0,
+        strengths: validationResult.strengths || [],
+        weaknesses: validationResult.weaknesses || [],
+        suggestions: validationResult.suggestions || []
+      };
+    } else {
+      // Just for safety - this shouldn't happen in normal flow since validation is required
+      setProcessingStage(null);
+      toast({
+        title: "Error",
+        description: "Please validate the resume before submission",
+        variant: "destructive",
+      });
+      return;
     }
     
     // Now submit with the match result if available
