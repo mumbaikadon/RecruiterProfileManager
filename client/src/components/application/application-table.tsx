@@ -523,11 +523,12 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
             // Pass as strings and let the candidate form component handle conversion
             dobMonth: "1",
             dobDay: "1",
-            ssn4: "",
+            ssn4: "1234", // Default SSN last 4 digits
             location: "Remote", // Default location
             workAuthorization: selectedApplication.workAuthorization || "",
-            agreedRate: "0"
+            agreedRate: 0
           }}
+          applicationResumeFileName={selectedApplication.resumeFileName || undefined}
         />
       )}
     </div>

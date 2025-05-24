@@ -33,7 +33,10 @@ interface SubmissionDialogProps {
     dobMonth?: string;
     dobDay?: string;
     ssn4?: string;
+    workAuthorization?: string;
+    agreedRate?: number;
   };
+  applicationResumeFileName?: string;
 }
 
 interface PreviousSubmissionInfo {
