@@ -101,18 +101,18 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   const form = useForm<CandidateFormValues>({
     resolver: zodResolver(candidateFormSchema),
     defaultValues: {
-      firstName: "",
-      middleName: "",
-      lastName: "",
-      dobMonth: 0,
-      dobDay: 0,
-      ssn4: "",
-      location: "",
-      email: "",
-      phone: "",
-      linkedIn: "",
-      workAuthorization: "",
-      agreedRate: 0,
+      firstName: initialValues?.firstName || "",
+      middleName: initialValues?.middleName || "",
+      lastName: initialValues?.lastName || "",
+      dobMonth: initialValues?.dobMonth || 0,
+      dobDay: initialValues?.dobDay || 0,
+      ssn4: initialValues?.ssn4 || "",
+      location: initialValues?.location || "",
+      email: initialValues?.email || "",
+      phone: initialValues?.phone || "",
+      linkedIn: initialValues?.linkedIn || "",
+      workAuthorization: initialValues?.workAuthorization || "",
+      agreedRate: initialValues?.agreedRate || 0,
     }
   });
 
