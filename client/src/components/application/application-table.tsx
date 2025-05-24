@@ -528,6 +528,7 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
             agreedRate: 0
           }}
           applicationResumeFileName={selectedApplication.resumeFileName || undefined}
+          applicationId={selectedApplication.id} // Pass the application ID so it can be marked as processed
         />
       )}
     </div>
