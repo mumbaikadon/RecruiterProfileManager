@@ -295,6 +295,19 @@ function CandidateDetailPage() {
                           </div>
                         </div>
                       )}
+                      
+                      {transformedResumeData.skills.publications && transformedResumeData.skills.publications.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-medium mb-2">Publications & Projects</h3>
+                          <div className="flex flex-col gap-2">
+                            {transformedResumeData.skills.publications.map((pub, idx) => (
+                              <div key={idx} className="bg-purple-50 dark:bg-purple-900/20 rounded-md p-2 text-sm">
+                                <p className="text-purple-800 dark:text-purple-300">{pub}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <p className="text-muted-foreground py-4">No skills detected</p>
@@ -316,7 +329,19 @@ function CandidateDetailPage() {
                     <div className="space-y-4">
                       {transformedResumeData.education.map((edu, idx) => (
                         <div key={idx} className="pl-4 border-l-2 border-primary/20">
-                          <p className="font-medium">{edu}</p>
+                          {typeof edu === 'string' ? (
+                            <p className="font-medium">{edu}</p>
+                          ) : (
+                            <div>
+                              <p className="font-medium text-primary">{edu.degree}</p>
+                              {edu.institution && (
+                                <p className="text-sm text-muted-foreground">{edu.institution}</p>
+                              )}
+                              {edu.year && (
+                                <p className="text-xs text-muted-foreground mt-1">{edu.year}</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
