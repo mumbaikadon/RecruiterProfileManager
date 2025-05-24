@@ -30,7 +30,16 @@ const Topbar: React.FC<TopbarProps> = ({
   isLargeText = false,
   onToggleLargeText = () => {}
 }) => {
-  const [notificationCount, setNotificationCount] = React.useState(3);
+  // Initialize from localStorage or default to 3
+  const [notificationCount, setNotificationCount] = React.useState(() => {
+    const savedCount = localStorage.getItem('notificationCount');
+    return savedCount !== null ? parseInt(savedCount, 10) : 3;
+  });
+  
+  // Update localStorage whenever notification count changes
+  React.useEffect(() => {
+    localStorage.setItem('notificationCount', notificationCount.toString());
+  }, [notificationCount]);
   
   const markAllAsRead = () => {
     setNotificationCount(0);
