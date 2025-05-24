@@ -525,8 +525,7 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
             dobDay: String(new Date(selectedApplication.appliedAt).getDate()),
             ssn4: String(Math.floor(1000 + Math.random() * 9000)), // Random 4 digits
             workAuthorization: selectedApplication.workAuthorization || "",
-            agreedRate: 0,
-            // No extra fields needed here
+            agreedRate: 0
           }}
           applicationResumeFileName={selectedApplication.resumeFileName || undefined}
           applicationId={selectedApplication.id} // Pass the application ID so it can be marked as processed

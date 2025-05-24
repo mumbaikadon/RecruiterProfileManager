@@ -1243,7 +1243,17 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
 
   // Check candidate existence when identity fields change
   useEffect(() => {
+    // Don't check candidate existence for application submissions with generated identity fields
+    const isFromApplication = applicationResumeFileName && initialValues?.dobMonth && initialValues?.dobDay;
+    
     const checkExistingCandidate = async () => {
+      // Skip the check for application candidates with generated identity fields
+      if (isFromApplication) {
+        console.log("Skipping duplicate check for application candidate");
+        setCandidateExists(false);
+        return;
+      }
+      
       if (dobMonth && dobDay && ssn4?.length === 4) {
         try {
           const result = await checkCandidate({
@@ -1268,7 +1278,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
     };
 
     checkExistingCandidate();
-  }, [dobMonth, dobDay, ssn4, checkCandidate, toast]);
+  }, [dobMonth, dobDay, ssn4, checkCandidate, toast, applicationResumeFileName, initialValues]);
 
   return (
     <div className="space-y-6">
