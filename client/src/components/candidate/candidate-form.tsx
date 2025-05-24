@@ -1627,17 +1627,34 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
               <div className="mt-2 mb-4 p-3 border rounded-md border-green-200 bg-green-50">
                 <div className="flex items-center">
                   <div className="flex-shrink-0 text-green-600 mr-2">
-                    <CheckCircle className="h-5 w-5" />
+                    {isLoadingExistingResume ? (
+                      <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-green-600"></div>
+                    ) : (
+                      <CheckCircle className="h-5 w-5" />
+                    )}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-green-800">Resume already uploaded from application</p>
+                    <p className="text-sm font-medium text-green-800">
+                      {isLoadingExistingResume 
+                        ? "Analyzing resume from application..." 
+                        : "Resume already uploaded from application"}
+                    </p>
                     <p className="text-xs text-green-700">{existingResumeFileName}</p>
+                    {isLoadingExistingResume && (
+                      <div className="mt-1">
+                        <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-green-500 rounded-full animate-pulse" style={{ width: '70%' }}></div>
+                        </div>
+                        <p className="text-xs text-green-700 mt-1">Please wait while we analyze skills and experience...</p>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <Button 
                       type="button" 
                       variant="ghost" 
                       size="sm"
+                      disabled={isLoadingExistingResume}
                       className="text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
                       onClick={() => setExistingResumeFileName(undefined)}
                     >
@@ -1943,15 +1960,23 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             </Card>
           )}
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex items-center justify-end space-x-3">
+            {isLoadingExistingResume && (
+              <div className="flex items-center mr-3 text-amber-600 text-sm">
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-amber-600"></div>
+                Resume analysis in progress...
+              </div>
+            )}
             <Button type="button" variant="outline">
               Cancel
             </Button>
             <Button 
               type="submit" 
-              disabled={isPending || isAnalyzing}
+              disabled={isPending || isAnalyzing || isLoadingExistingResume}
             >
-              {isPending ? "Submitting..." : "Submit Candidate"}
+              {isPending ? "Submitting..." : 
+               isLoadingExistingResume ? "Analyzing Resume..." : 
+               "Submit Candidate"}
             </Button>
           </div>
         </form>
