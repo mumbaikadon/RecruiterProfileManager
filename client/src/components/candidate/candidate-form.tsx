@@ -90,6 +90,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   const [showOtherAuthorizationInput, setShowOtherAuthorizationInput] = useState(false);
   const [otherAuthorization, setOtherAuthorization] = useState("");
   const [existingResumeFileName, setExistingResumeFileName] = useState<string | undefined>(applicationResumeFileName);
+  const [isLoadingExistingResume, setIsLoadingExistingResume] = useState<boolean>(false);
   const [validationWarning, setValidationWarning] = useState<{
     title: string;
     message: string;
@@ -100,6 +101,68 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
 
   const { toast } = useToast();
   const { mutateAsync: checkCandidate } = useCheckCandidate();
+
+  // Effect to load existing resume file when provided from application
+  useEffect(() => {
+    if (existingResumeFileName && !resumeData && !isLoadingExistingResume) {
+      const loadExistingResume = async () => {
+        try {
+          setIsLoadingExistingResume(true);
+          
+          // First, fetch the resume file
+          console.log("Fetching existing resume file:", existingResumeFileName);
+          const response = await fetch(`/uploads/${existingResumeFileName}`);
+          
+          if (!response.ok) {
+            console.error("Failed to fetch resume file:", response.statusText);
+            toast({
+              title: "Resume Loading Error",
+              description: "Could not load the existing resume file. You may need to upload a new one.",
+              variant: "destructive",
+            });
+            setIsLoadingExistingResume(false);
+            return;
+          }
+          
+          // Convert the response to a blob and create a file object
+          const blob = await response.blob();
+          const file = new File([blob], existingResumeFileName, { type: blob.type });
+          setResumeFile(file);
+          
+          // Now analyze the resume content
+          console.log("Analyzing existing resume file");
+          const result = await analyzeResume(file);
+          
+          // Set resume data
+          setResumeData(result.analysis);
+          setResumeText(result.text);
+          
+          // Match against job description
+          console.log("Matching existing resume against job description");
+          const matchResult = await matchResumeToJob(
+            result.text,
+            jobDescription
+          );
+          
+          // Set match results
+          setMatchResults(matchResult);
+          
+          console.log("Existing resume analysis complete");
+        } catch (error) {
+          console.error("Error loading existing resume:", error);
+          toast({
+            title: "Resume Analysis Error",
+            description: "There was an error analyzing the existing resume. You may need to upload a new one.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoadingExistingResume(false);
+        }
+      };
+      
+      loadExistingResume();
+    }
+  }, [existingResumeFileName, resumeData, isLoadingExistingResume, toast, jobDescription]);
 
   // Process initial values to ensure types match the schema
   const processedInitialValues = {
