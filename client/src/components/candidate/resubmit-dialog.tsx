@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
 }) => {
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [hourlyRate, setHourlyRate] = useState<string>("");
   const [requiresNewResume, setRequiresNewResume] = useState(false);
   const [suspiciousFlags, setSuspiciousFlags] = useState<{
     isSuspicious: boolean;
@@ -92,6 +94,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       jobId: number;
       candidateId: number;
       resumeFile?: File;
+      hourlyRate?: string;
       isSuspicious?: boolean;
       suspiciousReason?: string | null;
       suspiciousSeverity?: string | null;
@@ -415,6 +418,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       jobId: jobId,
       candidateId: candId,
       resumeFile: file || undefined,
+      hourlyRate: hourlyRate || "0",
       ...(matchResult ? {
         matchScore: matchResult.score,
         matchStrengths: matchResult.strengths,
@@ -473,6 +477,24 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Hourly Rate ($)
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">$</span>
+              <Input
+                type="number"
+                placeholder="0.00"
+                className="pl-8"
+                value={hourlyRate}
+                onChange={(e) => setHourlyRate(e.target.value)}
+                min="0"
+                step="0.01"
+              />
+            </div>
           </div>
 
           {requiresNewResume && selectedJobId && (
