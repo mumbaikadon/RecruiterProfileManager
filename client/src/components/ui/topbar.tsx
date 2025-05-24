@@ -30,6 +30,12 @@ const Topbar: React.FC<TopbarProps> = ({
   isLargeText = false,
   onToggleLargeText = () => {}
 }) => {
+  const [notificationCount, setNotificationCount] = React.useState(3);
+  
+  const markAllAsRead = () => {
+    setNotificationCount(0);
+    // In a real implementation, this would call an API to mark notifications as read
+  };
   return (
     <header className="bg-card border-b border-border shadow-sm sticky top-0 z-20 transition-all duration-300">
       <div className="px-4 sm:px-6 lg:px-8">
@@ -104,7 +110,11 @@ const Topbar: React.FC<TopbarProps> = ({
                         aria-label="Notifications"
                       >
                         <Bell className="h-5 w-5" />
-                        <span className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold rounded-full bg-primary text-white">3</span>
+                        {notificationCount > 0 && (
+                          <span className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold rounded-full bg-primary text-white">
+                            {notificationCount}
+                          </span>
+                        )}
                       </Button>
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
@@ -117,7 +127,11 @@ const Topbar: React.FC<TopbarProps> = ({
                   <DropdownMenuLabel className="flex items-center justify-between">
                     <span>Notifications</span>
                     <Button variant="ghost" size="sm" className="text-xs h-auto py-1" 
-                            onClick={() => window.location.href = '/applications?filter=unread'}>
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              markAllAsRead();
+                            }}>
                       Mark all as read
                     </Button>
                   </DropdownMenuLabel>
@@ -125,7 +139,7 @@ const Topbar: React.FC<TopbarProps> = ({
                   
                   {/* New application notification */}
                   <div className="p-0 cursor-pointer">
-                    <a href="/applications" className="block">
+                    <a href="/candidates/71" className="block">
                       <div className="flex items-start gap-3 p-3 hover:bg-accent transition-colors">
                         <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-full flex-shrink-0">
                           <CalendarDays className="h-4 w-4 text-blue-600 dark:text-blue-300" />
@@ -141,7 +155,7 @@ const Topbar: React.FC<TopbarProps> = ({
                   
                   {/* Another notification example */}
                   <div className="p-0 cursor-pointer">
-                    <a href="/applications" className="block">
+                    <a href="/candidates/72" className="block">
                       <div className="flex items-start gap-3 p-3 hover:bg-accent transition-colors">
                         <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full flex-shrink-0">
                           <CalendarDays className="h-4 w-4 text-green-600 dark:text-green-300" />
@@ -157,7 +171,7 @@ const Topbar: React.FC<TopbarProps> = ({
                   
                   <DropdownMenuSeparator />
                   <div className="p-0 text-center">
-                    <a href="/applications" className="block p-2 text-primary hover:bg-accent/50 transition-colors">
+                    <a href="/notifications" className="block p-2 text-primary hover:bg-accent/50 transition-colors">
                       View all notifications
                     </a>
                   </div>
