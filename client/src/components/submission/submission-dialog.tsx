@@ -37,6 +37,7 @@ interface SubmissionDialogProps {
     agreedRate?: number;
   };
   applicationResumeFileName?: string;
+  applicationId?: number; // ID of the application being processed
 }
 
 interface PreviousSubmissionInfo {
@@ -133,6 +134,32 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
     } catch (error) {
       console.error("Error getting previous submissions:", error);
       return [];
+    }
+  };
+
+  // Function to mark an application as processed
+  const markApplicationAsProcessed = async (applicationId: number) => {
+    try {
+      const response = await fetch(`/api/applications/${applicationId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'processed',
+          notes: 'Candidate successfully submitted to recruitment process'
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to mark application as processed:', response.status);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error marking application as processed:', error);
+      return false;
     }
   };
 
@@ -455,7 +482,18 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         matchScore: values.matchResults?.score || null,
         notes: "",
       }, {
-        onSuccess: () => {
+        onSuccess: async () => {
+          // Mark the application as processed if it came from an application
+          if (applicationId) {
+            const marked = await markApplicationAsProcessed(applicationId);
+            if (marked) {
+              toast({
+                title: "Application processed",
+                description: "The application has been marked as processed and will be removed from the pending list.",
+              });
+            }
+          }
+          
           toast({
             title: "Submission successful",
             description: "The candidate has been submitted for this job.",
