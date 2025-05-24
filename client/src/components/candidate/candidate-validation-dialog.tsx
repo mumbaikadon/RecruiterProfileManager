@@ -373,6 +373,13 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         resumeFileName,
         reason: result === "unreal" ? reason : undefined,
         validatedBy, // Use validatedBy from props
+        // Store matchResult to avoid re-analyzing in resubmit
+        matchResult: matchResult,
+        matchScore: matchResult?.score,
+        strengths: matchResult?.strengths,
+        weaknesses: matchResult?.weaknesses,
+        suggestions: matchResult?.suggestions,
+        parsedResume: jobMatchData?.resumeText,
         // Add suspicious flags directly as properties with the processed values
         isSuspicious: isSuspiciousFlag,
         suspiciousReason: suspiciousReasonToUse,

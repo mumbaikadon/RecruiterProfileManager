@@ -382,7 +382,12 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       });
     }
     
-    if (file && !currentResumeData) {
+    // If we already have validation results, use them instead of re-analyzing
+    if (validationResult && validationResult.matchResult) {
+      setProcessingStage("Using existing validation results...");
+      matchResult = validationResult.matchResult;
+    } else if (file && !currentResumeData) {
+      // Only analyze if we don't have validation results yet
       setProcessingStage("Analyzing resume...");
       matchResult = await analyzeNewResume(file);
       if (!matchResult) {
@@ -391,38 +396,45 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
         return;
       }
     } else if (file && currentResumeData) {
-      // Get job details to perform the match again without re-running the comparison
-      setProcessingStage("Fetching job details...");
-      const jobDetails = await apiRequest<any>(`/api/jobs/${jobId}`);
-      
-      // Use the existing file to get the resume text
-      setProcessingStage("Parsing resume document...");
-      const formData = new FormData();
-      formData.append("file", file);
-      
-      const parsedResume = await fetch("/api/parse-document", {
-        method: "POST",
-        body: formData,
-      }).then(res => res.json());
-      
-      if (parsedResume.success) {
-        // Just get the match score without re-validating the resume
-        setProcessingStage("Analyzing job match...");
-        matchResult = await apiRequest<any>("/api/openai/match-resume", {
-          method: "POST",
-          body: JSON.stringify({
-            resumeText: parsedResume.text,
-            jobDescription: jobDetails.description,
-          }),
-        });
+      // Streamlined processing for existing candidates
+      setProcessingStage("Processing submission...");
+      // Use the existing validation data if available
+      if (validationResult && validationResult.parsedResume) {
+        matchResult = {
+          score: validationResult.matchScore || 0,
+          strengths: validationResult.strengths || [],
+          weaknesses: validationResult.weaknesses || [],
+          suggestions: validationResult.suggestions || []
+        };
       } else {
-        setProcessingStage(null);
-        toast({
-          title: "Error",
-          description: "Failed to parse resume document",
-          variant: "destructive",
-        });
-        return;
+        // Fallback to fetching job details and parsing resume only if needed
+        const jobDetails = await apiRequest<any>(`/api/jobs/${jobId}`);
+        
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const parsedResume = await fetch("/api/parse-document", {
+          method: "POST",
+          body: formData,
+        }).then(res => res.json());
+        
+        if (parsedResume.success) {
+          matchResult = await apiRequest<any>("/api/openai/match-resume", {
+            method: "POST",
+            body: JSON.stringify({
+              resumeText: parsedResume.text,
+              jobDescription: jobDetails.description,
+            }),
+          });
+        } else {
+          setProcessingStage(null);
+          toast({
+            title: "Error",
+            description: "Failed to parse resume document",
+            variant: "destructive",
+          });
+          return;
+        }
       }
     }
     
