@@ -171,6 +171,29 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
     // Create a download link for the resume
     window.open(`/uploads/${fileName}`, '_blank');
   };
+  
+  const handleViewResume = (fileName?: string) => {
+    if (!fileName) {
+      toast({
+        title: "No resume available",
+        description: "This candidate did not upload a resume.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Open the resume in a new tab with preview mode
+    const fileExtension = fileName.split('.').pop()?.toLowerCase();
+    
+    // For PDF files, browsers can render them directly
+    if (fileExtension === 'pdf') {
+      window.open(`/uploads/${fileName}`, '_blank');
+    } else {
+      // For other file types, try to use Google Docs Viewer
+      const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + '/uploads/' + fileName)}&embedded=true`;
+      window.open(viewerUrl, '_blank');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -235,10 +258,16 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
                     </DropdownMenuItem>
                     
                     {application.resumeFileName && (
-                      <DropdownMenuItem onClick={() => handleDownloadResume(application.resumeFileName)}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Download Resume
-                      </DropdownMenuItem>
+                      <>
+                        <DropdownMenuItem onClick={() => handleViewResume(application.resumeFileName)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Resume
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownloadResume(application.resumeFileName)}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Download Resume
+                        </DropdownMenuItem>
+                      </>
                     )}
 
                     {application.status === "pending" && (
