@@ -523,18 +523,20 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading || isValidating}>
+          <Button variant="outline" onClick={onClose} disabled={isLoading || isValidating || processingStage !== null}>
             Cancel
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={isLoading || isValidating}
+            disabled={isLoading || isValidating || processingStage !== null}
             variant={validationResult?.overallRisk === 'high' ? "destructive" : "default"}
           >
-            {isLoading || isValidating ? (
+            {isLoading || isValidating || processingStage ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isValidating ? "Validating Resume..." : "Processing..."}
+                {isValidating ? "Validating Resume..." : 
+                 processingStage ? processingStage : 
+                 "Processing..."}
               </>
             ) : (
               validationResult?.overallRisk === 'high' 
