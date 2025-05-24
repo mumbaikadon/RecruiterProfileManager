@@ -40,24 +40,17 @@ export function formatCurrency(amount: number): string {
 
 export function formatRate(rate: number | null | undefined): string {
   // If rate is null or undefined, return "N/A" instead of formatting it
+  // Note: We now format 0 values properly instead of showing "N/A"
   if (rate === null || rate === undefined || isNaN(rate)) {
     return "N/A";
   }
-  
-  // If rate is 0, show $0/hr
-  if (rate === 0) {
-    return "$0/hr";
-  }
-  
-  // Handle rates stored in cents (divide by 100)
-  const displayRate = rate >= 100 ? Math.round(rate / 100) : rate;
   
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(displayRate) + "/hr";
+  }).format(rate) + "/hr";
 }
 
 export function isDateEqual(date1: string | Date, date2: string | Date): boolean {
