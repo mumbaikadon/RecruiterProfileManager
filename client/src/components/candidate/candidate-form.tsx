@@ -102,14 +102,14 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   const { toast } = useToast();
   const { mutateAsync: checkCandidate } = useCheckCandidate();
 
-  // Effect to just load the existing resume file when provided from application (without analyzing)
+  // Effect to load existing resume file when provided from application
   useEffect(() => {
-    if (existingResumeFileName && !resumeFile && !isLoadingExistingResume) {
+    if (existingResumeFileName && !resumeData && !isLoadingExistingResume) {
       const loadExistingResume = async () => {
         try {
           setIsLoadingExistingResume(true);
           
-          // Just fetch the resume file without analyzing it
+          // First, fetch the resume file
           console.log("Fetching existing resume file:", existingResumeFileName);
           const response = await fetch(`/uploads/${existingResumeFileName}`);
           
@@ -129,15 +129,30 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           const file = new File([blob], existingResumeFileName, { type: blob.type });
           setResumeFile(file);
           
-          toast({
-            title: "Resume Loaded",
-            description: "The resume file has been loaded successfully.",
-          });
+          // Now analyze the resume content
+          console.log("Analyzing existing resume file");
+          const result = await analyzeResume(file);
+          
+          // Set resume data
+          setResumeData(result.analysis);
+          setResumeText(result.text);
+          
+          // Match against job description
+          console.log("Matching existing resume against job description");
+          const matchResult = await matchResumeToJob(
+            result.text,
+            jobDescription
+          );
+          
+          // Set match results
+          setMatchResults(matchResult);
+          
+          console.log("Existing resume analysis complete");
         } catch (error) {
           console.error("Error loading existing resume:", error);
           toast({
-            title: "Resume Loading Error",
-            description: "There was an error loading the resume file. You may need to upload a new one.",
+            title: "Resume Analysis Error",
+            description: "There was an error analyzing the existing resume. You may need to upload a new one.",
             variant: "destructive",
           });
         } finally {
@@ -147,7 +162,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       
       loadExistingResume();
     }
-  }, [existingResumeFileName, resumeFile, isLoadingExistingResume, toast]);
+  }, [existingResumeFileName, resumeData, isLoadingExistingResume, toast, jobDescription]);
 
   // Process initial values to ensure types match the schema
   const processedInitialValues = {
@@ -1187,39 +1202,9 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         }
       }
 
-      // Always analyze resume file during submission if we have one
-      let finalResumeData = null;
-      let finalMatchResults = null;
-      
-      if (resumeFile) {
-        try {
-          console.log("Analyzing resume during submission");
-          setIsAnalyzing(true);
-          
-          // Always analyze the resume fresh during submission
-          const result = await analyzeResume(resumeFile);
-          finalResumeData = result.analysis;
-          
-          // Match against job description
-          if (jobDescription) {
-            console.log("Matching resume against job description");
-            finalMatchResults = await matchResumeToJob(result.text, jobDescription);
-          }
-          
-          console.log("Resume analysis complete:", 
-            finalResumeData ? `Resume data present (${finalResumeData.clientNames?.length || 0} companies)` : "No resume data");
-          
-        } catch (error) {
-          console.error("Error analyzing resume during submission:", error);
-          toast({
-            title: "Resume Analysis Warning",
-            description: "There was an issue analyzing the resume, but we'll continue with the submission.",
-            variant: "warning",
-          });
-        } finally {
-          setIsAnalyzing(false);
-        }
-      }
+      // Include resume data and match results if available
+      console.log("Submitting candidate data with resume:", 
+        resumeData ? `Resume data present (${resumeData.clientNames?.length || 0} companies)` : "No resume data");
       
       // Add suspicious flags to the submission if there's a validation warning
       const suspiciousData = validationWarning ? {
@@ -1236,8 +1221,8 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       // Include the existing resume filename if available
       onSubmit({
         ...values,
-        resumeData: finalResumeData,
-        matchResults: finalMatchResults,
+        resumeData: resumeData,
+        matchResults: matchResults,
         existingResumeFileName: existingResumeFileName,
         ...suspiciousData
       });
