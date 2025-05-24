@@ -405,34 +405,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add endpoint to get resume data specifically
-  app.get("/api/candidates/:id/resume-data", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid candidate ID" });
-      }
-
-      // Check if candidate exists
-      const candidate = await storage.getCandidate(id);
-      if (!candidate) {
-        return res.status(404).json({ message: "Candidate not found" });
-      }
-
-      // Get resume data
-      const resumeData = await storage.getResumeData(id);
-      
-      if (!resumeData) {
-        return res.status(404).json({ message: "No resume data found for this candidate" });
-      }
-
-      res.json(resumeData);
-    } catch (error) {
-      console.error("Error retrieving resume data:", error);
-      res.status(500).json({ message: (error as Error).message });
-    }
-  });
-
   app.post("/api/candidates", async (req: Request, res: Response) => {
     try {
       const validatedData = insertCandidateSchema.parse(req.body);
