@@ -10,6 +10,9 @@ export interface ResumeAnalysisResult {
   jobTitles: string[];
   relevantDates: string[];
   skills: string[];
+  softSkills: string[];
+  certifications: string[];
+  publications: string[];
   education: string[];
   extractedText: string;
 }
@@ -97,16 +100,29 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
             
             3. EDUCATION:
                - Extract education details including degrees, institutions, and graduation years
+               - Format as complete phrases (e.g., "Master's in Computer Science, University of XYZ, 2023")
             
             4. SKILLS:
                - Extract technical skills, technologies, programming languages, etc.
+               - Include programming languages, frameworks, tools, platforms, databases
+               - Extract soft skills (leadership, communication, etc.)
+            
+            5. CERTIFICATIONS:
+               - Extract professional certifications, licenses, and credentials
+               - Include certification name, issuing organization, and dates if available
+            
+            6. PUBLICATIONS/PROJECTS:
+               - Extract any notable publications, research papers, or significant projects
             
             Return your analysis in a structured JSON format with the following fields:
             - clientNames (array of strings: extract company names)
             - jobTitles (array of strings: extract job titles)
             - relevantDates (array of strings: extract date ranges)
             - education (array of strings: extract education details)
-            - skills (array of strings: extract skills and technologies)
+            - skills (array of strings: extract technical skills)
+            - softSkills (array of strings: extract soft skills)
+            - certifications (array of strings: extract certifications)
+            - publications (array of strings: extract publications/projects)
             
             NOTICE: If you cannot find certain information, return empty arrays for those fields.`
         }
@@ -128,6 +144,9 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       jobTitles: Array.isArray(analysisResult.jobTitles) ? analysisResult.jobTitles : [],  
       relevantDates: Array.isArray(analysisResult.relevantDates) ? analysisResult.relevantDates : [],
       skills: Array.isArray(analysisResult.skills) ? analysisResult.skills : [],
+      softSkills: Array.isArray(analysisResult.softSkills) ? analysisResult.softSkills : [],
+      certifications: Array.isArray(analysisResult.certifications) ? analysisResult.certifications : [],
+      publications: Array.isArray(analysisResult.publications) ? analysisResult.publications : [],
       education: Array.isArray(analysisResult.education) ? analysisResult.education : [],
       extractedText: resumeText.substring(0, 4000) // Limit to 4000 chars for DB storage
     };
@@ -140,6 +159,9 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       jobTitles: [],  
       relevantDates: [],
       skills: [],
+      softSkills: [],
+      certifications: [],
+      publications: [],
       education: [],
       extractedText: resumeText.substring(0, 4000)
     };

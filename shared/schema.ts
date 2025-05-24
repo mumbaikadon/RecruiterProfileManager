@@ -87,6 +87,9 @@ export const resumeData = pgTable("resume_data", {
   jobTitles: text("job_titles").array(),
   relevantDates: text("relevant_dates").array(),
   skills: text("skills").array(),
+  softSkills: text("soft_skills").array(),
+  certifications: text("certifications").array(),
+  publications: text("publications").array(),
   education: text("education").array(),
   extractedText: text("extracted_text"),
   fileName: text("file_name"),  // Name of the original resume file
