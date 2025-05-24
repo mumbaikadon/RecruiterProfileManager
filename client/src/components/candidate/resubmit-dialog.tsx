@@ -285,16 +285,19 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       // If there are significant changes, highlight them to the recruiter
       if (comparisonResult.hasChanges && comparisonResult.overallRisk !== 'none') {
         // Major discrepancies should be flagged as suspicious - this uses our existing suspicious flag system
-        if (comparisonResult.overallRisk === 'high' || comparisonResult.removedEmployers.length > 0) {
+        if (comparisonResult.overallRisk === 'high' || comparisonResult.removedEmployers.length > 0 || comparisonResult.changedDates.length > 1) {
           const isMajorDiscrepancy = comparisonResult.overallRisk === 'high' || 
                                     (comparisonResult.removedEmployers.length > 0 && 
-                                     comparisonResult.newEmployers.length > 0);
+                                     comparisonResult.newEmployers.length > 0) ||
+                                    comparisonResult.changedDates.length > 2;
           
           setSuspiciousFlags({
             isSuspicious: true,
             suspiciousReason: isMajorDiscrepancy 
               ? "Major employment history discrepancies detected - possible fraudulent submission" 
-              : "Significant resume discrepancies detected",
+              : comparisonResult.changedDates.length > 1
+                ? `Modified employment dates detected on ${comparisonResult.changedDates.length} positions`
+                : "Significant resume discrepancies detected",
             suspiciousSeverity: isMajorDiscrepancy ? "HIGH" : "MEDIUM"
           });
           
