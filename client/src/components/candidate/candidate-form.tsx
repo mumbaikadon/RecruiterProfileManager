@@ -67,6 +67,7 @@ interface CandidateFormProps {
     matchResults?: any;
   }) => void;
   isPending?: boolean;
+  initialValues?: Partial<CandidateFormValues>;
 }
 
 const CandidateForm: React.FC<CandidateFormProps> = ({
@@ -74,7 +75,8 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   jobTitle,
   jobDescription,
   onSubmit,
-  isPending = false
+  isPending = false,
+  initialValues
 }) => {
   const [pastedData, setPastedData] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);

@@ -25,6 +25,15 @@ interface SubmissionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  initialCandidateData?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    dobMonth?: string;
+    dobDay?: string;
+    ssn4?: string;
+  };
 }
 
 interface PreviousSubmissionInfo {
@@ -44,6 +53,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  initialCandidateData,
 }) => {
   const { mutate: createSubmission, isPending } = useCreateSubmission();
   const { mutate: validateCandidate, isPending: isValidating } = useCandidateValidation();
@@ -517,6 +527,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             jobDescription={sanitizeHtml(jobDescription)}
             onSubmit={handleSubmit}
             isPending={isPending || isValidating}
+            initialValues={initialCandidateData}
           />
         </DialogContent>
       </Dialog>
