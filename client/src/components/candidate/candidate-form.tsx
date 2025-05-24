@@ -98,22 +98,33 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   const { toast } = useToast();
   const { mutateAsync: checkCandidate } = useCheckCandidate();
 
+  // Process initial values to ensure types match the schema
+  const processedInitialValues = {
+    firstName: initialValues?.firstName || "",
+    middleName: initialValues?.middleName || "",
+    lastName: initialValues?.lastName || "",
+    // Convert dobMonth and dobDay to numbers if they're strings
+    dobMonth: typeof initialValues?.dobMonth === 'string' 
+      ? parseInt(initialValues.dobMonth) || 0 
+      : initialValues?.dobMonth || 0,
+    dobDay: typeof initialValues?.dobDay === 'string' 
+      ? parseInt(initialValues.dobDay) || 0 
+      : initialValues?.dobDay || 0,
+    ssn4: initialValues?.ssn4 || "",
+    location: initialValues?.location || "",
+    email: initialValues?.email || "",
+    phone: initialValues?.phone || "",
+    linkedIn: initialValues?.linkedIn || "",
+    workAuthorization: initialValues?.workAuthorization || "",
+    // Convert agreedRate to number if it's a string
+    agreedRate: typeof initialValues?.agreedRate === 'string' 
+      ? parseFloat(initialValues.agreedRate) || 0 
+      : initialValues?.agreedRate || 0,
+  };
+
   const form = useForm<CandidateFormValues>({
     resolver: zodResolver(candidateFormSchema),
-    defaultValues: {
-      firstName: initialValues?.firstName || "",
-      middleName: initialValues?.middleName || "",
-      lastName: initialValues?.lastName || "",
-      dobMonth: initialValues?.dobMonth || 0,
-      dobDay: initialValues?.dobDay || 0,
-      ssn4: initialValues?.ssn4 || "",
-      location: initialValues?.location || "",
-      email: initialValues?.email || "",
-      phone: initialValues?.phone || "",
-      linkedIn: initialValues?.linkedIn || "",
-      workAuthorization: initialValues?.workAuthorization || "",
-      agreedRate: initialValues?.agreedRate || 0,
-    }
+    defaultValues: processedInitialValues
   });
 
   useEffect(() => {
