@@ -44,8 +44,10 @@ export function findChangedTitles(
       const originalTitle = originalTitles[index];
       const updatedTitle = updatedTitles[updatedIndex];
       
-      // If the job title changed
-      if (originalTitle !== updatedTitle) {
+      // If the job title changed - normalize strings before comparing
+      // This prevents false positives due to whitespace/formatting differences
+      if (originalTitle && updatedTitle && 
+          originalTitle.trim().replace(/\s+/g, ' ') !== updatedTitle.trim().replace(/\s+/g, ' ')) {
         changes.push({
           employer,
           old: originalTitle,
@@ -83,8 +85,10 @@ export function findChangedDates(
       const originalDate = originalDates[index];
       const updatedDate = updatedDates[updatedIndex];
       
-      // If the date range changed
-      if (originalDate !== updatedDate) {
+      // If the date range changed - normalize strings before comparing
+      // This prevents false positives due to whitespace/formatting differences
+      if (originalDate && updatedDate && 
+          originalDate.trim().replace(/\s+/g, ' ') !== updatedDate.trim().replace(/\s+/g, ' ')) {
         changes.push({
           employer,
           old: originalDate,
