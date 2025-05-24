@@ -524,7 +524,6 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
             dobMonth: "1",
             dobDay: "1",
             ssn4: "1234", // Default SSN last 4 digits
-            location: "Remote", // Default location
             workAuthorization: selectedApplication.workAuthorization || "",
             agreedRate: 0
           }}
