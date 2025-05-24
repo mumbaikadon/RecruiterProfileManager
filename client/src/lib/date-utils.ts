@@ -45,12 +45,15 @@ export function formatRate(rate: number | null | undefined): string {
     return "N/A";
   }
   
+  // Rate is stored in cents in the database, so divide by 100 to get dollars
+  const dollarRate = rate / 100;
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(rate) + "/hr";
+  }).format(dollarRate) + "/hr";
 }
 
 export function isDateEqual(date1: string | Date, date2: string | Date): boolean {
