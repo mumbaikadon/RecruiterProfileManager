@@ -65,6 +65,11 @@ const JobDetailPage: React.FC = () => {
     jobId: numericId 
   });
   
+  // Fetch applications for this job
+  const { data: applications, isLoading: isApplicationsLoading, refetch: refetchApplications } = useJobApplications({
+    jobId: numericId
+  });
+  
   // Mutations
   const { mutate: updateStatus, isPending: isStatusUpdating } = useUpdateJobStatus();
   const { mutate: assignRecruiters, isPending: isAssigning } = useAssignRecruiters();
@@ -372,13 +377,18 @@ const JobDetailPage: React.FC = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {/* For now, display a placeholder since we need to implement the API endpoint */}
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No applications received yet.</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      When candidates apply through the public job board, they'll appear here.
-                    </p>
-                  </div>
+                  <ApplicationTable 
+                    applications={applications || []}
+                    isLoading={isApplicationsLoading}
+                    jobId={numericId}
+                    jobTitle={job?.title || ''}
+                    jobDescription={job?.description || ''}
+                    onSuccess={() => {
+                      // Refetch both applications and submissions after an action is taken
+                      refetchApplications();
+                      refetchSubmissions();
+                    }}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
