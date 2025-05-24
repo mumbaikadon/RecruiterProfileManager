@@ -38,6 +38,19 @@ function CandidateDetailPage() {
     }
   }
   
+  // Add detailed debugging for education data path
+  console.log("DEBUG EDUCATION DATA FLOW:");
+  console.log("1. Original candidate object education:", candidate?.resumeData?.education);
+  console.log("2. Is education an array?", Array.isArray(candidate?.resumeData?.education));
+  console.log("3. Education array length:", candidate?.resumeData?.education?.length);
+  console.log("4. Transformed education data:", transformedResumeData?.education);
+  console.log("5. Will education be displayed?", 
+    (transformedResumeData?.education?.length > 0 || 
+    (candidate?.resumeData?.education && 
+     Array.isArray(candidate.resumeData.education) && 
+     candidate.resumeData.education.length > 0))
+  );
+  
   // Log the candidate data for debugging
   console.log("Candidate data:", candidate);
   console.log("Original resume data:", candidate?.resumeData);
