@@ -1187,9 +1187,39 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         }
       }
 
-      // Include resume data and match results if available
-      console.log("Submitting candidate data with resume:", 
-        resumeData ? `Resume data present (${resumeData.clientNames?.length || 0} companies)` : "No resume data");
+      // Always analyze resume file during submission if we have one
+      let finalResumeData = null;
+      let finalMatchResults = null;
+      
+      if (resumeFile) {
+        try {
+          console.log("Analyzing resume during submission");
+          setIsAnalyzing(true);
+          
+          // Always analyze the resume fresh during submission
+          const result = await analyzeResume(resumeFile);
+          finalResumeData = result.analysis;
+          
+          // Match against job description
+          if (jobDescription) {
+            console.log("Matching resume against job description");
+            finalMatchResults = await matchResumeToJob(result.text, jobDescription);
+          }
+          
+          console.log("Resume analysis complete:", 
+            finalResumeData ? `Resume data present (${finalResumeData.clientNames?.length || 0} companies)` : "No resume data");
+          
+        } catch (error) {
+          console.error("Error analyzing resume during submission:", error);
+          toast({
+            title: "Resume Analysis Warning",
+            description: "There was an issue analyzing the resume, but we'll continue with the submission.",
+            variant: "warning",
+          });
+        } finally {
+          setIsAnalyzing(false);
+        }
+      }
       
       // Add suspicious flags to the submission if there's a validation warning
       const suspiciousData = validationWarning ? {
@@ -1206,8 +1236,8 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       // Include the existing resume filename if available
       onSubmit({
         ...values,
-        resumeData: resumeData,
-        matchResults: matchResults,
+        resumeData: finalResumeData,
+        matchResults: finalMatchResults,
         existingResumeFileName: existingResumeFileName,
         ...suspiciousData
       });
