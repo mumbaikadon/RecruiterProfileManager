@@ -137,11 +137,11 @@ export class DatabaseStorage implements IStorage {
     return candidate;
   }
   
-  async updateResumeData(id: number, updateData: Partial<ResumeData>): Promise<ResumeData> {
+  async updateResumeData(candidateId: number, updateData: Partial<ResumeData>): Promise<ResumeData> {
     const [data] = await db
       .update(resumeData)
       .set(updateData)
-      .where(eq(resumeData.id, id))
+      .where(eq(resumeData.candidateId, candidateId))
       .returning();
     
     return data;
