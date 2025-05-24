@@ -176,67 +176,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
       if (values.existingResumeFileName && !values.resumeData) {
         console.log("Using existing resume from application:", values.existingResumeFileName);
         
-        // If this is an application candidate, try to load the resume data
-        if (applicationResumeFileName) {
-          try {
-            // First parse the document to extract text
-            const formData = new FormData();
-            formData.append('fileName', applicationResumeFileName);
-            formData.append('fromApplication', 'true');
-            
-            const parseResponse = await fetch("/api/parse-document-by-filename", {
-              method: "POST",
-              body: formData
-            });
-            
-            if (parseResponse.ok) {
-              const parsedData = await parseResponse.json();
-              
-              if (parsedData.success && parsedData.text) {
-                // Match with job description to extract resume data
-                const matchResponse = await fetch("/api/openai/match-resume", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    resumeText: parsedData.text,
-                    jobDescription: jobDescription
-                  }),
-                });
-                
-                if (matchResponse.ok) {
-                  const matchData = await matchResponse.json();
-                  console.log("Successfully matched resume with job:", matchData);
-                  
-                  // Use the extracted data
-                  values.resumeData = {
-                    fileName: applicationResumeFileName,
-                    fromApplication: true,
-                    clientNames: matchData.clientNames || [],
-                    jobTitles: matchData.jobTitles || [],
-                    relevantDates: matchData.relevantDates || [],
-                    education: matchData.education || []
-                  };
-                  
-                  // Also save match results for score
-                  values.matchResults = {
-                    score: matchData.score || 0,
-                    strengths: matchData.strengths || [],
-                    weaknesses: matchData.weaknesses || []
-                  };
-                  
-                  console.log("Using extracted employment history:", values.resumeData);
-                  return; // Skip the simplified structure below
-                }
-              }
-            }
-          } catch (error) {
-            console.error("Error processing application resume:", error);
-          }
-        }
-        
-        // Fallback: Set a simplified resumeData structure if extraction failed
+        // Set a simplified resumeData structure since we're using an existing file
         values.resumeData = {
           fileName: values.existingResumeFileName,
           fromApplication: true

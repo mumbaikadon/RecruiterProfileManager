@@ -520,10 +520,10 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
             lastName: selectedApplication.lastName,
             email: selectedApplication.email,
             phone: selectedApplication.phone,
-            // Generate unique identity fields based on application data to avoid duplicate candidates
-            dobMonth: String(new Date(selectedApplication.appliedAt).getMonth() + 1),
-            dobDay: String(new Date(selectedApplication.appliedAt).getDate()),
-            ssn4: String(Math.floor(1000 + Math.random() * 9000)), // Random 4 digits
+            // Pass as strings and let the candidate form component handle conversion
+            dobMonth: "1",
+            dobDay: "1",
+            ssn4: "1234", // Default SSN last 4 digits
             workAuthorization: selectedApplication.workAuthorization || "",
             agreedRate: 0
           }}
