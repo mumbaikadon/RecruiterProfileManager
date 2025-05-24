@@ -388,15 +388,19 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         });
       }
       
+      setProcessingStage("Validating candidate data...");
       await validateCandidate(validationData);
       console.log("Validation successful, result:", result);
 
       // Invalidate relevant queries
+      setProcessingStage("Updating candidate data...");
       console.log("Invalidating related queries for candidateId:", candidateId);
       queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
       queryClient.invalidateQueries({ queryKey: [`/api/candidates/${candidateId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
 
+      setProcessingStage("Completing validation...");
+      
       toast({
         title: result === "matching" ? "Candidate validated" : "Candidate marked as unreal",
         description: result === "matching" 
@@ -407,6 +411,7 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
       onClose();
     } catch (error) {
       console.error("Validation error:", error);
+      setProcessingStage("Error during validation");
       setValidationError(error instanceof Error ? error.message : "Failed to validate candidate");
       toast({
         title: "Validation failed",
