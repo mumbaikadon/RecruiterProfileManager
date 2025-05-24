@@ -116,44 +116,51 @@ const Topbar: React.FC<TopbarProps> = ({
                 <DropdownMenuContent align="end" className="w-80">
                   <DropdownMenuLabel className="flex items-center justify-between">
                     <span>Notifications</span>
-                    <Button variant="ghost" size="sm" className="text-xs h-auto py-1">
+                    <Button variant="ghost" size="sm" className="text-xs h-auto py-1" 
+                            onClick={() => window.location.href = '/applications?filter=unread'}>
                       Mark all as read
                     </Button>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   
                   {/* New application notification */}
-                  <DropdownMenuItem className="p-3 cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-full flex-shrink-0">
-                        <CalendarDays className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                  <div className="p-0 cursor-pointer">
+                    <a href="/applications" className="block">
+                      <div className="flex items-start gap-3 p-3 hover:bg-accent transition-colors">
+                        <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-full flex-shrink-0">
+                          <CalendarDays className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">New application received</p>
+                          <p className="text-xs text-muted-foreground mt-1">Aman Rauniyar applied for Java Developer</p>
+                          <p className="text-xs text-muted-foreground mt-1">3 minutes ago</p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">New application received</p>
-                        <p className="text-xs text-muted-foreground mt-1">Aman Rauniyar applied for Java Developer</p>
-                        <p className="text-xs text-muted-foreground mt-1">3 minutes ago</p>
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
+                    </a>
+                  </div>
                   
                   {/* Another notification example */}
-                  <DropdownMenuItem className="p-3 cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full flex-shrink-0">
-                        <CalendarDays className="h-4 w-4 text-green-600 dark:text-green-300" />
+                  <div className="p-0 cursor-pointer">
+                    <a href="/applications" className="block">
+                      <div className="flex items-start gap-3 p-3 hover:bg-accent transition-colors">
+                        <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full flex-shrink-0">
+                          <CalendarDays className="h-4 w-4 text-green-600 dark:text-green-300" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">New application received</p>
+                          <p className="text-xs text-muted-foreground mt-1">Manoj Kumar applied for Java Developer</p>
+                          <p className="text-xs text-muted-foreground mt-1">15 minutes ago</p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">New application received</p>
-                        <p className="text-xs text-muted-foreground mt-1">Manoj Kumar applied for Java Developer</p>
-                        <p className="text-xs text-muted-foreground mt-1">15 minutes ago</p>
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
+                    </a>
+                  </div>
                   
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="justify-center text-primary">
-                    View all notifications
-                  </DropdownMenuItem>
+                  <div className="p-0 text-center">
+                    <a href="/applications" className="block p-2 text-primary hover:bg-accent/50 transition-colors">
+                      View all notifications
+                    </a>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </TooltipProvider>
