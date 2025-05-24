@@ -277,6 +277,16 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
                         </DropdownMenuItem>
                       </>
                     )}
+                    
+                    {application.status === "approved" && (
+                      <DropdownMenuItem onClick={() => {
+                        setSelectedApplication(application);
+                        setIsSubmissionDialogOpen(true);
+                      }}>
+                        <UserPlus className="mr-2 h-4 w-4 text-blue-600" />
+                        Submit Candidate
+                      </DropdownMenuItem>
+                    )}
 
                     {application.status === "pending" && (
                       <>
