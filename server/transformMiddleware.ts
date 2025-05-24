@@ -51,9 +51,6 @@ export function transformCandidateResumeData(candidate: CandidateWithResumeData)
       jobTitles: candidate.resumeData.jobTitles || [],
       relevantDates: candidate.resumeData.relevantDates || [],
       skills: candidate.resumeData.skills || [],
-      softSkills: candidate.resumeData.softSkills || [],
-      certifications: candidate.resumeData.certifications || [],
-      publications: candidate.resumeData.publications || [],
       education: candidate.resumeData.education || [],
       extractedText: candidate.resumeData.extractedText || '',
       fileName: candidate.resumeData.fileName || '',
@@ -74,14 +71,9 @@ export function transformCandidateResumeData(candidate: CandidateWithResumeData)
         skills: structuredResumeData.skills || {
           technical: [],
           soft: [],
-          certifications: [],
-          publications: []
+          certifications: []
         },
-        // Ensure education data is properly passed through
-        // Use either the transformed education data or the raw education strings
-        education: structuredResumeData.education && structuredResumeData.education.length > 0 
-          ? structuredResumeData.education 
-          : (candidate.resumeData.education || [])
+        education: structuredResumeData.education || []
       }
     };
   } catch (error) {
