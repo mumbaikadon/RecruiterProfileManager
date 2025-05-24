@@ -487,12 +487,12 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
               <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">$</span>
               <Input
                 type="number"
-                placeholder="0.00"
+                placeholder="0"
                 className="pl-8"
                 value={hourlyRate}
                 onChange={(e) => setHourlyRate(e.target.value)}
                 min="0"
-                step="0.01"
+                step="1"
               />
             </div>
           </div>
