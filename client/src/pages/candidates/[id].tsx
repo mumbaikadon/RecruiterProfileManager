@@ -10,7 +10,6 @@ import { AlertTriangle, Calendar, DollarSign, Mail, MapPin, Phone, User } from "
 import { CircularProgress } from "@/components/ui/progress";
 import WorkExperienceCard from "@/components/candidate/work-experience-card";
 import { EmploymentHistoryCard } from "@/components/candidate/employment-history-card";
-import ResumeDataDisplay from "@/components/candidate/resume-data-display";
 import {
   Tooltip,
   TooltipContent,
@@ -245,12 +244,7 @@ function CandidateDetailPage() {
         <TabsContent value="resume-data" className="space-y-6">
           {hasResumeData ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* First show our dedicated resume data display component */}
-              <div className="md:col-span-2">
-                <ResumeDataDisplay candidateId={candidateId} />
-              </div>
-              
-              {/* Keep the existing employment history card as a fallback */}
+              {/* Use our new component for employment history */}
               <div className="md:col-span-2">
                 <EmploymentHistoryCard 
                   resumeData={candidate.resumeData}
