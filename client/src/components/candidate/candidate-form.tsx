@@ -68,6 +68,7 @@ interface CandidateFormProps {
   }) => void;
   isPending?: boolean;
   initialValues?: Partial<CandidateFormValues>;
+  applicationResumeFileName?: string;
 }
 
 const CandidateForm: React.FC<CandidateFormProps> = ({
@@ -76,7 +77,8 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   jobDescription,
   onSubmit,
   isPending = false,
-  initialValues
+  initialValues,
+  applicationResumeFileName
 }) => {
   const [pastedData, setPastedData] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -87,6 +89,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   const [candidateExists, setCandidateExists] = useState(false);
   const [showOtherAuthorizationInput, setShowOtherAuthorizationInput] = useState(false);
   const [otherAuthorization, setOtherAuthorization] = useState("");
+  const [existingResumeFileName, setExistingResumeFileName] = useState<string | undefined>(applicationResumeFileName);
   const [validationWarning, setValidationWarning] = useState<{
     title: string;
     message: string;
