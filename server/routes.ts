@@ -21,6 +21,15 @@ const multerStorage = multer.memoryStorage();
 const fileUpload = multer({ storage: multerStorage });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve uploaded files statically
+  app.use('/uploads', (req: Request, res: Response, next: NextFunction) => {
+    const filePath = `./uploads${req.path}`;
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath, { root: '.' });
+    } else {
+      next();
+    }
+  });
   // Jobs routes
   app.get("/api/jobs", async (req: Request, res: Response) => {
     try {
