@@ -520,10 +520,7 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
             lastName: selectedApplication.lastName,
             email: selectedApplication.email,
             phone: selectedApplication.phone,
-            // Pass as strings and let the candidate form component handle conversion
-            dobMonth: "1",
-            dobDay: "1",
-            ssn4: "1234", // Default SSN last 4 digits
+            // Leave DOB and SSN fields empty for the recruiter to fill out
             workAuthorization: selectedApplication.workAuthorization || "",
             agreedRate: 0
           }}
