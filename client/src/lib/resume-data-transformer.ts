@@ -91,7 +91,32 @@ export function transformResumeData(resumeData: any): StructuredResumeData {
   };
 
   // Handle education data - ensure it's an array
-  const education = Array.isArray(resumeData.education) ? resumeData.education : [];
+  console.log("Raw education data from database:", resumeData.education);
+  console.log("Is education data an array?", Array.isArray(resumeData.education));
+  console.log("Education data type:", typeof resumeData.education);
+  
+  // If education data exists but isn't an array, try to parse it
+  let education = [];
+  if (resumeData.education) {
+    if (Array.isArray(resumeData.education)) {
+      education = resumeData.education;
+      console.log("Education data is a proper array with length:", education.length);
+    } else if (typeof resumeData.education === 'string') {
+      // Try to parse JSON string if that's what we received
+      try {
+        const parsed = JSON.parse(resumeData.education);
+        education = Array.isArray(parsed) ? parsed : [];
+        console.log("Parsed education data from string:", education);
+      } catch (e) {
+        console.error("Failed to parse education data string:", e);
+        education = [resumeData.education]; // Use as single item if not parseable
+      }
+    } else {
+      console.warn("Unknown education data format:", resumeData.education);
+    }
+  } else {
+    console.log("No education data found in resume");
+  }
 
   console.log("Transformed resume data:", {
     experienceCount: experience.length,
