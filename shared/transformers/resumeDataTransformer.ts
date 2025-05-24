@@ -159,10 +159,8 @@ export function transformUIToDatabaseFormat(uiData: StructuredResumeData): Datab
   // Extract publications separately
   const publications = uiData.skills?.publications || [];
   
-  // Format education entries
-  const education = uiData.education?.map(edu => 
-    `${edu.degree}, ${edu.institution}, ${edu.year}`.trim().replace(/, $/, "")
-  ) || [];
+  // Simply pass through education entries
+  const education = uiData.education || [];
 
   return {
     clientNames,
