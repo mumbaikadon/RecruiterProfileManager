@@ -10,6 +10,7 @@ import { AlertTriangle, Calendar, DollarSign, Mail, MapPin, Phone, User } from "
 import { CircularProgress } from "@/components/ui/progress";
 import WorkExperienceCard from "@/components/candidate/work-experience-card";
 import { EmploymentHistoryCard } from "@/components/candidate/employment-history-card";
+import ResumeDataDisplay from "@/components/candidate/resume-data-display";
 import {
   Tooltip,
   TooltipContent,
