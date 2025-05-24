@@ -57,6 +57,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
   onClose,
   onSuccess,
   initialCandidateData,
+  applicationResumeFileName,
 }) => {
   const { mutate: createSubmission, isPending } = useCreateSubmission();
   const { mutate: validateCandidate, isPending: isValidating } = useCandidateValidation();
