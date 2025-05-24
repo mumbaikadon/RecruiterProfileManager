@@ -138,9 +138,21 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
   const handleSubmit = async (values: CandidateFormValues & { 
     resumeData?: any;
     matchResults?: any;
+    existingResumeFileName?: string;
   }) => {
     try {
       setSubmissionError(null);
+      
+      // Check if we have an existing resume from application
+      if (values.existingResumeFileName && !values.resumeData) {
+        console.log("Using existing resume from application:", values.existingResumeFileName);
+        
+        // Set a simplified resumeData structure since we're using an existing file
+        values.resumeData = {
+          fileName: values.existingResumeFileName,
+          fromApplication: true
+        };
+      }
       
       // First create candidate with resumeData
       // Check if resume data is too large (greater than 40MB)
@@ -531,6 +543,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             onSubmit={handleSubmit}
             isPending={isPending || isValidating}
             initialValues={initialCandidateData}
+            applicationResumeFileName={applicationResumeFileName}
           />
         </DialogContent>
       </Dialog>
