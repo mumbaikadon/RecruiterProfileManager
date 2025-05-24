@@ -251,10 +251,6 @@ function CandidateDetailPage() {
                 />
               </div>
               
-              <div className="md:col-span-2">
-                <WorkExperienceCard workExperience={transformedResumeData?.workExperience || []} />
-              </div>
-              
               <Card className="md:col-span-2">
                 <CardHeader>
                   <CardTitle>Education</CardTitle>
