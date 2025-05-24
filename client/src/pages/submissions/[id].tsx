@@ -18,6 +18,7 @@ import { formatDate, formatDateTime, formatRate } from "@/lib/date-utils";
 import StatusBadge from "@/components/submission/status-badge";
 import StatusSelect from "@/components/submission/status-select";
 import WorkExperienceCard from "@/components/candidate/work-experience-card";
+import ExperienceItem from "@/components/candidate/experience-item";
 import { transformResumeData } from "@/lib/resume-data-transformer";
 
 const SubmissionDetailPage: React.FC = () => {
@@ -452,7 +453,7 @@ const SubmissionDetailPage: React.FC = () => {
                         <h3 className="text-md font-medium mb-3">Professional Experience</h3>
                         <div className="space-y-4">
                           {resumeData.workExperience.map((experience, index) => (
-                            <WorkExperienceCard key={index} experience={experience} />
+                            <ExperienceItem key={index} experience={experience} />
                           ))}
                         </div>
                       </div>
