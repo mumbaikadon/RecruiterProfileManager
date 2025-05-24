@@ -1938,6 +1938,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("- relevantDates:", JSON.stringify(matchResult.relevantDates || []));
       console.log("- education:", JSON.stringify(matchResult.education || []));
       
+      // Extra debugging for education data
+      console.log("EDUCATION DATA CHECK:");
+      console.log("1. Education data from OpenAI:", matchResult.education);
+      console.log("2. Education data type:", typeof matchResult.education);
+      console.log("3. Is education an array?", Array.isArray(matchResult.education));
+      console.log("4. Education data length:", matchResult.education?.length || 0);
+      
       // If we have a valid candidateId in the request, save the employment history to the database
       if (req.body.candidateId) {
         try {
