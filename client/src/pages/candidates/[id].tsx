@@ -287,35 +287,14 @@ function CandidateDetailPage() {
                   <CardDescription>Educational background and qualifications</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {/* Debug information - helps diagnose education data issues */}
-                  {candidate?.resumeData?.education && Array.isArray(candidate.resumeData.education) && candidate.resumeData.education.length > 0 && !transformedResumeData?.education?.length && (
-                    <div className="p-2 mb-4 bg-amber-50 text-amber-800 border border-amber-200 rounded-md text-xs">
-                      <p>Education data found but not displayed correctly. Please contact support.</p>
-                    </div>
-                  )}
-                  
-                  {/* Show education data from either source */}
-                  {(transformedResumeData?.education?.length > 0 || (candidate?.resumeData?.education && Array.isArray(candidate.resumeData.education) && candidate.resumeData.education.length > 0)) ? (
+                  {/* Simple education display - show directly from candidate.resumeData.education */}
+                  {candidate?.resumeData?.education && Array.isArray(candidate.resumeData.education) && candidate.resumeData.education.length > 0 ? (
                     <div className="space-y-4">
-                      {/* Use transformed data if available */}
-                      {transformedResumeData?.education?.length > 0 ? 
-                        transformedResumeData.education.map((edu, idx) => (
-                          <div key={idx} className="pl-4 border-l-2 border-primary/20">
-                            <p className="font-medium">
-                              {typeof edu === 'string' 
-                                ? edu 
-                                : `${edu.degree || ''} ${edu.institution || ''} ${edu.year || ''}`.trim()}
-                            </p>
-                          </div>
-                        ))
-                        : 
-                        // Fallback to original data if transformed data is missing
-                        candidate.resumeData.education.map((edu, idx) => (
-                          <div key={idx} className="pl-4 border-l-2 border-primary/20">
-                            <p className="font-medium">{edu}</p>
-                          </div>
-                        ))
-                      }
+                      {candidate.resumeData.education.map((edu, idx) => (
+                        <div key={idx} className="pl-4 border-l-2 border-primary/20">
+                          <p className="font-medium">{edu}</p>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <p className="text-muted-foreground py-4">No education information detected</p>
