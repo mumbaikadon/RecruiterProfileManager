@@ -168,7 +168,7 @@ export const jobApplications = pgTable("job_applications", {
   resumeFileName: text("resume_file_name"),
   coverLetter: text("cover_letter"),
   workAuthorization: text("work_authorization"),
-  status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+  status: text("status", { enum: ["pending", "approved", "rejected", "processed"] }).notNull().default("pending"),
   notes: text("notes"),
   appliedAt: timestamp("applied_at").defaultNow().notNull(),
   reviewedAt: timestamp("reviewed_at"),
