@@ -40,8 +40,6 @@ const CareersPage: React.FC = () => {
   });
 
   return (
-    <PublicLayout>
-      {/* Hero section */}
       <div className="bg-primary text-white py-16">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">

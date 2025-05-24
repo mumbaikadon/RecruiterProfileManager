@@ -99,24 +99,21 @@ const Sidebar = () => {
             <SidebarLink 
               href="/jobs" 
               icon={<Briefcase />} 
-              isActive={location.startsWith("/jobs")}
-              badge={7}>
+              isActive={location.startsWith("/jobs")}>
               Jobs
             </SidebarLink>
 
             <SidebarLink 
               href="/candidates" 
               icon={<Users />} 
-              isActive={location.startsWith("/candidates")}
-              badge={12}>
+              isActive={location.startsWith("/candidates")}>
               Candidates
             </SidebarLink>
 
             <SidebarLink 
               href="/submissions" 
               icon={<ClipboardList />} 
-              isActive={location.startsWith("/submissions")}
-              badge={5}>
+              isActive={location.startsWith("/submissions")}>
               Submissions
             </SidebarLink>
           </nav>
