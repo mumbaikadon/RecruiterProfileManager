@@ -40,6 +40,7 @@ const CareersPage: React.FC = () => {
   });
 
   return (
+    <div>
       <div className="bg-primary text-white py-16">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
@@ -117,7 +118,7 @@ const CareersPage: React.FC = () => {
           </div>
         )}
       </div>
-    </PublicLayout>
+    </div>
   );
 };
 
