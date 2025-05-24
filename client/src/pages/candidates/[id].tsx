@@ -29,6 +29,15 @@ function CandidateDetailPage() {
   const transformedResumeData = candidate?.resumeData ? 
     transformResumeData(candidate.resumeData) : undefined;
   
+  // Check if we have education data but it's not showing up in the transformed data
+  // This adds extra debugging to help diagnose issues with education data display
+  if (candidate?.resumeData?.education && Array.isArray(candidate.resumeData.education)) {
+    console.log("Found education data in original resume:", candidate.resumeData.education);
+    if (!transformedResumeData?.education || transformedResumeData.education.length === 0) {
+      console.log("Warning: Education data not properly transformed!");
+    }
+  }
+  
   // Log the candidate data for debugging
   console.log("Candidate data:", candidate);
   console.log("Original resume data:", candidate?.resumeData);
@@ -257,17 +266,35 @@ function CandidateDetailPage() {
                   <CardDescription>Educational background and qualifications</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {transformedResumeData?.education && transformedResumeData.education.length > 0 ? (
+                  {/* Debug information - helps diagnose education data issues */}
+                  {candidate?.resumeData?.education && Array.isArray(candidate.resumeData.education) && candidate.resumeData.education.length > 0 && !transformedResumeData?.education?.length && (
+                    <div className="p-2 mb-4 bg-amber-50 text-amber-800 border border-amber-200 rounded-md text-xs">
+                      <p>Education data found but not displayed correctly. Please contact support.</p>
+                    </div>
+                  )}
+                  
+                  {/* Show education data from either source */}
+                  {(transformedResumeData?.education?.length > 0 || (candidate?.resumeData?.education && Array.isArray(candidate.resumeData.education) && candidate.resumeData.education.length > 0)) ? (
                     <div className="space-y-4">
-                      {transformedResumeData.education.map((edu, idx) => (
-                        <div key={idx} className="pl-4 border-l-2 border-primary/20">
-                          <p className="font-medium">
-                            {typeof edu === 'string' 
-                              ? edu 
-                              : `${edu.degree || ''} ${edu.institution || ''} ${edu.year || ''}`.trim()}
-                          </p>
-                        </div>
-                      ))}
+                      {/* Use transformed data if available */}
+                      {transformedResumeData?.education?.length > 0 ? 
+                        transformedResumeData.education.map((edu, idx) => (
+                          <div key={idx} className="pl-4 border-l-2 border-primary/20">
+                            <p className="font-medium">
+                              {typeof edu === 'string' 
+                                ? edu 
+                                : `${edu.degree || ''} ${edu.institution || ''} ${edu.year || ''}`.trim()}
+                            </p>
+                          </div>
+                        ))
+                        : 
+                        // Fallback to original data if transformed data is missing
+                        candidate.resumeData.education.map((edu, idx) => (
+                          <div key={idx} className="pl-4 border-l-2 border-primary/20">
+                            <p className="font-medium">{edu}</p>
+                          </div>
+                        ))
+                      }
                     </div>
                   ) : (
                     <p className="text-muted-foreground py-4">No education information detected</p>
