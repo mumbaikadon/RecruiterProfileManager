@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, FormEvent, ChangeEvent } from "react";
 import { useParams, useLocation } from "wouter";
-import { ArrowLeft, MapPin, Briefcase, Building, Calendar, FileText } from "lucide-react";
+import { ArrowLeft, MapPin, Briefcase, Building, Calendar, FileText, CheckCircle2, X } from "lucide-react";
 import { useJob } from "@/hooks/use-jobs";
 import PublicLayout from "@/components/public-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -35,9 +36,140 @@ const JobDetailPage: React.FC = () => {
   const jobId = parseInt(id);
   const [_, setLocation] = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  
+  // Form state
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [workAuthorization, setWorkAuthorization] = useState("");
+  const [coverLetter, setCoverLetter] = useState("");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   
   // Fetch job data
   const { data: job, isLoading, error } = useJob(jobId);
+  
+  // Handle resume file upload
+  const handleResumeChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      // Check file type
+      if (file.type !== 'application/pdf' && 
+          file.type !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' &&
+          file.type !== 'application/msword') {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a PDF or Word document (.pdf, .doc, .docx)",
+          variant: "destructive"
+        });
+        return;
+      }
+      // Check file size (limit to 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Resume file must be less than 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+      setResumeFile(file);
+    }
+  };
+  
+  // Reset form
+  const resetForm = () => {
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+    setWorkAuthorization("");
+    setCoverLetter("");
+    setResumeFile(null);
+    setFormSubmitted(false);
+  };
+  
+  // Handle form submission
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    
+    // Validate form
+    if (!firstName || !lastName || !email || !phone || !workAuthorization) {
+      toast({
+        title: "Missing required fields",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!resumeFile) {
+      toast({
+        title: "Resume required",
+        description: "Please upload your resume",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Create form data for file upload
+    const formData = new FormData();
+    formData.append('jobId', jobId.toString());
+    formData.append('firstName', firstName);
+    formData.append('lastName', lastName);
+    formData.append('email', email);
+    formData.append('phone', phone);
+    formData.append('workAuthorization', workAuthorization);
+    
+    if (coverLetter) {
+      formData.append('coverLetter', coverLetter);
+    }
+    
+    if (resumeFile) {
+      formData.append('resume', resumeFile);
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const response = await fetch('/api/public/applications', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to submit application');
+      }
+      
+      // Show success message
+      toast({
+        title: "Application submitted",
+        description: "Your application has been successfully submitted",
+      });
+      
+      setFormSubmitted(true);
+      setIsSubmitting(false);
+      
+      // Reset form after 3 seconds and close dialog
+      setTimeout(() => {
+        resetForm();
+        setIsDialogOpen(false);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error submitting application:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to submit application",
+        variant: "destructive"
+      });
+      setIsSubmitting(false);
+    }
+  };
   
   if (isLoading) {
     return (
@@ -220,7 +352,10 @@ const JobDetailPage: React.FC = () => {
       </div>
       
       {/* Apply Now Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) resetForm();
+      }}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Apply for {job.title}</DialogTitle>
@@ -229,69 +364,153 @@ const JobDetailPage: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input id="firstName" placeholder="Your first name" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input id="lastName" placeholder="Your last name" />
-              </div>
+          {formSubmitted ? (
+            <div className="py-8 text-center space-y-4">
+              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
+              <h3 className="text-xl font-medium text-green-600">Application Submitted!</h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Thank you for your application. We'll be in touch soon.
+              </p>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="you@example.com" />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" placeholder="(555) 123-4567" />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="resume">Resume/CV</Label>
-              <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4">
-                <div className="flex items-center justify-center w-full">
-                  <label className="w-full flex flex-col items-center px-4 py-6 bg-white dark:bg-gray-800 text-gray-500 rounded-lg tracking-wide border border-dashed border-gray-300 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <FileText className="w-8 h-8" />
-                    <span className="mt-2 text-sm">Upload your resume (PDF, DOCX)</span>
-                    <input type='file' className="hidden" accept=".pdf,.docx" />
-                  </label>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <Input 
+                    id="firstName" 
+                    placeholder="Your first name" 
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Input 
+                    id="lastName" 
+                    placeholder="Your last name" 
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                  />
                 </div>
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="workAuthorization">Work Authorization</Label>
-              <select 
-                id="workAuthorization" 
-                className="w-full h-10 px-3 py-2 bg-background border border-input rounded-md text-sm"
-              >
-                <option value="">Select your work authorization</option>
-                <option value="US Citizen">US Citizen</option>
-                <option value="Green Card">Green Card</option>
-                <option value="H1B">H1B Visa</option>
-                <option value="EAD">EAD</option>
-                <option value="TN Visa">TN Visa</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="coverLetter">Cover Letter (Optional)</Label>
-              <Textarea id="coverLetter" placeholder="Tell us why you're interested in this position..." rows={4} />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button type="submit">Submit Application</Button>
-          </DialogFooter>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="you@example.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number *</Label>
+                <Input 
+                  id="phone" 
+                  placeholder="(555) 123-4567" 
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="resume">Resume/CV *</Label>
+                <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4">
+                  <div className="flex items-center justify-center w-full">
+                    {resumeFile ? (
+                      <div className="w-full text-center space-y-2">
+                        <div className="flex items-center justify-center text-green-500">
+                          <CheckCircle2 className="w-6 h-6 mr-2" />
+                          <span className="font-medium">{resumeFile.name}</span>
+                        </div>
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="sm"
+                          className="text-red-500"
+                          onClick={() => setResumeFile(null)}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Remove file
+                        </Button>
+                      </div>
+                    ) : (
+                      <label className="w-full flex flex-col items-center px-4 py-6 bg-white dark:bg-gray-800 text-gray-500 rounded-lg tracking-wide border border-dashed border-gray-300 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <FileText className="w-8 h-8" />
+                        <span className="mt-2 text-sm">Upload your resume (PDF, DOCX)</span>
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          accept=".pdf,.doc,.docx" 
+                          onChange={handleResumeChange}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="workAuthorization">Work Authorization *</Label>
+                <select 
+                  id="workAuthorization" 
+                  className="w-full h-10 px-3 py-2 bg-background border border-input rounded-md text-sm"
+                  value={workAuthorization}
+                  onChange={(e) => setWorkAuthorization(e.target.value)}
+                  required
+                >
+                  <option value="">Select your work authorization</option>
+                  <option value="US Citizen">US Citizen</option>
+                  <option value="Green Card">Green Card</option>
+                  <option value="H1B">H1B Visa</option>
+                  <option value="EAD">EAD</option>
+                  <option value="TN Visa">TN Visa</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="coverLetter">Cover Letter (Optional)</Label>
+                <Textarea 
+                  id="coverLetter" 
+                  placeholder="Tell us why you're interested in this position..." 
+                  rows={4}
+                  value={coverLetter}
+                  onChange={(e) => setCoverLetter(e.target.value)}
+                />
+              </div>
+              
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="mr-2">Submitting...</span>
+                      <div className="h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
+                    </>
+                  ) : (
+                    'Submit Application'
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </PublicLayout>
