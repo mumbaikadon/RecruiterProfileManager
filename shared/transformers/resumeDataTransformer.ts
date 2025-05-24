@@ -9,6 +9,9 @@ export interface DatabaseResumeData {
   jobTitles?: string[];
   relevantDates?: string[];
   skills?: string[];
+  softSkills?: string[];
+  certifications?: string[];
+  publications?: string[];
   education?: string[];
   extractedText?: string;
   fileName?: string;
@@ -26,6 +29,7 @@ export interface StructuredResumeData {
     technical: string[];
     soft: string[];
     certifications: string[];
+    publications: string[];
   };
   education: Array<{
     degree: string;
@@ -49,7 +53,8 @@ export function transformDatabaseToUIFormat(dbData: DatabaseResumeData): Structu
     skills: {
       technical: [],
       soft: [],
-      certifications: []
+      certifications: [],
+      publications: []
     },
     education: []
   };
@@ -74,8 +79,18 @@ export function transformDatabaseToUIFormat(dbData: DatabaseResumeData): Structu
     });
   }
 
-  // Transform skills (categorize skills into technical/soft/certifications)
+  // Process technical skills
   const allSkills = dbData.skills || [];
+  
+  // Process soft skills directly from database if available
+  const allSoftSkills = dbData.softSkills || [];
+  
+  // Process certifications directly from database if available
+  const allCertifications = dbData.certifications || [];
+  
+  // Process publications directly from database if available  
+  const allPublications = dbData.publications || [];
+  
   // Simple heuristic: assuming skills with technical keywords are technical
   const technicalKeywords = ['java', 'python', 'javascript', 'typescript', 'react', 'node', '.net', 'c#', 'c++', 
     'sql', 'database', 'aws', 'cloud', 'docker', 'kubernetes', 'ai', 'ml', 'css', 'html'];
@@ -88,16 +103,22 @@ export function transformDatabaseToUIFormat(dbData: DatabaseResumeData): Structu
   const certificationKeywords = ['certified', 'certificate', 'certification', 'license', 'aws certified', 
     'microsoft certified', 'oracle certified', 'pmp', 'scrum', 'itil', 'cissp', 'cisa'];
 
+  // Create skills object with all categories
   const skills = {
     technical: allSkills.filter(skill => 
       technicalKeywords.some(keyword => skill.toLowerCase().includes(keyword))
     ),
-    soft: allSkills.filter(skill => 
-      softSkillKeywords.some(keyword => skill.toLowerCase().includes(keyword))
-    ),
-    certifications: allSkills.filter(skill => 
-      certificationKeywords.some(keyword => skill.toLowerCase().includes(keyword))
-    )
+    soft: allSoftSkills.length > 0 ? 
+      allSoftSkills : 
+      allSkills.filter(skill => 
+        softSkillKeywords.some(keyword => skill.toLowerCase().includes(keyword))
+      ),
+    certifications: allCertifications.length > 0 ? 
+      allCertifications : 
+      allSkills.filter(skill => 
+        certificationKeywords.some(keyword => skill.toLowerCase().includes(keyword))
+      ),
+    publications: allPublications
   };
 
   // Add remaining skills to technical (default category)
@@ -164,12 +185,17 @@ export function transformUIToDatabaseFormat(uiData: StructuredResumeData): Datab
   // Extract dates from experience
   const relevantDates = uiData.experience?.map(exp => exp.dates) || [];
   
-  // Combine all skills into a single array
-  const skills = [
-    ...(uiData.skills?.technical || []),
-    ...(uiData.skills?.soft || []),
-    ...(uiData.skills?.certifications || [])
-  ];
+  // Extract technical skills
+  const skills = uiData.skills?.technical || [];
+  
+  // Extract soft skills separately
+  const softSkills = uiData.skills?.soft || [];
+  
+  // Extract certifications separately
+  const certifications = uiData.skills?.certifications || [];
+  
+  // Extract publications separately
+  const publications = uiData.skills?.publications || [];
   
   // Format education entries
   const education = uiData.education?.map(edu => 
@@ -181,6 +207,9 @@ export function transformUIToDatabaseFormat(uiData: StructuredResumeData): Datab
     jobTitles,
     relevantDates,
     skills,
+    softSkills,
+    certifications,
+    publications,
     education
   };
 }
