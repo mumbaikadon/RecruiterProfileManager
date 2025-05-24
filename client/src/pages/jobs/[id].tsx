@@ -5,6 +5,7 @@ import { useSubmissions } from "@/hooks/use-submissions";
 import { useRecruiters } from "@/hooks/use-recruiters";
 import { useUpdateJobStatus } from "@/hooks/use-jobs";
 import { useAssignRecruiters } from "@/hooks/use-jobs";
+import { useJobApplications } from "@/hooks/use-applications";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/date-utils";
 import { sanitizeHtml } from "@/lib/utils";
@@ -41,6 +42,7 @@ import SubmissionDialog from "@/components/submission/submission-dialog";
 import StatusBadge from "@/components/submission/status-badge";
 import JobDescriptionEditDialog from "@/components/job/job-description-edit-dialog";
 import { RecommendedCandidates } from "@/components/job/recommended-candidates";
+import ApplicationTable from "@/components/application/application-table";
 
 const JobDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
