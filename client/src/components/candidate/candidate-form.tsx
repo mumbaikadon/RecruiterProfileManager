@@ -1155,10 +1155,12 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         console.log("Submitting with suspicious flags:", suspiciousData);
       }
       
+      // Include the existing resume filename if available
       onSubmit({
         ...values,
         resumeData: resumeData,
         matchResults: matchResults,
+        existingResumeFileName: existingResumeFileName,
         ...suspiciousData
       });
     } catch (error) {
@@ -1546,14 +1548,42 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           {/* Resume Upload */}
           <div className="sm:col-span-3">
             <FormLabel htmlFor="resume">Resume Upload</FormLabel>
-            <Input
-              id="resume"
-              type="file"
-              accept=".pdf,.doc,.docx"
-              onChange={handleResumeUpload}
-              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-blue-600"
-            />
-            <p className="mt-2 text-sm text-gray-500">PDF or Word document only.</p>
+            
+            {existingResumeFileName ? (
+              <div className="mt-2 mb-4 p-3 border rounded-md border-green-200 bg-green-50">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 text-green-600 mr-2">
+                    <CheckCircle className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-800">Resume already uploaded from application</p>
+                    <p className="text-xs text-green-700">{existingResumeFileName}</p>
+                  </div>
+                  <div>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
+                      onClick={() => setExistingResumeFileName(undefined)}
+                    >
+                      Use different file
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Input
+                  id="resume"
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={handleResumeUpload}
+                  className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-blue-600"
+                />
+                <p className="mt-2 text-sm text-gray-500">PDF or Word document only.</p>
+              </>
+            )}
 
             {isAnalyzing && (
               <div className="mt-2 flex items-center text-sm text-gray-500">
