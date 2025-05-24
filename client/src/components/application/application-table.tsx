@@ -35,7 +35,8 @@ import {
   MoreVertical, 
   Eye,
   Loader2,
-  Download
+  Download,
+  UserPlus
 } from "lucide-react";
 import SubmissionDialog from "@/components/submission/submission-dialog";
 
