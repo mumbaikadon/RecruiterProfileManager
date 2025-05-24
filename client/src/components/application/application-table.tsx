@@ -112,7 +112,15 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
             description: "The application has been marked as approved.",
           });
           setIsMarkAsApprovedOpen(false);
-          setSelectedApplication(null);
+          
+          // If we have a resume file, attempt to download it to display preview in the submission form
+          if (selectedApplication.resumeFileName) {
+            // Add a message about resume processing
+            toast({
+              title: "Processing resume",
+              description: "Preparing resume data for submission...",
+            });
+          }
           
           // Open submission dialog to formally add the candidate to submissions
           setIsSubmissionDialogOpen(true);
@@ -324,6 +332,32 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
                 <p className="text-sm">{selectedApplication.workAuthorization || "Not specified"}</p>
               </div>
               
+              {selectedApplication.resumeFileName && (
+                <div>
+                  <h4 className="text-sm font-medium">Resume</h4>
+                  <div className="mt-2 flex space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleViewResume(selectedApplication.resumeFileName)}
+                      className="text-xs"
+                    >
+                      <Eye className="mr-1 h-3 w-3" />
+                      View Resume
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDownloadResume(selectedApplication.resumeFileName)}
+                      className="text-xs"
+                    >
+                      <Download className="mr-1 h-3 w-3" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               {selectedApplication.coverLetter && (
                 <div>
                   <h4 className="text-sm font-medium">Cover Letter</h4>
@@ -475,12 +509,13 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
             lastName: selectedApplication.lastName,
             email: selectedApplication.email,
             phone: selectedApplication.phone,
-            dobMonth: 1, // Default values that will be filled in by recruiter
-            dobDay: 1,
+            // Pass as strings and let the candidate form component handle conversion
+            dobMonth: "1",
+            dobDay: "1",
             ssn4: "",
-            location: "",
+            location: "Remote", // Default location
             workAuthorization: selectedApplication.workAuthorization || "",
-            agreedRate: 0
+            agreedRate: "0"
           }}
         />
       )}
