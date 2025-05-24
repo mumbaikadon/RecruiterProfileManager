@@ -1304,6 +1304,17 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
               placeholder="Paste candidate information here for automatic field mapping..."
             />
             <p className="mt-2 text-sm text-gray-500">Or fill out the fields manually below.</p>
+            
+            {/* Display notification when using an existing resume from application */}
+            {existingResumeFileName && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-center">
+                <CheckCircle2 className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800">Using existing resume from application</p>
+                  <p className="text-xs text-blue-600">Resume file: {existingResumeFileName}</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Name Fields */}

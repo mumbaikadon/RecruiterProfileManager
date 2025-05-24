@@ -544,7 +544,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             onSubmit={handleSubmit}
             isPending={isPending || isValidating}
             initialValues={initialCandidateData}
-            applicationResumeFileName={applicationResumeFileName}
+            applicationResumeFileName={applicationResumeFileName || undefined}
           />
         </DialogContent>
       </Dialog>
