@@ -445,7 +445,13 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
             firstName: selectedApplication.firstName,
             lastName: selectedApplication.lastName,
             email: selectedApplication.email,
-            phone: selectedApplication.phone
+            phone: selectedApplication.phone,
+            dobMonth: 1, // Default values that will be filled in by recruiter
+            dobDay: 1,
+            ssn4: "",
+            location: "",
+            workAuthorization: selectedApplication.workAuthorization || "",
+            agreedRate: 0
           }}
         />
       )}
