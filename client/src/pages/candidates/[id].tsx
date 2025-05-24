@@ -245,7 +245,12 @@ function CandidateDetailPage() {
         <TabsContent value="resume-data" className="space-y-6">
           {hasResumeData ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Use our new component for employment history */}
+              {/* First show our dedicated resume data display component */}
+              <div className="md:col-span-2">
+                <ResumeDataDisplay candidateId={candidateId} />
+              </div>
+              
+              {/* Keep the existing employment history card as a fallback */}
               <div className="md:col-span-2">
                 <EmploymentHistoryCard 
                   resumeData={candidate.resumeData}
