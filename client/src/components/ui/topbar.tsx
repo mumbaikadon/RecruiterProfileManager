@@ -92,23 +92,70 @@ const Topbar: React.FC<TopbarProps> = ({
                 onToggleLargeText={onToggleLargeText}
               />
               
-              {/* Notifications with animated badge */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="rounded-full text-muted-foreground hover:text-foreground relative transition-all duration-200"
-                    aria-label="Notifications"
-                  >
-                    <Bell className="h-5 w-5" />
-                    <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary animate-pulse" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Notifications</p>
-                </TooltipContent>
-              </Tooltip>
+              {/* Notifications with dynamic badge and dropdown */}
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="rounded-full text-muted-foreground hover:text-foreground relative transition-all duration-200"
+                        aria-label="Notifications"
+                      >
+                        <Bell className="h-5 w-5" />
+                        <span className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold rounded-full bg-primary text-white">3</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Notifications</p>
+                  </TooltipContent>
+                </Tooltip>
+                
+                <DropdownMenuContent align="end" className="w-80">
+                  <DropdownMenuLabel className="flex items-center justify-between">
+                    <span>Notifications</span>
+                    <Button variant="ghost" size="sm" className="text-xs h-auto py-1">
+                      Mark all as read
+                    </Button>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
+                  {/* New application notification */}
+                  <DropdownMenuItem className="p-3 cursor-pointer">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-full flex-shrink-0">
+                        <CalendarDays className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">New application received</p>
+                        <p className="text-xs text-muted-foreground mt-1">Aman Rauniyar applied for Java Developer</p>
+                        <p className="text-xs text-muted-foreground mt-1">3 minutes ago</p>
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                  
+                  {/* Another notification example */}
+                  <DropdownMenuItem className="p-3 cursor-pointer">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full flex-shrink-0">
+                        <CalendarDays className="h-4 w-4 text-green-600 dark:text-green-300" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">New application received</p>
+                        <p className="text-xs text-muted-foreground mt-1">Manoj Kumar applied for Java Developer</p>
+                        <p className="text-xs text-muted-foreground mt-1">15 minutes ago</p>
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="justify-center text-primary">
+                    View all notifications
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </TooltipProvider>
             
             {/* User Profile Dropdown Menu */}
