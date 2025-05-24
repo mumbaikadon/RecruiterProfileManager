@@ -102,14 +102,14 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   const { toast } = useToast();
   const { mutateAsync: checkCandidate } = useCheckCandidate();
 
-  // Effect to load existing resume file when provided from application
+  // Effect to just load the existing resume file when provided from application (without analyzing)
   useEffect(() => {
-    if (existingResumeFileName && !resumeData && !isLoadingExistingResume) {
+    if (existingResumeFileName && !resumeFile && !isLoadingExistingResume) {
       const loadExistingResume = async () => {
         try {
           setIsLoadingExistingResume(true);
           
-          // First, fetch the resume file
+          // Just fetch the resume file without analyzing it
           console.log("Fetching existing resume file:", existingResumeFileName);
           const response = await fetch(`/uploads/${existingResumeFileName}`);
           
@@ -129,30 +129,15 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           const file = new File([blob], existingResumeFileName, { type: blob.type });
           setResumeFile(file);
           
-          // Now analyze the resume content
-          console.log("Analyzing existing resume file");
-          const result = await analyzeResume(file);
-          
-          // Set resume data
-          setResumeData(result.analysis);
-          setResumeText(result.text);
-          
-          // Match against job description
-          console.log("Matching existing resume against job description");
-          const matchResult = await matchResumeToJob(
-            result.text,
-            jobDescription
-          );
-          
-          // Set match results
-          setMatchResults(matchResult);
-          
-          console.log("Existing resume analysis complete");
+          toast({
+            title: "Resume Loaded",
+            description: "The resume file has been loaded successfully.",
+          });
         } catch (error) {
           console.error("Error loading existing resume:", error);
           toast({
-            title: "Resume Analysis Error",
-            description: "There was an error analyzing the existing resume. You may need to upload a new one.",
+            title: "Resume Loading Error",
+            description: "There was an error loading the resume file. You may need to upload a new one.",
             variant: "destructive",
           });
         } finally {
@@ -162,7 +147,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       
       loadExistingResume();
     }
-  }, [existingResumeFileName, resumeData, isLoadingExistingResume, toast, jobDescription]);
+  }, [existingResumeFileName, resumeFile, isLoadingExistingResume, toast]);
 
   // Process initial values to ensure types match the schema
   const processedInitialValues = {
