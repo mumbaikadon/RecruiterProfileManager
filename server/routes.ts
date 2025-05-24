@@ -2399,6 +2399,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Parse document by filename (for application resume files)
+  app.post("/api/parse-document-by-filename", async (req: Request, res: Response) => {
+    try {
+      const { fileName, fromApplication } = req.body;
+      
+      if (!fileName) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "No filename provided" 
+        });
+      }
+      
+      console.log(`Processing document by filename: ${fileName}`);
+      
+      // Construct the file path
+      const uploadsDir = './uploads';
+      const filePath = `${uploadsDir}/${fileName}`;
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`File not found: ${filePath}`);
+        return res.status(404).json({ 
+          success: false, 
+          message: "File not found" 
+        });
+      }
+      
+      // Read the file
+      const fileBuffer = fs.readFileSync(filePath);
+      
+      // Determine file type from extension
+      const fileExt = fileName.split('.').pop()?.toLowerCase();
+      const fileType = fileExt === 'pdf' ? 'pdf' : 
+                      fileExt === 'docx' ? 'docx' : 
+                      fileExt === 'txt' ? 'txt' : 'unknown';
+      
+      if (fileType === 'unknown') {
+        return res.status(400).json({
+          success: false,
+          message: "Unsupported file format. Only PDF, DOCX, or TXT files are supported."
+        });
+      }
+      
+      console.log(`Processing ${fileType.toUpperCase()} document from application: ${fileName} (${fileBuffer.length} bytes)`);
+      
+      // Import the document parser utility
+      const { extractTextFromDocument } = await import('./document-parser');
+      
+      // Extract text from the document
+      const extractedText = await extractTextFromDocument(fileBuffer, fileType);
+      
+      console.log(`Successfully extracted ${extractedText.length} characters from application document`);
+      console.log(`Text preview: ${extractedText.substring(0, 200)}...`);
+      
+      // Return the extracted text
+      return res.status(200).json({
+        success: true,
+        text: extractedText
+      });
+    } catch (error) {
+      console.error("Error parsing document by filename:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to parse document",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
   // Update application status
   app.patch("/api/applications/:id/status", async (req: Request, res: Response) => {
     try {
