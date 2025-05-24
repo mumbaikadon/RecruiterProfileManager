@@ -265,7 +265,11 @@ function CandidateDetailPage() {
                     <div className="space-y-4">
                       {transformedResumeData.education.map((edu, idx) => (
                         <div key={idx} className="pl-4 border-l-2 border-primary/20">
-                          <p className="font-medium">{edu}</p>
+                          <p className="font-medium">
+                            {typeof edu === 'string' 
+                              ? edu 
+                              : `${edu.degree || ''} ${edu.institution || ''} ${edu.year || ''}`.trim()}
+                          </p>
                         </div>
                       ))}
                     </div>
