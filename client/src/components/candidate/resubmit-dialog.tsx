@@ -49,6 +49,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
   const [isValidating, setIsValidating] = useState(false);
   const [previousResumeData, setPreviousResumeData] = useState<any>(null);
   const [currentResumeData, setCurrentResumeData] = useState<any>(null);
+  const [processingStage, setProcessingStage] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -323,7 +324,11 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
   };
 
   const handleSubmit = async () => {
+    // Set processing stage immediately for user feedback
+    setProcessingStage("Initiating submission...");
+    
     if (!selectedJobId) {
+      setProcessingStage(null);
       toast({
         title: "Error",
         description: "Please select a job",
@@ -333,6 +338,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     }
 
     if (requiresNewResume && !file) {
+      setProcessingStage(null);
       toast({
         title: "Error",
         description: "Please upload a new resume",
