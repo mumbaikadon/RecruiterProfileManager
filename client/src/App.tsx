@@ -12,6 +12,7 @@ import CandidatesPage from "@/pages/candidates/index";
 import CandidateDetailPage from "@/pages/candidates/[id]";
 import SubmissionsPage from "@/pages/submissions/index";
 import SubmissionDetailPage from "@/pages/submissions/[id]";
+import NotificationsPage from "@/pages/notifications";
 
 // Public pages
 import CareersPage from "@/pages/careers/index";
@@ -43,6 +44,7 @@ function Router() {
         <Route path="/candidates/:id" component={CandidateDetailPage} />
         <Route path="/submissions" component={SubmissionsPage} />
         <Route path="/submissions/:id" component={SubmissionDetailPage} />
+        <Route path="/notifications" component={NotificationsPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
