@@ -222,7 +222,7 @@ function CandidateDetailPage() {
                   <>
                     <div>
                       <p className="text-sm font-medium">Previously submitted on Rate</p>
-                      <p className="text-xl font-bold text-primary">$70/hr</p>
+                      <p className="text-xl font-bold text-primary">${averageRate}/hr</p>
                     </div>
                     
                     <div>
