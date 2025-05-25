@@ -432,6 +432,11 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
 
+    // Log if we're excluding a candidate from the check
+    if (excludeCandidateId) {
+      console.log(`Excluding candidate ID ${excludeCandidateId} from duplicate detection`);
+    }
+
     // Normalize input company names for better matching - with less logging
     const normalizedInputCompanies = clientNames.map(name => {
       let normalized = name.split(',')[0].toLowerCase().trim();
@@ -461,6 +466,7 @@ export class DatabaseStorage implements IStorage {
     const validCandidatesData = allResumeData.filter(data => {
       // Always exclude the candidate being validated 
       if (excludeCandidateId && data.candidateId === excludeCandidateId) {
+        console.log(`Excluding candidate ${data.candidateId} from comparison as it matches the current candidate ID`);
         return false;
       }
       
