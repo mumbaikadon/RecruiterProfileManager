@@ -269,72 +269,201 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
           {applications.map((application) => (
             <TableRow key={application.id}>
               <TableCell className="font-medium">
-                <HoverCard>
-                  <HoverCardTrigger>
-                    <Button variant="link" className="p-0 h-auto font-medium text-foreground hover:text-primary">
-                      {application.firstName} {application.lastName}
-                    </Button>
-                  </HoverCardTrigger>
-                  <HoverCardContent className="w-80 z-50">
-                    <div className="space-y-4">
-                      <div className="flex justify-between">
-                        <h4 className="text-sm font-semibold">
-                          {application.firstName} {application.lastName}
-                        </h4>
-                        <ApplicationStatusBadge status={application.status} />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{application.email}</span>
+                <Dialog>
+                  <div className="relative group">
+                    <DialogTrigger asChild>
+                      <Button variant="link" className="p-0 h-auto font-medium text-foreground hover:text-primary">
+                        {application.firstName} {application.lastName}
+                      </Button>
+                    </DialogTrigger>
+                    
+                    <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 bg-white rounded-md border p-4 shadow-md z-50 w-80">
+                      <div className="space-y-4">
+                        <div className="flex justify-between">
+                          <h4 className="text-sm font-semibold">
+                            {application.firstName} {application.lastName}
+                          </h4>
+                          <ApplicationStatusBadge status={application.status} />
                         </div>
                         
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{application.phone}</span>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{application.email}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{application.phone}</span>
+                          </div>
+                          
+                          {(application.city || application.state) && (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">
+                                {[
+                                  application.city,
+                                  application.state ? getStateName(application.state) : null
+                                ].filter(Boolean).join(", ")}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {application.workAuthorization && (
+                            <div className="flex items-center gap-2">
+                              <Briefcase className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">{application.workAuthorization}</span>
+                            </div>
+                          )}
                         </div>
                         
-                        {(application.city || application.state) && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">
-                              {[
-                                application.city,
-                                application.state ? getStateName(application.state) : null
-                              ].filter(Boolean).join(", ")}
-                            </span>
+                        <div className="flex justify-between items-center border-t pt-2 text-xs text-muted-foreground">
+                          <span>Applied on {formatDate(new Date(application.appliedAt))}</span>
+                          
+                          {application.resumeFileName && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-7 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewResume(application.resumeFileName);
+                              }}
+                            >
+                              View Resume
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                      <DialogTitle>Candidate Details</DialogTitle>
+                      <DialogDescription>
+                        Detailed information about {application.firstName} {application.lastName}
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-6 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="text-sm font-semibold mb-2">Contact Information</h4>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-muted-foreground" />
+                              <span>{application.email}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-muted-foreground" />
+                              <span>{application.phone}</span>
+                            </div>
+                            {(application.city || application.state) && (
+                              <div className="flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-muted-foreground" />
+                                <span>
+                                  {[
+                                    application.city,
+                                    application.state ? getStateName(application.state) : null
+                                  ].filter(Boolean).join(", ")}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                         
-                        {application.workAuthorization && (
-                          <div className="flex items-center gap-2">
-                            <Briefcase className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{application.workAuthorization}</span>
+                        <div>
+                          <h4 className="text-sm font-semibold mb-2">Application Details</h4>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-sm">Status:</span>
+                              <ApplicationStatusBadge status={application.status} />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-sm">Applied on:</span>
+                              <span>{formatDate(new Date(application.appliedAt))}</span>
+                            </div>
+                            {application.workAuthorization && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground text-sm">Work Auth:</span>
+                                <span>{application.workAuthorization}</span>
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
                       
-                      <div className="flex justify-between items-center border-t pt-2 text-xs text-muted-foreground">
-                        <span>Applied on {formatDate(new Date(application.appliedAt))}</span>
-                        
+                      {application.coverletter && (
+                        <div>
+                          <h4 className="text-sm font-semibold mb-2">Cover Letter</h4>
+                          <div className="bg-muted/50 p-3 rounded-md text-sm">
+                            {application.coverletter}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {application.notes && (
+                        <div>
+                          <h4 className="text-sm font-semibold mb-2">Review Notes</h4>
+                          <div className="bg-muted/50 p-3 rounded-md text-sm">
+                            {application.notes}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <DialogFooter className="flex justify-between">
+                      <div>
                         {application.resumeFileName && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-7 px-2 text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewResume(application.resumeFileName);
-                            }}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownloadResume(application.resumeFileName)}
+                            className="mr-2"
                           >
+                            <Download className="mr-2 h-4 w-4" />
+                            Download Resume
+                          </Button>
+                        )}
+                        {application.resumeFileName && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewResume(application.resumeFileName)}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
                             View Resume
                           </Button>
                         )}
                       </div>
-                    </div>
-                  </HoverCardContent>
-                </HoverCard>
+                      
+                      <div>
+                        {application.status === "pending" && (
+                          <>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleReject(application)}
+                              className="mr-2"
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Reject
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleMarkAsApproved(application)}
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Approve
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </TableCell>
               <TableCell>
                 <div className="flex flex-col">
