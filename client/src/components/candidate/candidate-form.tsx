@@ -984,7 +984,38 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   }, [pastedData, form, setShowOtherAuthorizationInput, setOtherAuthorization]);
 
   const handlePasteDataChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setPastedData(e.target.value);
+    const newValue = e.target.value;
+    setPastedData(newValue);
+    
+    // If the paste field is cleared, reset all form fields
+    if (!newValue.trim()) {
+      form.reset({
+        firstName: "",
+        middleName: "",
+        lastName: "",
+        dobMonth: 0,
+        dobDay: 0,
+        ssn4: "",
+        location: "",
+        email: "",
+        phone: "",
+        linkedIn: "",
+        workAuthorization: "",
+        agreedRate: 0
+      });
+      
+      // Also reset any additional state
+      setResumeData(null);
+      setMatchResults(null);
+      setResumeText("");
+      setResumeFile(null);
+      if (!applicationResumeFileName) {
+        setExistingResumeFileName(undefined);
+      }
+      setShowOtherAuthorizationInput(false);
+      setOtherAuthorization("");
+      setValidationWarning(null);
+    }
   };
 
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
