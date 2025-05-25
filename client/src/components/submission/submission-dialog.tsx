@@ -637,7 +637,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
                       candidateId: data.candidateId,
                       recruiterId,
                       status: "New",
-                      agreedRate: data.agreedRate || 0, // Use the agreed rate from candidate data
+                      agreedRate: (data.agreedRate || 0).toString(), // Use the agreed rate from candidate data and convert to string
                       matchScore: null,
                       notes: "",
                       // Pass suspicious flags if they exist in validation data
