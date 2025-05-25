@@ -1907,8 +1907,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log("OpenAI analysis completed");
         
-        // Parse the response
-        const analysisResult = JSON.parse(response.choices[0].message.content);
+        // Parse the response - adding error handling
+        let analysisResult;
+        try {
+          // The content should already be a JSON object since we specified response_format: { type: "json_object" }
+          analysisResult = response.choices[0].message.content;
+          // Double check if it's a string and needs parsing
+          if (typeof analysisResult === 'string') {
+            analysisResult = JSON.parse(analysisResult);
+          }
+        } catch (parseError) {
+          console.error("Error parsing OpenAI response:", parseError);
+          console.log("Raw content:", response.choices[0].message.content);
+          // Provide fallback empty object to prevent further errors
+          analysisResult = {
+            overallScore: 0,
+            relevantExperience: [],
+            clientNames: [],
+            jobTitles: [],
+            relevantDates: [],
+            education: []
+          };
+        }
         
         // Create a match result with the extracted information
         matchResult = {
