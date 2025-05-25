@@ -40,7 +40,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -270,16 +269,13 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
           {applications.map((application) => (
             <TableRow key={application.id}>
               <TableCell className="font-medium">
-                <div className="relative group">
-                  <Button 
-                    variant="link" 
-                    className="p-0 h-auto font-medium text-foreground hover:text-primary"
-                    onClick={() => handleViewDetails(application)}
-                  >
-                    {application.firstName} {application.lastName}
-                  </Button>
-                  
-                  <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 bg-white rounded-md border p-4 shadow-md z-50 w-80">
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <span className="cursor-pointer hover:text-primary transition-colors">
+                      {application.firstName} {application.lastName}
+                    </span>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80">
                     <div className="space-y-4">
                       <div className="flex justify-between">
                         <h4 className="text-sm font-semibold">
@@ -337,8 +333,8 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
                         )}
                       </div>
                     </div>
-                  </div>
-                </div>
+                  </HoverCardContent>
+                </HoverCard>
               </TableCell>
               <TableCell>
                 <div className="flex flex-col">
