@@ -252,7 +252,10 @@ const JobDetailPage: React.FC = () => {
                 <h4 className="text-sm font-medium text-muted-foreground">Location</h4>
                 <p className="flex items-center mt-1 text-sm text-foreground">
                   <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                  {[job.city, job.state].filter(Boolean).join(", ") || "Not specified"}
+                  {[
+                    job.city, 
+                    job.state ? getStateFullName(job.state) : null
+                  ].filter(Boolean).join(", ") || "Not specified"}
                 </p>
               </div>
               
