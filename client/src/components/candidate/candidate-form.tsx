@@ -188,38 +188,6 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   });
 
   useEffect(() => {
-    // Reset form fields whenever pasted data changes
-    // This ensures that editing the JSON will update the form fields
-    if (pastedData.trim().length === 0) {
-      form.reset({
-        firstName: "",
-        middleName: "",
-        lastName: "",
-        dobMonth: 0,
-        dobDay: 0,
-        ssn4: "",
-        location: "",
-        email: "",
-        phone: "",
-        linkedIn: "",
-        workAuthorization: "",
-        agreedRate: 0
-      });
-      
-      // Also reset any additional state
-      setResumeData(null);
-      setMatchResults(null);
-      setResumeText("");
-      setResumeFile(null);
-      if (!applicationResumeFileName) {
-        setExistingResumeFileName(undefined);
-      }
-      setShowOtherAuthorizationInput(false);
-      setOtherAuthorization("");
-      setValidationWarning(null);
-      return;
-    }
-    
     // Attempt to extract data from pasted text
     if (pastedData.length > 0) {
       console.log("Attempting to parse pasted data:", pastedData.length, "characters");
@@ -301,10 +269,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         
         if (fullName) {
           console.log("Found full name:", fullName);
-          // Clean up the name by removing any trailing commas or extra characters
-          const cleanedName = fullName.trim().replace(/,$/, '');
-          const nameParts = cleanedName.split(/\s+/);
-          
+          const nameParts = fullName.trim().split(/\s+/);
           if (nameParts.length >= 2) {
             form.setValue("firstName", nameParts[0]);
             form.setValue("lastName", nameParts[nameParts.length - 1]);
@@ -312,9 +277,6 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             if (nameParts.length > 2) {
               form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
             }
-          } else {
-            // If only one word is present, set it as the first name
-            form.setValue("firstName", cleanedName);
           }
         } else {
           if (firstName) form.setValue("firstName", firstName);
@@ -1016,7 +978,6 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   }, [pastedData, form, setShowOtherAuthorizationInput, setOtherAuthorization]);
 
   const handlePasteDataChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // Just update the pasted data - the useEffect will handle the rest
     setPastedData(e.target.value);
   };
 
