@@ -117,7 +117,7 @@ export const submissions = pgTable("submissions", {
     ] 
   }).notNull().default("New"),
   matchScore: integer("match_score").default(65),  // Default match score of 65%
-  agreedRate: numeric("agreed_rate", { precision: 10, scale: 2 }).default("0"),  // Store as decimal with 2 decimal places
+  agreedRate: numeric("agreed_rate", { precision: 10, scale: 2 }).notNull().default("0"),  // Store as decimal with 2 decimal places
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   notes: text("notes"),

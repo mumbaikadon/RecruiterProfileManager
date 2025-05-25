@@ -479,7 +479,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         candidateId: candidateData.id,
         recruiterId,
         status: "New",
-        agreedRate: values.agreedRate,
+        agreedRate: parseFloat(values.agreedRate.toString()),
         matchScore: values.matchResults?.score || null,
         notes: "",
       }, {
