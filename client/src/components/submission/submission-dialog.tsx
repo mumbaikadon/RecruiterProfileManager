@@ -479,7 +479,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         candidateId: candidateData.id,
         recruiterId,
         status: "New",
-        agreedRate: values.agreedRate?.toString() || "0",
+        agreedRate: parseFloat(values.agreedRate.toString()),
         matchScore: values.matchResults?.score || null,
         notes: "",
       }, {
@@ -637,7 +637,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
                       candidateId: data.candidateId,
                       recruiterId,
                       status: "New",
-                      agreedRate: (data.agreedRate || 0).toString(), // Use the agreed rate from candidate data and convert to string
+                      agreedRate: parseFloat(values.agreedRate.toString()), // Use actual agreed rate with decimal precision
                       matchScore: null,
                       notes: "",
                       // Pass suspicious flags if they exist in validation data
