@@ -269,7 +269,10 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
         
         if (fullName) {
           console.log("Found full name:", fullName);
-          const nameParts = fullName.trim().split(/\s+/);
+          // Clean up the name by removing any trailing commas or extra characters
+          const cleanedName = fullName.trim().replace(/,$/, '');
+          const nameParts = cleanedName.split(/\s+/);
+          
           if (nameParts.length >= 2) {
             form.setValue("firstName", nameParts[0]);
             form.setValue("lastName", nameParts[nameParts.length - 1]);
@@ -277,6 +280,9 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             if (nameParts.length > 2) {
               form.setValue("middleName", nameParts.slice(1, nameParts.length - 1).join(" "));
             }
+          } else {
+            // If only one word is present, set it as the first name
+            form.setValue("firstName", cleanedName);
           }
         } else {
           if (firstName) form.setValue("firstName", firstName);
