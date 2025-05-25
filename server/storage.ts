@@ -45,6 +45,7 @@ export interface IStorage {
   createCandidate(candidate: InsertCandidate): Promise<Candidate>;
   markCandidateAsUnreal(candidateId: number, reason: string, validatedBy: number): Promise<Candidate>;
   updateCandidateValidation(candidateId: number, isUnreal: boolean, reason?: string, validatedBy?: number): Promise<Candidate>;
+  getCandidatesByCompanyNames(companyNames: string[]): Promise<Array<{id: number}>>;
 
   // Resume data operations
   getResumeData(candidateId: number): Promise<ResumeData | undefined>;
@@ -60,6 +61,10 @@ export interface IStorage {
     similarityScore: number;
     clientNames: string[];
     relevantDates: string[];
+    hasIdenticalChronology?: boolean;
+    isHighSimilarity?: boolean;
+    companyMatchPercentage?: number;
+    dateMatchPercentage?: number;
   }>>;
 
   // Candidate validation operations
@@ -361,6 +366,48 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(resumeData)
       .orderBy(desc(resumeData.uploadedAt));
+  }
+  
+  // Find candidates by matching their company names exactly - used to detect existing candidates
+  async getCandidatesByCompanyNames(companyNames: string[]): Promise<Array<{id: number}>> {
+    // Performance optimization - don't try to match if no company names
+    if (!companyNames.length) {
+      return [];
+    }
+
+    // First get all resume data
+    const allResumeData = await this.getAllResumeData();
+    
+    // Filter to find exact matches for company names
+    const exactMatches = allResumeData.filter(data => {
+      // Skip if this resume has no company data
+      if (!data.clientNames || data.clientNames.length === 0) {
+        return false;
+      }
+      
+      // We need exact match for all companies, in the same order
+      // This is a strict check to find the actual same candidate
+      if (data.clientNames.length !== companyNames.length) {
+        return false;
+      }
+      
+      // Check each company name in order
+      for (let i = 0; i < companyNames.length; i++) {
+        // Normalize both strings for comparison
+        const dataCompany = (data.clientNames[i] || '').toLowerCase().trim();
+        const inputCompany = companyNames[i].toLowerCase().trim();
+        
+        if (dataCompany !== inputCompany) {
+          return false;
+        }
+      }
+      
+      // If we get here, all company names matched in the same order
+      return true;
+    });
+    
+    // Return just the candidate IDs
+    return exactMatches.map(match => ({ id: match.candidateId }));
   }
 
   async findSimilarEmploymentHistories(
