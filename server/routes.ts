@@ -939,7 +939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recruiterId: submissionData.recruiterId,
         status: submissionData.status || "submitted",
         matchScore: submissionData.matchScore,
-        agreedRate: submissionData.agreedRate,
+        agreedRate: submissionData.agreedRate !== undefined ? parseFloat(submissionData.agreedRate.toString()) : 0,
         notes: submissionData.notes || "",
         isSuspicious: !!submissionData.isSuspicious,
         suspiciousReason: submissionData.suspiciousReason || null,
