@@ -151,6 +151,7 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         relevantDates: newResumeData.relevantDates
       });
       
+      // Fix: Using the correct request method format for the API
       const responseData = await apiRequest<{
         message: string;
         hasSimilarHistories: boolean;
@@ -180,6 +181,9 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         }>
       }>('/api/candidates/check-similar-employment', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           candidateId,
           clientNames: newResumeData.clientNames,
