@@ -1492,7 +1492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               jobId: jobId,
               candidateId: candidateId,
               recruiterId: validatedBy,
-              status: "New",
+              status: "New" as const,
               agreedRate: req.body.agreedRate ? parseFloat(req.body.agreedRate) : 0,
               isSuspicious: isSuspicious,
               suspiciousReason: suspiciousReason || null,
