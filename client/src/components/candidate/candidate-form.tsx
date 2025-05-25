@@ -1045,7 +1045,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
               body: JSON.stringify({
                 clientNames: matchResult.clientNames,
                 relevantDates: matchResult.relevantDates || [],
-                candidateId: initialCandidateData?.id // Pass the candidate ID to exclude them from comparison
+                candidateId: initialValues?.id || null // Pass the candidate ID to exclude them from comparison
               })
             });
             
