@@ -267,13 +267,13 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
         </TableHeader>
         <TableBody>
           {applications.map((application) => (
-            <TableRow key={application.id}>
+            <TableRow key={application.id} className="cursor-pointer hover:bg-muted/30 transition-colors">
               <TableCell className="font-medium">
                 <HoverCard>
                   <HoverCardTrigger asChild>
-                    <span className="cursor-pointer hover:text-primary transition-colors">
+                    <div className="flex w-full">
                       {application.firstName} {application.lastName}
-                    </span>
+                    </div>
                   </HoverCardTrigger>
                   <HoverCardContent className="w-80">
                     <div className="space-y-4">
