@@ -432,11 +432,6 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
 
-    // Log if we're excluding a candidate from the check
-    if (excludeCandidateId) {
-      console.log(`⚠️ IMPORTANT: Excluding candidate ID ${excludeCandidateId} from duplicate detection`);
-    }
-
     // Normalize input company names for better matching - with less logging
     const normalizedInputCompanies = clientNames.map(name => {
       let normalized = name.split(',')[0].toLowerCase().trim();
@@ -462,36 +457,11 @@ export class DatabaseStorage implements IStorage {
     // Get resume data - but with early filtering to reduce processing
     const allResumeData = await this.getAllResumeData();
     
-    if (excludeCandidateId) {
-      console.log(`Before filtering: ${allResumeData.length} total resume records`);
-      // Count how many records match the exclude ID
-      const matchingExcludeCount = allResumeData.filter(data => data.candidateId === excludeCandidateId).length;
-      console.log(`Found ${matchingExcludeCount} records matching exclude ID ${excludeCandidateId}`);
-    }
-    
     // Filter out: 1) candidates with no data, 2) the one we're validating, and 3) any duplicates of the same candidate
-    // Log the candidate IDs before filtering to see what we're working with
-    console.log("All candidate IDs being considered:", 
-      allResumeData.map(data => data.candidateId).join(", "));
-    console.log("Exclude candidate ID (type and value):", 
-      typeof excludeCandidateId, excludeCandidateId);
-      
     const validCandidatesData = allResumeData.filter(data => {
-      // Always exclude the candidate being validated - ensure we handle number/string type differences
-      if (excludeCandidateId !== undefined && excludeCandidateId !== null) {
-        // Convert both to numbers for comparison to handle string/number type issues
-        const candidateIdNum = Number(data.candidateId);
-        const excludeIdNum = Number(excludeCandidateId);
-        
-        // Log detailed information about each comparison
-        console.log(`Comparing candidate ${data.candidateId} (${typeof data.candidateId}) with excludeId ${excludeCandidateId} (${typeof excludeCandidateId})`);
-        console.log(`Numeric comparison: ${candidateIdNum} === ${excludeIdNum} is ${candidateIdNum === excludeIdNum}`);
-        
-        // Use numeric comparison to avoid string/number type issues
-        if (candidateIdNum === excludeIdNum) {
-          console.log(`🚫 EXCLUDED: Candidate ${data.candidateId} from comparison as it matches the exclude ID ${excludeCandidateId}`);
-          return false;
-        }
+      // Always exclude the candidate being validated 
+      if (excludeCandidateId && data.candidateId === excludeCandidateId) {
+        return false;
       }
       
       // Ensure we have data to match
@@ -508,17 +478,6 @@ export class DatabaseStorage implements IStorage {
     // First pass - quick filtering to reduce candidates needing detailed analysis
     // Only do detailed processing for candidates with any company name match
     const potentialMatches = validCandidatesData.filter(data => {
-      // Double-check exclusion of current candidate ID - critical safety check
-      if (excludeCandidateId !== undefined && excludeCandidateId !== null) {
-        const currentId = Number(excludeCandidateId);
-        const candidateId = Number(data.candidateId);
-        
-        if (currentId === candidateId) {
-          console.log(`🚨 SAFETY CHECK: Excluding candidate ${candidateId} from potential matches`);
-          return false;
-        }
-      }
-      
       const candidateCompanyNames = data.clientNames || [];
       
       // Quick check - does any company name match (after normalization)?
