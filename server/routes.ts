@@ -135,6 +135,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.description) {
         req.body.description = sanitizeHtml(req.body.description);
       }
+      
+      // Ensure createdBy is properly set to a valid user ID
+      if (!req.body.createdBy) {
+        // Get a valid recruiter ID to assign as the creator
+        try {
+          const recruiters = await storage.getRecruiters();
+          if (recruiters && recruiters.length > 0) {
+            req.body.createdBy = recruiters[0].id;
+          } else {
+            return res.status(400).json({ message: "No valid recruiters found to assign as job creator" });
+          }
+        } catch (err) {
+          console.error("Error finding recruiters:", err);
+          return res.status(400).json({ message: "Unable to assign a valid creator to this job" });
+        }
+      }
 
       const validatedData = insertJobSchema.parse(req.body);
       const job = await storage.createJob(validatedData);
