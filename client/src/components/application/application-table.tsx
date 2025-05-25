@@ -338,6 +338,15 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
                 </div>
               </div>
               
+              {(selectedApplication.city || selectedApplication.state) && (
+                <div>
+                  <h4 className="text-sm font-medium">Location</h4>
+                  <p className="text-sm">
+                    {[selectedApplication.city, selectedApplication.state].filter(Boolean).join(", ") || "Not specified"}
+                  </p>
+                </div>
+              )}
+              
               <div>
                 <h4 className="text-sm font-medium">Work Authorization</h4>
                 <p className="text-sm">{selectedApplication.workAuthorization || "Not specified"}</p>

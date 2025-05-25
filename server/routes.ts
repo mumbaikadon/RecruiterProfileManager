@@ -2340,7 +2340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Handle public job applications 
   app.post("/api/public/applications", fileUpload.single('resume'), async (req: Request, res: Response) => {
     try {
-      const { jobId, firstName, lastName, email, phone, workAuthorization, coverLetter } = req.body;
+      const { jobId, firstName, lastName, email, phone, city, state, workAuthorization, coverLetter } = req.body;
       
       if (!jobId || !firstName || !lastName || !email || !phone) {
         return res.status(400).json({ message: "Missing required application details" });
@@ -2383,6 +2383,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName,
         email,
         phone,
+        city,
+        state,
         workAuthorization,
         coverLetter,
         resumeFileName,
