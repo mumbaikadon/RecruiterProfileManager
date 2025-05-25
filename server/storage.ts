@@ -471,10 +471,12 @@ export class DatabaseStorage implements IStorage {
     
     // Filter out: 1) candidates with no data, 2) the one we're validating, and 3) any duplicates of the same candidate
     const validCandidatesData = allResumeData.filter(data => {
-      // Always exclude the candidate being validated 
-      if (excludeCandidateId && data.candidateId === excludeCandidateId) {
-        console.log(`🚫 EXCLUDED: Candidate ${data.candidateId} from comparison as it matches the current candidate ID`);
-        return false;
+      // Always exclude the candidate being validated - strict equality check
+      if (excludeCandidateId !== undefined && excludeCandidateId !== null) {
+        if (data.candidateId === excludeCandidateId) {
+          console.log(`🚫 EXCLUDED: Candidate ${data.candidateId} from comparison as it matches the exclude ID ${excludeCandidateId}`);
+          return false;
+        }
       }
       
       // Ensure we have data to match
