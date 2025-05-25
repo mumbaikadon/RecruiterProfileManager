@@ -48,6 +48,8 @@ interface CandidateValidationDialogProps {
   };
   validationType: "resubmission";
   resumeFileName?: string;
+  // Add agreedRate for the submission
+  agreedRate?: number;
   // Suspicious flags preloaded from previous validations or detections
   isSuspicious?: boolean;
   suspiciousReason?: string;
@@ -65,6 +67,8 @@ interface CandidateValidationDialogProps {
     newDates: string[];
     resumeFileName?: string;
     reason?: string;
+    // Add agreedRate to validation data
+    agreedRate?: number;
     // Add suspicious flags
     isSuspicious?: boolean;
     suspiciousReason?: string;
@@ -84,6 +88,8 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
   newResumeData,
   validationType,
   resumeFileName,
+  // Add agreed rate parameter
+  agreedRate,
   // Add suspicious flag props with defaults
   isSuspicious = false,
   suspiciousReason,
@@ -382,6 +388,8 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         resumeFileName,
         reason: result === "unreal" ? reason : undefined,
         validatedBy, // Use validatedBy from props
+        // Include the agreed rate value
+        agreedRate,
         // Store match data to avoid re-analyzing in resubmit
         matchResult: jobMatchData,
         matchScore: jobMatchData?.score,
