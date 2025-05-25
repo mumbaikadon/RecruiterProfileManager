@@ -35,7 +35,12 @@ import {
   Users, 
   UserPlus,
   Clock,
-  Pencil
+  Pencil,
+  MapPin,
+  Building2,
+  Briefcase as BriefcaseIcon,
+  Target,
+  DollarSign
 } from "lucide-react";
 import SubmissionTable from "@/components/submission/submission-table";
 import SubmissionDialog from "@/components/submission/submission-dialog";
@@ -228,6 +233,30 @@ const JobDetailPage: React.FC = () => {
               </div>
               
               <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Client</h4>
+                <p className="flex items-center mt-1 text-sm text-foreground">
+                  <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                  {job.clientName || "Not specified"}
+                </p>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Work Model</h4>
+                <p className="flex items-center mt-1 text-sm text-foreground">
+                  <BriefcaseIcon className="h-4 w-4 mr-2 text-muted-foreground" />
+                  {job.jobType ? job.jobType.charAt(0).toUpperCase() + job.jobType.slice(1) : "Not specified"}
+                </p>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Location</h4>
+                <p className="flex items-center mt-1 text-sm text-foreground">
+                  <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                  {[job.city, job.state].filter(Boolean).join(", ") || "Not specified"}
+                </p>
+              </div>
+              
+              <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Submissions</h4>
                 <p className="flex items-center mt-1 text-sm text-foreground">
                   <Users className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -242,6 +271,20 @@ const JobDetailPage: React.FC = () => {
                   {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                 </p>
               </div>
+              
+              {job.clientFocus && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground">Client Focus Areas</h4>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {job.clientFocus.split(',').map((focus, index) => (
+                      <Badge key={index} variant="outline" className="bg-green-100/20 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800/30">
+                        <Target className="h-3 w-3 mr-1" />
+                        {focus.trim()}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <Separator />
               
