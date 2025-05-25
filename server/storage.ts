@@ -434,7 +434,7 @@ export class DatabaseStorage implements IStorage {
 
     // Log if we're excluding a candidate from the check
     if (excludeCandidateId) {
-      console.log(`Excluding candidate ID ${excludeCandidateId} from duplicate detection`);
+      console.log(`⚠️ IMPORTANT: Excluding candidate ID ${excludeCandidateId} from duplicate detection`);
     }
 
     // Normalize input company names for better matching - with less logging
@@ -462,11 +462,18 @@ export class DatabaseStorage implements IStorage {
     // Get resume data - but with early filtering to reduce processing
     const allResumeData = await this.getAllResumeData();
     
+    if (excludeCandidateId) {
+      console.log(`Before filtering: ${allResumeData.length} total resume records`);
+      // Count how many records match the exclude ID
+      const matchingExcludeCount = allResumeData.filter(data => data.candidateId === excludeCandidateId).length;
+      console.log(`Found ${matchingExcludeCount} records matching exclude ID ${excludeCandidateId}`);
+    }
+    
     // Filter out: 1) candidates with no data, 2) the one we're validating, and 3) any duplicates of the same candidate
     const validCandidatesData = allResumeData.filter(data => {
       // Always exclude the candidate being validated 
       if (excludeCandidateId && data.candidateId === excludeCandidateId) {
-        console.log(`Excluding candidate ${data.candidateId} from comparison as it matches the current candidate ID`);
+        console.log(`🚫 EXCLUDED: Candidate ${data.candidateId} from comparison as it matches the current candidate ID`);
         return false;
       }
       
