@@ -151,35 +151,8 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         relevantDates: newResumeData.relevantDates
       });
       
-      // Fix: Using the correct request method format for the API
-      const responseData = await apiRequest<{
-        message: string;
-        hasSimilarHistories: boolean;
-        hasIdenticalChronology: boolean;
-        highSimilarityMatches: Array<{
-          candidateId: number;
-          candidateName: string;
-          candidateEmail: string;
-          similarityScore: number;
-          clientNames: string[];
-          relevantDates: string[];
-        }>;
-        identicalChronologyMatches: Array<{
-          candidateId: number;
-          candidateName: string;
-          candidateEmail: string;
-          similarityScore: number;
-          clientNames: string[];
-          relevantDates: string[];
-        }>;
-        totalCandidatesChecked: number;
-        suspiciousPatterns?: Array<{
-          type: string;
-          severity: string;
-          message: string;
-          detail: string;
-        }>
-      }>('/api/candidates/check-similar-employment', {
+      // Use fetch directly to avoid issues with the apiRequest function
+      const response = await fetch('/api/candidates/check-similar-employment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -188,8 +161,15 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
           candidateId,
           clientNames: newResumeData.clientNames,
           relevantDates: newResumeData.relevantDates
-        })
+        }),
+        credentials: 'include'
       });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const responseData = await response.json();
       
       console.log("Employment history validation response:", responseData);
       setEmploymentValidation({
@@ -329,8 +309,8 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
       // Use either the existing reason or generate a new one if newly suspicious
       const suspiciousReasonToUse = suspiciousReason || (isNewlySuspicious 
         ? (employmentValidation?.hasIdenticalChronology 
-          ? `Identical job chronology with ${employmentValidation.identicalChronologyMatches.length} other candidate(s)` 
-          : `Similar employment history (>${employmentValidation?.highSimilarityMatches[0]?.similarityScore}%) with ${employmentValidation?.highSimilarityMatches.length} other candidate(s)`)
+          ? `Identical job chronology with ${employmentValidation.identicalChronologyMatches?.length || 0} other candidate(s)` 
+          : `Similar employment history (>${employmentValidation?.highSimilarityMatches?.[0]?.similarityScore || 0}%) with ${employmentValidation?.highSimilarityMatches?.length || 0} other candidate(s)`)
         : undefined);
       
       // Use the most severe classification - if existing is HIGH, keep it, otherwise use new severity if available
