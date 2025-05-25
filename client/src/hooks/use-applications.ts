@@ -8,6 +8,8 @@ export interface JobApplication {
   lastName: string;
   email: string;
   phone: string;
+  city?: string;
+  state?: string;
   workAuthorization?: string;
   coverLetter?: string;
   resumeFileName?: string;
