@@ -184,13 +184,10 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
           message: string;
           detail: string;
         }>
-      }>('/api/candidates/check-similar-employment', {
-        method: 'POST',
-        body: JSON.stringify({
+      }>('POST', '/api/candidates/check-similar-employment', {
           candidateId,
           clientNames: newResumeData.clientNames,
           relevantDates: newResumeData.relevantDates
-        })
       });
       
       console.log("Employment history validation response:", responseData);
