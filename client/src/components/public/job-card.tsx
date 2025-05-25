@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { MapPin, Briefcase, Building } from "lucide-react";
+import { MapPin, Briefcase, Building, Target } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,27 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
             </div>
           )}
         </div>
+        
+        {job.clientFocus && (
+          <div className="mb-3">
+            <div className="flex items-center mb-1">
+              <Target className="h-4 w-4 mr-2 flex-shrink-0 text-primary" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Client Focus Areas:</span>
+            </div>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {job.clientFocus.split(',').slice(0, 3).map((focus, index) => (
+                <Badge key={index} variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs">
+                  {focus.trim()}
+                </Badge>
+              ))}
+              {job.clientFocus.split(',').length > 3 && (
+                <Badge variant="outline" className="bg-gray-50 text-gray-700 dark:bg-gray-800 dark:text-gray-300 text-xs">
+                  +{job.clientFocus.split(',').length - 3} more
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
         
         {job.description && (
           <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-3">
