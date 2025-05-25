@@ -577,14 +577,16 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
           jobId={jobId}
           jobTitle={jobTitle}
           jobDescription={jobDescription}
-          prefilledData={{
+          recruiterId={selectedApplication.recruiterId || 1} 
+          initialCandidateData={{
             firstName: selectedApplication.firstName,
             lastName: selectedApplication.lastName,
             email: selectedApplication.email,
             phone: selectedApplication.phone,
             location: selectedApplication.city ? `${selectedApplication.city}, ${selectedApplication.state || ''}` : '',
-            resumeFileName: selectedApplication.resumeFileName
           }}
+          applicationResumeFileName={selectedApplication.resumeFileName}
+          applicationId={selectedApplication.id}
         />
       )}
     </div>
