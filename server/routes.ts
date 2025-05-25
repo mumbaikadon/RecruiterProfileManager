@@ -2063,7 +2063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // New endpoint to validate a resume for duplicate/suspicious patterns before candidate creation
   app.post("/api/validate-resume", async (req: Request, res: Response) => {
     try {
-      const { clientNames, relevantDates } = req.body;
+      const { clientNames, relevantDates, candidateId } = req.body;
       
       if (!clientNames || !Array.isArray(clientNames) || clientNames.length === 0) {
         return res.status(400).json({ 
@@ -2087,8 +2087,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check if this is an existing candidate by using firstName, lastName, email from the request
-      let existingCandidateId = req.body.candidateId || null;
+      // Check if this is an existing candidate by using candidateId from the request or identifying match
+      let existingCandidateId = candidateId || null;
       
       console.log(`Validating resume with candidate ID to exclude: ${existingCandidateId || 'None'}`);
       
@@ -2110,6 +2110,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           console.error("Error looking up potential existing candidates:", error);
         }
+      }
+      
+      // If we have a candidate ID to exclude, log it clearly
+      if (existingCandidateId) {
+        console.log(`EXCLUDING CANDIDATE ID: ${existingCandidateId} from duplicate check`);
       }
       
       // Find similar employment histories - using our optimized algorithm
