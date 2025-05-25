@@ -1500,6 +1500,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               notes: isSuspicious ? `Flagged during validation: ${suspiciousReason || 'Similar employment history'}` : null
             };
             
+            // Declare submission variable outside the try/catch for proper scope
+            let submission;
             try {
               // Create submission
               submission = await storage.createSubmission(submissionData);
@@ -1530,9 +1532,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `Candidate ${validationResult === "unreal" ? "marked as unreal" : "validated successfully"}`
         };
         
-        // Only include submission in the response if it exists
-        if (typeof submission !== 'undefined') {
-          response.submission = submission;
+        // Define submission at a higher scope
+        let submissionResponse = null;
+        // Check if we have access to a submission variable from above
+        if (typeof submission !== 'undefined' && submission) {
+          submissionResponse = submission;
+        }
+        
+        // Add it to the response if it exists
+        if (submissionResponse) {
+          response.submission = submissionResponse;
         }
         
         res.status(200).json(response);
