@@ -270,12 +270,12 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
             <TableRow key={application.id}>
               <TableCell className="font-medium">
                 <HoverCard>
-                  <HoverCardTrigger asChild>
-                    <span className="cursor-pointer hover:text-primary transition-colors">
+                  <HoverCardTrigger>
+                    <Button variant="link" className="p-0 h-auto font-medium text-foreground hover:text-primary">
                       {application.firstName} {application.lastName}
-                    </span>
+                    </Button>
                   </HoverCardTrigger>
-                  <HoverCardContent className="w-80">
+                  <HoverCardContent className="w-80 z-50">
                     <div className="space-y-4">
                       <div className="flex justify-between">
                         <h4 className="text-sm font-semibold">
