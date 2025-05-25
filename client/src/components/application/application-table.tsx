@@ -50,6 +50,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { 
   CheckCircle, 
   XCircle, 
@@ -57,7 +62,11 @@ import {
   Eye,
   Loader2,
   Download,
-  UserPlus
+  UserPlus,
+  Mail,
+  Phone,
+  MapPin,
+  Briefcase
 } from "lucide-react";
 import SubmissionDialog from "@/components/submission/submission-dialog";
 
@@ -260,7 +269,72 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
           {applications.map((application) => (
             <TableRow key={application.id}>
               <TableCell className="font-medium">
-                {application.firstName} {application.lastName}
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <span className="cursor-pointer hover:text-primary transition-colors">
+                      {application.firstName} {application.lastName}
+                    </span>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80">
+                    <div className="space-y-4">
+                      <div className="flex justify-between">
+                        <h4 className="text-sm font-semibold">
+                          {application.firstName} {application.lastName}
+                        </h4>
+                        <ApplicationStatusBadge status={application.status} />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{application.email}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{application.phone}</span>
+                        </div>
+                        
+                        {(application.city || application.state) && (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">
+                              {[
+                                application.city,
+                                application.state ? getStateName(application.state) : null
+                              ].filter(Boolean).join(", ")}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {application.workAuthorization && (
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{application.workAuthorization}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex justify-between items-center border-t pt-2 text-xs text-muted-foreground">
+                        <span>Applied on {formatDate(new Date(application.appliedAt))}</span>
+                        
+                        {application.resumeFileName && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewResume(application.resumeFileName);
+                            }}
+                          >
+                            View Resume
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
               </TableCell>
               <TableCell>
                 <div className="flex flex-col">
