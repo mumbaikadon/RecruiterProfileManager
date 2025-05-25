@@ -637,7 +637,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
                       candidateId: data.candidateId,
                       recruiterId,
                       status: "New",
-                      agreedRate: parseFloat(hourlyRate || "0.00"), // Use actual hourly rate with decimal precision
+                      agreedRate: parseFloat(values.agreedRate.toString()), // Use actual agreed rate with decimal precision
                       matchScore: null,
                       notes: "",
                       // Pass suspicious flags if they exist in validation data
