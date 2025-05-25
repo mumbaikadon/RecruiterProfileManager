@@ -192,57 +192,51 @@ const JobDetailPage: React.FC = () => {
   
   if (isLoading) {
     return (
-      <PublicLayout>
-        <div className="container mx-auto py-16">
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </div>
+      <div className="container mx-auto py-16">
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
-      </PublicLayout>
+      </div>
     );
   }
   
   if (error || !job) {
     return (
-      <PublicLayout>
-        <div className="container mx-auto py-16">
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">Job Not Found</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-8">
-              We couldn't find the job you're looking for. It may have been removed or is no longer available.
-            </p>
-            <Button onClick={() => setLocation("/careers")}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Jobs
-            </Button>
-          </div>
+      <div className="container mx-auto py-16">
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Job Not Found</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-8">
+            We couldn't find the job you're looking for. It may have been removed or is no longer available.
+          </p>
+          <Button onClick={() => setLocation("/careers")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Jobs
+          </Button>
         </div>
-      </PublicLayout>
+      </div>
     );
   }
   
   // Job is not active, redirect to careers page
   if (job.status !== "active") {
     return (
-      <PublicLayout>
-        <div className="container mx-auto py-16">
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold text-amber-600 mb-4">Job Not Available</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-8">
-              This job is no longer accepting applications.
-            </p>
-            <Button onClick={() => setLocation("/careers")}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Jobs
-            </Button>
-          </div>
+      <div className="container mx-auto py-16">
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-amber-600 mb-4">Job Not Available</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-8">
+            This job is no longer accepting applications.
+          </p>
+          <Button onClick={() => setLocation("/careers")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Jobs
+          </Button>
         </div>
-      </PublicLayout>
+      </div>
     );
   }
   
   return (
-    <PublicLayout>
+    <>
       <div className="bg-primary text-white py-12">
         <div className="container mx-auto px-4">
           <Button 
@@ -608,7 +602,7 @@ const JobDetailPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-    </PublicLayout>
+    </>
   );
 };
 
