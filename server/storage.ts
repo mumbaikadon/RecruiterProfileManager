@@ -508,6 +508,17 @@ export class DatabaseStorage implements IStorage {
     // First pass - quick filtering to reduce candidates needing detailed analysis
     // Only do detailed processing for candidates with any company name match
     const potentialMatches = validCandidatesData.filter(data => {
+      // Double-check exclusion of current candidate ID - critical safety check
+      if (excludeCandidateId !== undefined && excludeCandidateId !== null) {
+        const currentId = Number(excludeCandidateId);
+        const candidateId = Number(data.candidateId);
+        
+        if (currentId === candidateId) {
+          console.log(`🚨 SAFETY CHECK: Excluding candidate ${candidateId} from potential matches`);
+          return false;
+        }
+      }
+      
       const candidateCompanyNames = data.clientNames || [];
       
       // Quick check - does any company name match (after normalization)?
