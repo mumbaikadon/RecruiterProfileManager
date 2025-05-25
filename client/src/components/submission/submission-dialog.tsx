@@ -444,6 +444,8 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           resumeFileName: values.resumeData?.fileName || "Resume",
           existingResumeData: safeExistingData,
           newResumeData: safeNewData,
+          // Pass the agreed rate from the form
+          agreedRate: parseFloat(values.agreedRate.toString()),
           // Include suspicious flags if they exist in the validation data
           isSuspicious: data.isSuspicious || false,
           suspiciousReason: data.suspiciousReason,
