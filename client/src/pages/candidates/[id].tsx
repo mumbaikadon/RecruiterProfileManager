@@ -28,36 +28,6 @@ function CandidateDetailPage() {
   // Transform resume data from flat arrays to structured format
   const transformedResumeData = candidate?.resumeData ? 
     transformResumeData(candidate.resumeData) : undefined;
-    
-  // This is a specific fix for candidate 75 (Punnya) who has an empty education array
-  // but we know from logs that the education data was extracted correctly
-  if (candidate?.id === 75 && candidate?.firstName === "Punnya" && 
-      transformedResumeData && (!transformedResumeData.education || transformedResumeData.education.length === 0)) {
-    console.log("Applying education data fix for Punnya (ID 75)");
-    transformedResumeData.education = ["Bachelor's in Computer Science from Tribhuvan University, Nepal 2011"];
-  }
-  
-  // Check if we have education data but it's not showing up in the transformed data
-  // This adds extra debugging to help diagnose issues with education data display
-  if (candidate?.resumeData?.education && Array.isArray(candidate.resumeData.education)) {
-    console.log("Found education data in original resume:", candidate.resumeData.education);
-    if (!transformedResumeData?.education || transformedResumeData.education.length === 0) {
-      console.log("Warning: Education data not properly transformed!");
-    }
-  }
-  
-  // Add detailed debugging for education data path
-  console.log("DEBUG EDUCATION DATA FLOW:");
-  console.log("1. Original candidate object education:", candidate?.resumeData?.education);
-  console.log("2. Is education an array?", Array.isArray(candidate?.resumeData?.education));
-  console.log("3. Education array length:", candidate?.resumeData?.education?.length);
-  console.log("4. Transformed education data:", transformedResumeData?.education);
-  console.log("5. Will education be displayed?", 
-    (transformedResumeData?.education?.length > 0 || 
-    (candidate?.resumeData?.education && 
-     Array.isArray(candidate.resumeData.education) && 
-     candidate.resumeData.education.length > 0))
-  );
   
   // Log the candidate data for debugging
   console.log("Candidate data:", candidate);
@@ -287,12 +257,15 @@ function CandidateDetailPage() {
                   <CardDescription>Educational background and qualifications</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {/* Simple education display - show directly from candidate.resumeData.education */}
-                  {candidate?.resumeData?.education && Array.isArray(candidate.resumeData.education) && candidate.resumeData.education.length > 0 ? (
+                  {transformedResumeData?.education && transformedResumeData.education.length > 0 ? (
                     <div className="space-y-4">
-                      {candidate.resumeData.education.map((edu, idx) => (
+                      {transformedResumeData.education.map((edu, idx) => (
                         <div key={idx} className="pl-4 border-l-2 border-primary/20">
-                          <p className="font-medium">{edu}</p>
+                          <p className="font-medium">
+                            {typeof edu === 'string' 
+                              ? edu 
+                              : `${edu.degree || ''} ${edu.institution || ''} ${edu.year || ''}`.trim()}
+                          </p>
                         </div>
                       ))}
                     </div>

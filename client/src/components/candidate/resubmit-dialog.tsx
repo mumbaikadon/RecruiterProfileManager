@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -40,7 +39,6 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
 }) => {
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [hourlyRate, setHourlyRate] = useState<string>("");
   const [requiresNewResume, setRequiresNewResume] = useState(false);
   const [suspiciousFlags, setSuspiciousFlags] = useState<{
     isSuspicious: boolean;
@@ -51,7 +49,6 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
   const [isValidating, setIsValidating] = useState(false);
   const [previousResumeData, setPreviousResumeData] = useState<any>(null);
   const [currentResumeData, setCurrentResumeData] = useState<any>(null);
-  const [processingStage, setProcessingStage] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -94,7 +91,6 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       jobId: number;
       candidateId: number;
       resumeFile?: File;
-      hourlyRate?: string;
       isSuspicious?: boolean;
       suspiciousReason?: string | null;
       suspiciousSeverity?: string | null;
@@ -169,7 +165,6 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       }
     },
     onSuccess: () => {
-      setProcessingStage(null);
       toast({
         title: "Success",
         description: "Candidate has been resubmitted successfully",
@@ -179,7 +174,6 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       onClose();
     },
     onError: (error: Error) => {
-      setProcessingStage(null);
       console.error("Submission error details:", error);
       toast({
         title: "Error",
@@ -288,19 +282,16 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       // If there are significant changes, highlight them to the recruiter
       if (comparisonResult.hasChanges && comparisonResult.overallRisk !== 'none') {
         // Major discrepancies should be flagged as suspicious - this uses our existing suspicious flag system
-        if (comparisonResult.overallRisk === 'high' || comparisonResult.removedEmployers.length > 0 || comparisonResult.changedDates.length > 1) {
+        if (comparisonResult.overallRisk === 'high' || comparisonResult.removedEmployers.length > 0) {
           const isMajorDiscrepancy = comparisonResult.overallRisk === 'high' || 
                                     (comparisonResult.removedEmployers.length > 0 && 
-                                     comparisonResult.newEmployers.length > 0) ||
-                                    comparisonResult.changedDates.length > 2;
+                                     comparisonResult.newEmployers.length > 0);
           
           setSuspiciousFlags({
             isSuspicious: true,
             suspiciousReason: isMajorDiscrepancy 
               ? "Major employment history discrepancies detected - possible fraudulent submission" 
-              : comparisonResult.changedDates.length > 1
-                ? `Modified employment dates detected on ${comparisonResult.changedDates.length} positions`
-                : "Significant resume discrepancies detected",
+              : "Significant resume discrepancies detected",
             suspiciousSeverity: isMajorDiscrepancy ? "HIGH" : "MEDIUM"
           });
           
@@ -332,11 +323,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
   };
 
   const handleSubmit = async () => {
-    // Set processing stage immediately for user feedback
-    setProcessingStage("Initiating submission...");
-    
     if (!selectedJobId) {
-      setProcessingStage(null);
       toast({
         title: "Error",
         description: "Please select a job",
@@ -346,7 +333,6 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     }
 
     if (requiresNewResume && !file) {
-      setProcessingStage(null);
       toast({
         title: "Error",
         description: "Please upload a new resume",
@@ -360,7 +346,6 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     const candId = Number(candidateId);
     
     if (isNaN(jobId)) {
-      setProcessingStage(null);
       toast({
         title: "Error",
         description: "Invalid job ID",
@@ -388,37 +373,42 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       });
     }
     
-    // Skip ALL resume analysis - we already did it during validation
-    // This completely eliminates the double processing issue
-    setProcessingStage("Preparing submission...");
-    
-    // Just use the existing validation results
-    if (validationResult) {
-      console.log("Using validation results directly for submission");
-      matchResult = {
-        score: validationResult.matchScore || 0,
-        strengths: validationResult.strengths || [],
-        weaknesses: validationResult.weaknesses || [],
-        suggestions: validationResult.suggestions || []
-      };
-    } else {
-      // Just for safety - this shouldn't happen in normal flow since validation is required
-      setProcessingStage(null);
-      toast({
-        title: "Error",
-        description: "Please validate the resume before submission",
-        variant: "destructive",
-      });
-      return;
+    if (file && !currentResumeData) {
+      matchResult = await analyzeNewResume(file);
+      if (!matchResult) {
+        // If analysis failed, stop the submission process
+        return;
+      }
+    } else if (file && currentResumeData) {
+      // Get job details to perform the match again without re-running the comparison
+      const jobDetails = await apiRequest<any>(`/api/jobs/${jobId}`);
+      
+      // Use the existing file to get the resume text
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const parsedResume = await fetch("/api/parse-document", {
+        method: "POST",
+        body: formData,
+      }).then(res => res.json());
+      
+      if (parsedResume.success) {
+        // Just get the match score without re-validating the resume
+        matchResult = await apiRequest<any>("/api/openai/match-resume", {
+          method: "POST",
+          body: JSON.stringify({
+            resumeText: parsedResume.text,
+            jobDescription: jobDetails.description,
+          }),
+        });
+      }
     }
     
     // Now submit with the match result if available
-    setProcessingStage("Creating submission...");
     submitMutation.mutate({
       jobId: jobId,
       candidateId: candId,
       resumeFile: file || undefined,
-      hourlyRate: hourlyRate || "0",
       ...(matchResult ? {
         matchScore: matchResult.score,
         matchStrengths: matchResult.strengths,
@@ -478,24 +468,6 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
               </SelectContent>
             </Select>
           </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              Hourly Rate ($)
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">$</span>
-              <Input
-                type="number"
-                placeholder="0.00"
-                className="pl-8"
-                value={hourlyRate}
-                onChange={(e) => setHourlyRate(e.target.value)}
-                min="0"
-                step="0.01"
-              />
-            </div>
-          </div>
 
           {requiresNewResume && selectedJobId && (
             <div className="space-y-2">
@@ -528,20 +500,18 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading || isValidating || processingStage !== null}>
+          <Button variant="outline" onClick={onClose} disabled={isLoading || isValidating}>
             Cancel
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={isLoading || isValidating || processingStage !== null}
+            disabled={isLoading || isValidating}
             variant={validationResult?.overallRisk === 'high' ? "destructive" : "default"}
           >
-            {isLoading || isValidating || processingStage ? (
+            {isLoading || isValidating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isValidating ? "Validating Resume..." : 
-                 processingStage ? processingStage : 
-                 "Processing..."}
+                {isValidating ? "Validating Resume..." : "Processing..."}
               </>
             ) : (
               validationResult?.overallRisk === 'high' 

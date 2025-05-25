@@ -1044,8 +1044,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
               },
               body: JSON.stringify({
                 clientNames: matchResult.clientNames,
-                relevantDates: matchResult.relevantDates || [],
-                candidateId: initialValues?.id || null // Pass the candidate ID to exclude them from comparison
+                relevantDates: matchResult.relevantDates || []
               })
             });
             
@@ -1605,22 +1604,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                   <FormItem>
                     <FormLabel>Agreed Rate ($/hr)</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">$</span>
-                        <Input 
-                          {...field} 
-                          type="number" 
-                          min="0" 
-                          step="0.01" 
-                          placeholder="0.00"
-                          className="pl-8"
-                          onChange={(e) => {
-                            // Format with two decimal places for display
-                            const value = e.target.value ? parseFloat(e.target.value) : 0;
-                            field.onChange(value);
-                          }}
-                        />
-                      </div>
+                      <Input {...field} type="number" min="0" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

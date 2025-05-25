@@ -143,11 +143,9 @@ const ResumeValidationResults: React.FC<ResumeValidationResultsProps> = ({
                 {changedDates.map((change, idx) => (
                   <li key={idx} className="text-gray-700">
                     <span className="font-medium">{change.employer}:</span>{" "}
-                    <div className="inline-flex items-center gap-2 mt-1">
-                      <span className="text-red-500 line-through bg-red-50 px-2 py-0.5 rounded border border-red-100">{change.old}</span>
-                      <span className="text-gray-500">→</span>
-                      <span className="text-green-500 bg-green-50 px-2 py-0.5 rounded border border-green-100">{change.new}</span>
-                    </div>
+                    <span className="text-red-500 line-through">{change.old}</span>{" "}
+                    <X className="inline h-3 w-3" />{" "}
+                    <span className="text-green-500">{change.new}</span>
                   </li>
                 ))}
               </ul>
@@ -164,11 +162,9 @@ const ResumeValidationResults: React.FC<ResumeValidationResultsProps> = ({
                 {changedTitles.map((change, idx) => (
                   <li key={idx} className="text-gray-700">
                     <span className="font-medium">{change.employer}:</span>{" "}
-                    <div className="inline-flex items-center gap-2 mt-1">
-                      <span className="text-red-500 line-through bg-red-50 px-2 py-0.5 rounded border border-red-100">{change.old}</span>
-                      <span className="text-gray-500">→</span>
-                      <span className="text-green-500 bg-green-50 px-2 py-0.5 rounded border border-green-100">{change.new}</span>
-                    </div>
+                    <span className="text-red-500 line-through">{change.old}</span>{" "}
+                    <X className="inline h-3 w-3" />{" "}
+                    <span className="text-green-500">{change.new}</span>
                   </li>
                 ))}
               </ul>

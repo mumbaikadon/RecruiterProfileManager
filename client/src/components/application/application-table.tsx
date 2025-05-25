@@ -4,27 +4,6 @@ import { JobApplication } from "@/hooks/use-applications";
 import { useToast } from "@/hooks/use-toast";
 import { useUpdateApplicationStatus } from "@/hooks/use-applications";
 
-// Helper function to convert state abbreviation to full state name
-const getStateName = (abbreviation: string): string => {
-  const stateMap: {[key: string]: string} = {
-    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 
-    'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 
-    'DC': 'District Of Columbia', 'FL': 'Florida', 'GA': 'Georgia', 'HI': 'Hawaii', 
-    'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa', 
-    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 
-    'MD': 'Maryland', 'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 
-    'MS': 'Mississippi', 'MO': 'Missouri', 'MT': 'Montana', 'NE': 'Nebraska', 
-    'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey', 'NM': 'New Mexico', 
-    'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio', 
-    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 
-    'SC': 'South Carolina', 'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 
-    'UT': 'Utah', 'VT': 'Vermont', 'VA': 'Virginia', 'WA': 'Washington', 
-    'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
-  };
-  
-  return stateMap[abbreviation.toUpperCase()] || abbreviation;
-};
-
 import {
   Table,
   TableBody,
@@ -50,11 +29,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
 import { 
   CheckCircle, 
   XCircle, 
@@ -62,11 +36,7 @@ import {
   Eye,
   Loader2,
   Download,
-  UserPlus,
-  Mail,
-  Phone,
-  MapPin,
-  Briefcase
+  UserPlus
 } from "lucide-react";
 import SubmissionDialog from "@/components/submission/submission-dialog";
 
@@ -267,74 +237,9 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
         </TableHeader>
         <TableBody>
           {applications.map((application) => (
-            <TableRow key={application.id} className="cursor-pointer hover:bg-muted/30 transition-colors">
+            <TableRow key={application.id}>
               <TableCell className="font-medium">
-                <HoverCard>
-                  <HoverCardTrigger asChild>
-                    <div className="flex w-full">
-                      {application.firstName} {application.lastName}
-                    </div>
-                  </HoverCardTrigger>
-                  <HoverCardContent className="w-80">
-                    <div className="space-y-4">
-                      <div className="flex justify-between">
-                        <h4 className="text-sm font-semibold">
-                          {application.firstName} {application.lastName}
-                        </h4>
-                        <ApplicationStatusBadge status={application.status} />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{application.email}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{application.phone}</span>
-                        </div>
-                        
-                        {(application.city || application.state) && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">
-                              {[
-                                application.city,
-                                application.state ? getStateName(application.state) : null
-                              ].filter(Boolean).join(", ")}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {application.workAuthorization && (
-                          <div className="flex items-center gap-2">
-                            <Briefcase className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{application.workAuthorization}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex justify-between items-center border-t pt-2 text-xs text-muted-foreground">
-                        <span>Applied on {formatDate(new Date(application.appliedAt))}</span>
-                        
-                        {application.resumeFileName && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-7 px-2 text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewResume(application.resumeFileName);
-                            }}
-                          >
-                            View Resume
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </HoverCardContent>
-                </HoverCard>
+                {application.firstName} {application.lastName}
               </TableCell>
               <TableCell>
                 <div className="flex flex-col">
@@ -432,18 +337,6 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
                   <p className="text-sm">{selectedApplication.phone}</p>
                 </div>
               </div>
-              
-              {(selectedApplication.city || selectedApplication.state) && (
-                <div>
-                  <h4 className="text-sm font-medium">Location</h4>
-                  <p className="text-sm">
-                    {[
-                      selectedApplication.city,
-                      selectedApplication.state ? getStateName(selectedApplication.state) : null
-                    ].filter(Boolean).join(", ") || "Not specified"}
-                  </p>
-                </div>
-              )}
               
               <div>
                 <h4 className="text-sm font-medium">Work Authorization</h4>

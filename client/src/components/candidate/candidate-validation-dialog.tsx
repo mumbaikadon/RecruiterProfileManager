@@ -48,8 +48,6 @@ interface CandidateValidationDialogProps {
   };
   validationType: "resubmission";
   resumeFileName?: string;
-  // Add agreedRate for the submission
-  agreedRate?: number;
   // Suspicious flags preloaded from previous validations or detections
   isSuspicious?: boolean;
   suspiciousReason?: string;
@@ -67,8 +65,6 @@ interface CandidateValidationDialogProps {
     newDates: string[];
     resumeFileName?: string;
     reason?: string;
-    // Add agreedRate to validation data
-    agreedRate?: number;
     // Add suspicious flags
     isSuspicious?: boolean;
     suspiciousReason?: string;
@@ -88,8 +84,6 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
   newResumeData,
   validationType,
   resumeFileName,
-  // Add agreed rate parameter
-  agreedRate,
   // Add suspicious flag props with defaults
   isSuspicious = false,
   suspiciousReason,
@@ -102,7 +96,6 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
   const [reason, setReason] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [isCheckingEmployment, setIsCheckingEmployment] = useState(false);
-  const [processingStage, setProcessingStage] = useState<string | null>(null);
   const [employmentValidation, setEmploymentValidation] = useState<{
     hasSimilarHistories: boolean;
     hasIdenticalChronology: boolean;
@@ -123,15 +116,6 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
       relevantDates: string[];
     }>;
     totalCandidatesChecked: number;
-  } | null>(null);
-  
-  // For storing job match data
-  const [jobMatchData, setJobMatchData] = useState<{
-    score: number;
-    strengths: string[];
-    weaknesses: string[];
-    suggestions: string[];
-    resumeText?: string;
   } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -184,10 +168,13 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
           message: string;
           detail: string;
         }>
-      }>('POST', '/api/candidates/check-similar-employment', {
+      }>('/api/candidates/check-similar-employment', {
+        method: 'POST',
+        body: JSON.stringify({
           candidateId,
           clientNames: newResumeData.clientNames,
           relevantDates: newResumeData.relevantDates
+        })
       });
       
       console.log("Employment history validation response:", responseData);
@@ -298,7 +285,6 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
   const hasDiscrepancies = discrepancyScore > 10; // More than 10% changes is considered significant
 
   const handleValidate = async (result: "matching" | "unreal") => {
-    setProcessingStage("Initiating validation...");
     console.log("Validation dialog: handleValidate called with result:", result);
     
     if (result === "unreal" && !reason.trim()) {
@@ -366,8 +352,6 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         suspiciousSeverity: suspiciousSeverityToUse
       });
       
-      setProcessingStage("Preparing validation data...");
-      
       // Prepare the validation data with suspicious flags if needed
       const validationData = {
         candidateId,
@@ -385,15 +369,6 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         resumeFileName,
         reason: result === "unreal" ? reason : undefined,
         validatedBy, // Use validatedBy from props
-        // Include the agreed rate value
-        agreedRate,
-        // Store match data to avoid re-analyzing in resubmit
-        matchResult: jobMatchData,
-        matchScore: jobMatchData?.score,
-        strengths: jobMatchData?.strengths,
-        weaknesses: jobMatchData?.weaknesses,
-        suggestions: jobMatchData?.suggestions,
-        parsedResume: jobMatchData?.resumeText,
         // Add suspicious flags directly as properties with the processed values
         isSuspicious: isSuspiciousFlag,
         suspiciousReason: suspiciousReasonToUse,
@@ -409,19 +384,15 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
         });
       }
       
-      setProcessingStage("Validating candidate data...");
       await validateCandidate(validationData);
       console.log("Validation successful, result:", result);
 
       // Invalidate relevant queries
-      setProcessingStage("Updating candidate data...");
       console.log("Invalidating related queries for candidateId:", candidateId);
       queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
       queryClient.invalidateQueries({ queryKey: [`/api/candidates/${candidateId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
 
-      setProcessingStage("Completing validation...");
-      
       toast({
         title: result === "matching" ? "Candidate validated" : "Candidate marked as unreal",
         description: result === "matching" 
@@ -432,7 +403,6 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
       onClose();
     } catch (error) {
       console.error("Validation error:", error);
-      setProcessingStage("Error during validation");
       setValidationError(error instanceof Error ? error.message : "Failed to validate candidate");
       toast({
         title: "Validation failed",
@@ -901,23 +871,13 @@ const CandidateValidationDialog: React.FC<CandidateValidationDialogProps> = ({
               variant="default"
               onClick={() => handleValidate(validationResult === "unreal" ? "unreal" : "matching")}
               disabled={isPending}
-              className="relative"
             >
-              {isPending && (
-                <span className="absolute inset-0 flex items-center justify-center bg-primary rounded-md">
-                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span className="ml-2">{processingStage || "Submitting..."}</span>
-                </span>
-              )}
-              <span className={isPending ? "opacity-0" : ""}>
-                {validationResult === "unreal" 
+              {isPending 
+                ? "Processing..." 
+                : validationResult === "unreal" 
                   ? "Confirm Unreal" 
                   : "Validate & Submit"
-                }
-              </span>
+              }
             </Button>
           </div>
         </DialogFooter>
