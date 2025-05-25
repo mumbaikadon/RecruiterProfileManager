@@ -45,6 +45,8 @@ const JobDetailPage: React.FC = () => {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
   const [workAuthorization, setWorkAuthorization] = useState("");
   const [coverLetter, setCoverLetter] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -86,6 +88,8 @@ const JobDetailPage: React.FC = () => {
     setLastName("");
     setEmail("");
     setPhone("");
+    setCity("");
+    setState("");
     setWorkAuthorization("");
     setCoverLetter("");
     setResumeFile(null);
@@ -123,6 +127,14 @@ const JobDetailPage: React.FC = () => {
     formData.append('email', email);
     formData.append('phone', phone);
     formData.append('workAuthorization', workAuthorization);
+    
+    if (city) {
+      formData.append('city', city);
+    }
+    
+    if (state) {
+      formData.append('state', state);
+    }
     
     if (coverLetter) {
       formData.append('coverLetter', coverLetter);
@@ -418,6 +430,27 @@ const JobDetailPage: React.FC = () => {
                   onChange={(e) => setPhone(e.target.value)}
                   required
                 />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input 
+                    id="city" 
+                    placeholder="Your city" 
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input 
+                    id="state" 
+                    placeholder="Your state" 
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                  />
+                </div>
               </div>
               
               <div className="space-y-2">
