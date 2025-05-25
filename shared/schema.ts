@@ -165,6 +165,8 @@ export const jobApplications = pgTable("job_applications", {
   lastName: text("last_name").notNull(),
   email: text("email").notNull(),
   phone: text("phone").notNull(),
+  city: text("city"),
+  state: text("state"),
   resumeFileName: text("resume_file_name"),
   coverLetter: text("cover_letter"),
   workAuthorization: text("work_authorization"),
