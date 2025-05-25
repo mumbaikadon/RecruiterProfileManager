@@ -2087,10 +2087,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Check if this is an existing candidate by using firstName, lastName, email from the request
+      const existingCandidateId = req.body.candidateId || null;
+      
       // Find similar employment histories - using our optimized algorithm
+      // Pass the existing candidate ID to exclude them from the comparison
       const similarHistories = await storage.findSimilarEmploymentHistories(
         clientNames,
-        relevantDates || []
+        relevantDates || [],
+        existingCandidateId
       );
       
       // If no similar histories found, return early
