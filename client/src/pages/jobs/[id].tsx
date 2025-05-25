@@ -68,7 +68,7 @@ import SubmissionDialog from "@/components/submission/submission-dialog";
 import StatusBadge from "@/components/submission/status-badge";
 import JobDescriptionEditDialog from "@/components/job/job-description-edit-dialog";
 import { RecommendedCandidates } from "@/components/job/recommended-candidates";
-import ApplicationTable from "@/components/application/application-table";
+import ApplicationTable from "@/components/application/application-table-with-hover";
 
 const JobDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
