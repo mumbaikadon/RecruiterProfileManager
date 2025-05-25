@@ -2088,10 +2088,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if this is an existing candidate by using firstName, lastName, email from the request
-      const existingCandidateId = req.body.candidateId || null;
+      let existingCandidateId = req.body.candidateId || null;
+      
+      console.log(`Validating resume with candidate ID to exclude: ${existingCandidateId || 'None'}`);
+      
+      // If we have client names and no candidate ID, attempt to identify if this is an existing candidate
+      if (!existingCandidateId && clientNames.length > 0) {
+        try {
+          // Look for any candidates with exactly matching company names (in same order)
+          // This is a strong indicator that we're dealing with the same candidate
+          const potentialMatches = await storage.getCandidatesByCompanyNames(clientNames);
+          
+          if (potentialMatches.length === 1) {
+            // If exactly one match found, this is very likely the same candidate
+            console.log(`Found exactly one existing candidate (ID: ${potentialMatches[0].id}) with matching company history`);
+            // Use this candidate ID to exclude from comparison
+            existingCandidateId = potentialMatches[0].id;
+          } else if (potentialMatches.length > 1) {
+            console.log(`Found ${potentialMatches.length} candidates with matching company history, not excluding any`);
+          }
+        } catch (error) {
+          console.error("Error looking up potential existing candidates:", error);
+        }
+      }
       
       // Find similar employment histories - using our optimized algorithm
       // Pass the existing candidate ID to exclude them from the comparison
+      console.log(`Finding similar employment histories (excluding candidate ID: ${existingCandidateId || 'None'})`);
       const similarHistories = await storage.findSimilarEmploymentHistories(
         clientNames,
         relevantDates || [],

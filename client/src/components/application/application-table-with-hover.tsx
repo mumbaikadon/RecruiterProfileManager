@@ -577,8 +577,9 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
           jobId={jobId}
           jobTitle={jobTitle}
           jobDescription={jobDescription}
-          recruiterId={selectedApplication.recruiterId || 1} 
+          recruiterId={1} 
           initialCandidateData={{
+            id: selectedApplication.candidateId, // Pass the candidate ID to prevent duplicate detection with self
             firstName: selectedApplication.firstName,
             lastName: selectedApplication.lastName,
             email: selectedApplication.email,
