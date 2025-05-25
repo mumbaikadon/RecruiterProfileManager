@@ -2065,14 +2065,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { clientNames, relevantDates, candidateId } = req.body;
       
+      console.log("======= EARLY RESUME VALIDATION ========");
+      console.log("Request body:", JSON.stringify({
+        candidateIdType: typeof candidateId,
+        candidateIdValue: candidateId,
+        clientNamesLength: clientNames?.length || 0,
+        relevantDatesLength: relevantDates?.length || 0
+      }));
+      
       if (!clientNames || !Array.isArray(clientNames) || clientNames.length === 0) {
         return res.status(400).json({ 
           message: "Required fields missing: clientNames must be a non-empty array",
           isValid: true // Return true so the form submission can continue
         });
       }
-      
-      console.log("======= EARLY RESUME VALIDATION ========");
       
       // Performance improvement: Start with a quick check to see if there's enough data
       if (clientNames.length < 2) {

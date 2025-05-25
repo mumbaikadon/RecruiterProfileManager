@@ -470,9 +470,18 @@ export class DatabaseStorage implements IStorage {
     }
     
     // Filter out: 1) candidates with no data, 2) the one we're validating, and 3) any duplicates of the same candidate
+    // Log the candidate IDs before filtering to see what we're working with
+    console.log("All candidate IDs being considered:", 
+      allResumeData.map(data => data.candidateId).join(", "));
+    console.log("Exclude candidate ID (type and value):", 
+      typeof excludeCandidateId, excludeCandidateId);
+      
     const validCandidatesData = allResumeData.filter(data => {
       // Always exclude the candidate being validated - strict equality check
       if (excludeCandidateId !== undefined && excludeCandidateId !== null) {
+        // Log detailed information about each comparison to debug the issue
+        console.log(`Comparing candidate ${data.candidateId} (${typeof data.candidateId}) with excludeId ${excludeCandidateId} (${typeof excludeCandidateId}) - Equal: ${data.candidateId === excludeCandidateId}`);
+        
         if (data.candidateId === excludeCandidateId) {
           console.log(`🚫 EXCLUDED: Candidate ${data.candidateId} from comparison as it matches the exclude ID ${excludeCandidateId}`);
           return false;
