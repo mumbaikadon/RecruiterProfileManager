@@ -477,12 +477,18 @@ export class DatabaseStorage implements IStorage {
       typeof excludeCandidateId, excludeCandidateId);
       
     const validCandidatesData = allResumeData.filter(data => {
-      // Always exclude the candidate being validated - strict equality check
+      // Always exclude the candidate being validated - ensure we handle number/string type differences
       if (excludeCandidateId !== undefined && excludeCandidateId !== null) {
-        // Log detailed information about each comparison to debug the issue
-        console.log(`Comparing candidate ${data.candidateId} (${typeof data.candidateId}) with excludeId ${excludeCandidateId} (${typeof excludeCandidateId}) - Equal: ${data.candidateId === excludeCandidateId}`);
+        // Convert both to numbers for comparison to handle string/number type issues
+        const candidateIdNum = Number(data.candidateId);
+        const excludeIdNum = Number(excludeCandidateId);
         
-        if (data.candidateId === excludeCandidateId) {
+        // Log detailed information about each comparison
+        console.log(`Comparing candidate ${data.candidateId} (${typeof data.candidateId}) with excludeId ${excludeCandidateId} (${typeof excludeCandidateId})`);
+        console.log(`Numeric comparison: ${candidateIdNum} === ${excludeIdNum} is ${candidateIdNum === excludeIdNum}`);
+        
+        // Use numeric comparison to avoid string/number type issues
+        if (candidateIdNum === excludeIdNum) {
           console.log(`🚫 EXCLUDED: Candidate ${data.candidateId} from comparison as it matches the exclude ID ${excludeCandidateId}`);
           return false;
         }

@@ -2126,10 +2126,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Find similar employment histories - using our optimized algorithm
       // Pass the existing candidate ID to exclude them from the comparison
       console.log(`Finding similar employment histories (excluding candidate ID: ${existingCandidateId || 'None'})`);
+      // Ensure existingCandidateId is passed as a number
+      const excludeId = existingCandidateId ? Number(existingCandidateId) : null;
+      console.log(`Using numeric exclude ID: ${excludeId}`);
       const similarHistories = await storage.findSimilarEmploymentHistories(
         clientNames,
         relevantDates || [],
-        existingCandidateId
+        excludeId
       );
       
       // If no similar histories found, return early
