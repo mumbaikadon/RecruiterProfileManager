@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, date, timestamp, boolean, uniqueIndex, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, date, timestamp, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -117,7 +117,7 @@ export const submissions = pgTable("submissions", {
     ] 
   }).notNull().default("New"),
   matchScore: integer("match_score").default(65),  // Default match score of 65%
-  agreedRate: numeric("agreed_rate", { precision: 10, scale: 2 }).notNull().default("0"),  // Store as decimal with 2 decimal places
+  agreedRate: integer("agreed_rate").default(0),  // Default to 0 for better handling
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   notes: text("notes"),
@@ -165,8 +165,6 @@ export const jobApplications = pgTable("job_applications", {
   lastName: text("last_name").notNull(),
   email: text("email").notNull(),
   phone: text("phone").notNull(),
-  city: text("city"),
-  state: text("state"),
   resumeFileName: text("resume_file_name"),
   coverLetter: text("cover_letter"),
   workAuthorization: text("work_authorization"),

@@ -444,8 +444,6 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           resumeFileName: values.resumeData?.fileName || "Resume",
           existingResumeData: safeExistingData,
           newResumeData: safeNewData,
-          // Pass the agreed rate from the form
-          agreedRate: parseFloat(values.agreedRate.toString()),
           // Include suspicious flags if they exist in the validation data
           isSuspicious: data.isSuspicious || false,
           suspiciousReason: data.suspiciousReason,
@@ -481,7 +479,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         candidateId: candidateData.id,
         recruiterId,
         status: "New",
-        agreedRate: parseFloat(values.agreedRate.toString()),
+        agreedRate: values.agreedRate,
         matchScore: values.matchResults?.score || null,
         notes: "",
       }, {
@@ -639,7 +637,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
                       candidateId: data.candidateId,
                       recruiterId,
                       status: "New",
-                      agreedRate: parseFloat(values.agreedRate.toString()), // Use actual agreed rate with decimal precision
+                      agreedRate: 0, // For now, using a placeholder value
                       matchScore: null,
                       notes: "",
                       // Pass suspicious flags if they exist in validation data

@@ -939,7 +939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recruiterId: submissionData.recruiterId,
         status: submissionData.status || "submitted",
         matchScore: submissionData.matchScore,
-        agreedRate: submissionData.agreedRate !== undefined ? parseFloat(submissionData.agreedRate.toString()) : 0,
+        agreedRate: submissionData.agreedRate,
         notes: submissionData.notes || "",
         isSuspicious: !!submissionData.isSuspicious,
         suspiciousReason: submissionData.suspiciousReason || null,
@@ -1493,7 +1493,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               candidateId: candidateId,
               recruiterId: validatedBy,
               status: "New",
-              agreedRate: req.body.agreedRate ? parseFloat(req.body.agreedRate) : 0,
               isSuspicious: isSuspicious,
               suspiciousReason: suspiciousReason || null,
               suspiciousSeverity: suspiciousSeverity || null,
@@ -1939,13 +1938,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("- relevantDates:", JSON.stringify(matchResult.relevantDates || []));
       console.log("- education:", JSON.stringify(matchResult.education || []));
       
-      // Extra debugging for education data
-      console.log("EDUCATION DATA CHECK:");
-      console.log("1. Education data from OpenAI:", matchResult.education);
-      console.log("2. Education data type:", typeof matchResult.education);
-      console.log("3. Is education an array?", Array.isArray(matchResult.education));
-      console.log("4. Education data length:", matchResult.education?.length || 0);
-      
       // If we have a valid candidateId in the request, save the employment history to the database
       if (req.body.candidateId) {
         try {
@@ -2063,15 +2055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // New endpoint to validate a resume for duplicate/suspicious patterns before candidate creation
   app.post("/api/validate-resume", async (req: Request, res: Response) => {
     try {
-      const { clientNames, relevantDates, candidateId } = req.body;
-      
-      console.log("======= EARLY RESUME VALIDATION ========");
-      console.log("Request body:", JSON.stringify({
-        candidateIdType: typeof candidateId,
-        candidateIdValue: candidateId,
-        clientNamesLength: clientNames?.length || 0,
-        relevantDatesLength: relevantDates?.length || 0
-      }));
+      const { clientNames, relevantDates } = req.body;
       
       if (!clientNames || !Array.isArray(clientNames) || clientNames.length === 0) {
         return res.status(400).json({ 
@@ -2079,6 +2063,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isValid: true // Return true so the form submission can continue
         });
       }
+      
+      console.log("======= EARLY RESUME VALIDATION ========");
       
       // Performance improvement: Start with a quick check to see if there's enough data
       if (clientNames.length < 2) {
@@ -2093,60 +2079,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // SPECIAL CASE: Handle known problematic candidate (Neha Ratan - ID 77)
-      // This is needed because this candidate keeps being detected as a duplicate of herself
-      if (candidateId && Number(candidateId) === 77) {
-        console.log("🛡️ SPECIAL CASE: Bypassing duplicate detection for Neha Ratan (ID: 77)");
-        return res.json({
-          isValid: true,
-          message: "Resume passed validation checks",
-          hasSimilarHistories: false,
-          hasIdenticalChronology: false,
-          totalCandidatesChecked: 0,
-          suspiciousPatterns: []
-        });
-      }
-      
-      // Check if this is an existing candidate by using candidateId from the request or identifying match
-      let existingCandidateId = candidateId || null;
-      
-      console.log(`Validating resume with candidate ID to exclude: ${existingCandidateId || 'None'}`);
-      
-      // If we have client names and no candidate ID, attempt to identify if this is an existing candidate
-      if (!existingCandidateId && clientNames.length > 0) {
-        try {
-          // Look for any candidates with exactly matching company names (in same order)
-          // This is a strong indicator that we're dealing with the same candidate
-          const potentialMatches = await storage.getCandidatesByCompanyNames(clientNames);
-          
-          if (potentialMatches.length === 1) {
-            // If exactly one match found, this is very likely the same candidate
-            console.log(`Found exactly one existing candidate (ID: ${potentialMatches[0].id}) with matching company history`);
-            // Use this candidate ID to exclude from comparison
-            existingCandidateId = potentialMatches[0].id;
-          } else if (potentialMatches.length > 1) {
-            console.log(`Found ${potentialMatches.length} candidates with matching company history, not excluding any`);
-          }
-        } catch (error) {
-          console.error("Error looking up potential existing candidates:", error);
-        }
-      }
-      
-      // If we have a candidate ID to exclude, log it clearly
-      if (existingCandidateId) {
-        console.log(`EXCLUDING CANDIDATE ID: ${existingCandidateId} from duplicate check`);
-      }
-      
       // Find similar employment histories - using our optimized algorithm
-      // Pass the existing candidate ID to exclude them from the comparison
-      console.log(`Finding similar employment histories (excluding candidate ID: ${existingCandidateId || 'None'})`);
-      // Ensure existingCandidateId is passed as a number
-      const excludeId = existingCandidateId ? Number(existingCandidateId) : null;
-      console.log(`Using numeric exclude ID: ${excludeId}`);
       const similarHistories = await storage.findSimilarEmploymentHistories(
         clientNames,
-        relevantDates || [],
-        excludeId
+        relevantDates || []
       );
       
       // If no similar histories found, return early
@@ -2396,7 +2332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Handle public job applications 
   app.post("/api/public/applications", fileUpload.single('resume'), async (req: Request, res: Response) => {
     try {
-      const { jobId, firstName, lastName, email, phone, city, state, workAuthorization, coverLetter } = req.body;
+      const { jobId, firstName, lastName, email, phone, workAuthorization, coverLetter } = req.body;
       
       if (!jobId || !firstName || !lastName || !email || !phone) {
         return res.status(400).json({ message: "Missing required application details" });
@@ -2439,8 +2375,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName,
         email,
         phone,
-        city,
-        state,
         workAuthorization,
         coverLetter,
         resumeFileName,

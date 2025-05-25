@@ -28,13 +28,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
 import { formatDate } from "@/lib/date-utils";
 import { sanitizeHtml } from "@/lib/utils";
 
@@ -52,8 +45,6 @@ const JobDetailPage: React.FC = () => {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
   const [workAuthorization, setWorkAuthorization] = useState("");
   const [coverLetter, setCoverLetter] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -95,8 +86,6 @@ const JobDetailPage: React.FC = () => {
     setLastName("");
     setEmail("");
     setPhone("");
-    setCity("");
-    setState("");
     setWorkAuthorization("");
     setCoverLetter("");
     setResumeFile(null);
@@ -134,14 +123,6 @@ const JobDetailPage: React.FC = () => {
     formData.append('email', email);
     formData.append('phone', phone);
     formData.append('workAuthorization', workAuthorization);
-    
-    if (city) {
-      formData.append('city', city);
-    }
-    
-    if (state) {
-      formData.append('state', state);
-    }
     
     if (coverLetter) {
       formData.append('coverLetter', coverLetter);
@@ -192,51 +173,57 @@ const JobDetailPage: React.FC = () => {
   
   if (isLoading) {
     return (
-      <div className="container mx-auto py-16">
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <PublicLayout>
+        <div className="container mx-auto py-16">
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
         </div>
-      </div>
+      </PublicLayout>
     );
   }
   
   if (error || !job) {
     return (
-      <div className="container mx-auto py-16">
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Job Not Found</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
-            We couldn't find the job you're looking for. It may have been removed or is no longer available.
-          </p>
-          <Button onClick={() => setLocation("/careers")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Jobs
-          </Button>
+      <PublicLayout>
+        <div className="container mx-auto py-16">
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Job Not Found</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-8">
+              We couldn't find the job you're looking for. It may have been removed or is no longer available.
+            </p>
+            <Button onClick={() => setLocation("/careers")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Jobs
+            </Button>
+          </div>
         </div>
-      </div>
+      </PublicLayout>
     );
   }
   
   // Job is not active, redirect to careers page
   if (job.status !== "active") {
     return (
-      <div className="container mx-auto py-16">
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-amber-600 mb-4">Job Not Available</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
-            This job is no longer accepting applications.
-          </p>
-          <Button onClick={() => setLocation("/careers")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Jobs
-          </Button>
+      <PublicLayout>
+        <div className="container mx-auto py-16">
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold text-amber-600 mb-4">Job Not Available</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-8">
+              This job is no longer accepting applications.
+            </p>
+            <Button onClick={() => setLocation("/careers")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Jobs
+            </Button>
+          </div>
         </div>
-      </div>
+      </PublicLayout>
     );
   }
   
   return (
-    <>
+    <PublicLayout>
       <div className="bg-primary text-white py-12">
         <div className="container mx-auto px-4">
           <Button 
@@ -433,82 +420,6 @@ const JobDetailPage: React.FC = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input 
-                    id="city" 
-                    placeholder="Your city" 
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
-                  <Select
-                    value={state}
-                    onValueChange={setState}
-                  >
-                    <SelectTrigger id="state">
-                      <SelectValue placeholder="Select a state" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="AL">Alabama</SelectItem>
-                      <SelectItem value="AK">Alaska</SelectItem>
-                      <SelectItem value="AZ">Arizona</SelectItem>
-                      <SelectItem value="AR">Arkansas</SelectItem>
-                      <SelectItem value="CA">California</SelectItem>
-                      <SelectItem value="CO">Colorado</SelectItem>
-                      <SelectItem value="CT">Connecticut</SelectItem>
-                      <SelectItem value="DE">Delaware</SelectItem>
-                      <SelectItem value="DC">District Of Columbia</SelectItem>
-                      <SelectItem value="FL">Florida</SelectItem>
-                      <SelectItem value="GA">Georgia</SelectItem>
-                      <SelectItem value="HI">Hawaii</SelectItem>
-                      <SelectItem value="ID">Idaho</SelectItem>
-                      <SelectItem value="IL">Illinois</SelectItem>
-                      <SelectItem value="IN">Indiana</SelectItem>
-                      <SelectItem value="IA">Iowa</SelectItem>
-                      <SelectItem value="KS">Kansas</SelectItem>
-                      <SelectItem value="KY">Kentucky</SelectItem>
-                      <SelectItem value="LA">Louisiana</SelectItem>
-                      <SelectItem value="ME">Maine</SelectItem>
-                      <SelectItem value="MD">Maryland</SelectItem>
-                      <SelectItem value="MA">Massachusetts</SelectItem>
-                      <SelectItem value="MI">Michigan</SelectItem>
-                      <SelectItem value="MN">Minnesota</SelectItem>
-                      <SelectItem value="MS">Mississippi</SelectItem>
-                      <SelectItem value="MO">Missouri</SelectItem>
-                      <SelectItem value="MT">Montana</SelectItem>
-                      <SelectItem value="NE">Nebraska</SelectItem>
-                      <SelectItem value="NV">Nevada</SelectItem>
-                      <SelectItem value="NH">New Hampshire</SelectItem>
-                      <SelectItem value="NJ">New Jersey</SelectItem>
-                      <SelectItem value="NM">New Mexico</SelectItem>
-                      <SelectItem value="NY">New York</SelectItem>
-                      <SelectItem value="NC">North Carolina</SelectItem>
-                      <SelectItem value="ND">North Dakota</SelectItem>
-                      <SelectItem value="OH">Ohio</SelectItem>
-                      <SelectItem value="OK">Oklahoma</SelectItem>
-                      <SelectItem value="OR">Oregon</SelectItem>
-                      <SelectItem value="PA">Pennsylvania</SelectItem>
-                      <SelectItem value="RI">Rhode Island</SelectItem>
-                      <SelectItem value="SC">South Carolina</SelectItem>
-                      <SelectItem value="SD">South Dakota</SelectItem>
-                      <SelectItem value="TN">Tennessee</SelectItem>
-                      <SelectItem value="TX">Texas</SelectItem>
-                      <SelectItem value="UT">Utah</SelectItem>
-                      <SelectItem value="VT">Vermont</SelectItem>
-                      <SelectItem value="VA">Virginia</SelectItem>
-                      <SelectItem value="WA">Washington</SelectItem>
-                      <SelectItem value="WV">West Virginia</SelectItem>
-                      <SelectItem value="WI">Wisconsin</SelectItem>
-                      <SelectItem value="WY">Wyoming</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
               <div className="space-y-2">
                 <Label htmlFor="resume">Resume/CV *</Label>
                 <div className="border border-gray-200 dark:border-gray-800 rounded-md p-4">
@@ -602,7 +513,7 @@ const JobDetailPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-    </>
+    </PublicLayout>
   );
 };
 

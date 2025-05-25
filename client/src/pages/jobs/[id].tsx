@@ -10,27 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/date-utils";
 import { sanitizeHtml } from "@/lib/utils";
 
-// Helper function to convert state abbreviation to full state name
-const getStateFullName = (abbreviation: string): string => {
-  const stateMap: {[key: string]: string} = {
-    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 
-    'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 
-    'DC': 'District Of Columbia', 'FL': 'Florida', 'GA': 'Georgia', 'HI': 'Hawaii', 
-    'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa', 
-    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 
-    'MD': 'Maryland', 'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 
-    'MS': 'Mississippi', 'MO': 'Missouri', 'MT': 'Montana', 'NE': 'Nebraska', 
-    'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey', 'NM': 'New Mexico', 
-    'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio', 
-    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 
-    'SC': 'South Carolina', 'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 
-    'UT': 'Utah', 'VT': 'Vermont', 'VA': 'Virginia', 'WA': 'Washington', 
-    'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
-  };
-  
-  return stateMap[abbreviation.toUpperCase()] || abbreviation;
-};
-
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -56,19 +35,14 @@ import {
   Users, 
   UserPlus,
   Clock,
-  Pencil,
-  MapPin,
-  Building2,
-  Briefcase as BriefcaseIcon,
-  Target,
-  DollarSign
+  Pencil
 } from "lucide-react";
 import SubmissionTable from "@/components/submission/submission-table";
 import SubmissionDialog from "@/components/submission/submission-dialog";
 import StatusBadge from "@/components/submission/status-badge";
 import JobDescriptionEditDialog from "@/components/job/job-description-edit-dialog";
 import { RecommendedCandidates } from "@/components/job/recommended-candidates";
-import ApplicationTable from "@/components/application/application-table-with-hover";
+import ApplicationTable from "@/components/application/application-table";
 
 const JobDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -254,33 +228,6 @@ const JobDetailPage: React.FC = () => {
               </div>
               
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground">Client</h4>
-                <p className="flex items-center mt-1 text-sm text-foreground">
-                  <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                  {job.clientName || "Not specified"}
-                </p>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground">Work Model</h4>
-                <p className="flex items-center mt-1 text-sm text-foreground">
-                  <BriefcaseIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-                  {job.jobType ? job.jobType.charAt(0).toUpperCase() + job.jobType.slice(1) : "Not specified"}
-                </p>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground">Location</h4>
-                <p className="flex items-center mt-1 text-sm text-foreground">
-                  <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                  {[
-                    job.city, 
-                    job.state ? getStateFullName(job.state) : null
-                  ].filter(Boolean).join(", ") || "Not specified"}
-                </p>
-              </div>
-              
-              <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Submissions</h4>
                 <p className="flex items-center mt-1 text-sm text-foreground">
                   <Users className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -295,20 +242,6 @@ const JobDetailPage: React.FC = () => {
                   {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                 </p>
               </div>
-              
-              {job.clientFocus && (
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground">Client Focus Areas</h4>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {job.clientFocus.split(',').map((focus, index) => (
-                      <Badge key={index} variant="outline" className="bg-green-100/20 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800/30">
-                        <Target className="h-3 w-3 mr-1" />
-                        {focus.trim()}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
               
               <Separator />
               
