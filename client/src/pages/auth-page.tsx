@@ -1,35 +1,23 @@
-import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
 import { z } from "zod";
-import { Redirect } from "wouter";
-import { Briefcase, Users, CheckCircle } from "lucide-react";
+import { Redirect, Link } from "wouter";
+import { Briefcase, Users, CheckCircle, ArrowLeft } from "lucide-react";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
-const registerSchema = insertUserSchema.pick({
-  username: true,
-  password: true,
-  name: true,
-  role: true,
-});
-
 type LoginForm = z.infer<typeof loginSchema>;
-type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
-  const { user, loginMutation, registerMutation } = useAuth();
-  const [activeTab, setActiveTab] = useState("login");
+  const { user, loginMutation } = useAuth();
 
   const loginForm = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -39,27 +27,13 @@ export default function AuthPage() {
     },
   });
 
-  const registerForm = useForm<RegisterForm>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-      name: "",
-      role: "job_seeker",
-    },
-  });
-
   // Redirect if already logged in
   if (user) {
-    return <Redirect to="/" />;
+    return <Redirect to="/dashboard" />;
   }
 
   const onLogin = (data: LoginForm) => {
     loginMutation.mutate(data);
-  };
-
-  const onRegister = (data: RegisterForm) => {
-    registerMutation.mutate(data);
   };
 
   return (
@@ -106,125 +80,68 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* Right side - Auth forms */}
+      {/* Right side - Login form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
+          <div className="mb-4">
+            <Link href="/">
+              <Button variant="ghost" className="mb-4">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
+          
           <Card>
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl">Welcome</CardTitle>
+              <CardTitle className="text-2xl">Staff Login</CardTitle>
               <CardDescription>
-                Sign in to your account or create a new one
+                Sign in to access the recruitment dashboard
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="login">Sign In</TabsTrigger>
-                  <TabsTrigger value="register">Sign Up</TabsTrigger>
-                </TabsList>
+              <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    {...loginForm.register("username")}
+                    placeholder="Enter your username"
+                  />
+                  {loginForm.formState.errors.username && (
+                    <p className="text-sm text-red-500">{loginForm.formState.errors.username.message}</p>
+                  )}
+                </div>
                 
-                <TabsContent value="login" className="space-y-4">
-                  <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="login-username">Username</Label>
-                      <Input
-                        id="login-username"
-                        {...loginForm.register("username")}
-                        placeholder="Enter your username"
-                      />
-                      {loginForm.formState.errors.username && (
-                        <p className="text-sm text-red-500">{loginForm.formState.errors.username.message}</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="login-password">Password</Label>
-                      <Input
-                        id="login-password"
-                        type="password"
-                        {...loginForm.register("password")}
-                        placeholder="Enter your password"
-                      />
-                      {loginForm.formState.errors.password && (
-                        <p className="text-sm text-red-500">{loginForm.formState.errors.password.message}</p>
-                      )}
-                    </div>
-                    
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={loginMutation.isPending}
-                    >
-                      {loginMutation.isPending ? "Signing in..." : "Sign In"}
-                    </Button>
-                  </form>
-                </TabsContent>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    {...loginForm.register("password")}
+                    placeholder="Enter your password"
+                  />
+                  {loginForm.formState.errors.password && (
+                    <p className="text-sm text-red-500">{loginForm.formState.errors.password.message}</p>
+                  )}
+                </div>
                 
-                <TabsContent value="register" className="space-y-4">
-                  <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="register-name">Full Name</Label>
-                      <Input
-                        id="register-name"
-                        {...registerForm.register("name")}
-                        placeholder="Enter your full name"
-                      />
-                      {registerForm.formState.errors.name && (
-                        <p className="text-sm text-red-500">{registerForm.formState.errors.name.message}</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="register-username">Username</Label>
-                      <Input
-                        id="register-username"
-                        {...registerForm.register("username")}
-                        placeholder="Choose a username"
-                      />
-                      {registerForm.formState.errors.username && (
-                        <p className="text-sm text-red-500">{registerForm.formState.errors.username.message}</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="register-password">Password</Label>
-                      <Input
-                        id="register-password"
-                        type="password"
-                        {...registerForm.register("password")}
-                        placeholder="Create a password"
-                      />
-                      {registerForm.formState.errors.password && (
-                        <p className="text-sm text-red-500">{registerForm.formState.errors.password.message}</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="register-role">Role</Label>
-                      <select
-                        id="register-role"
-                        {...registerForm.register("role")}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="job_seeker">Job Seeker</option>
-                        <option value="recruiter">Recruiter</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                      {registerForm.formState.errors.role && (
-                        <p className="text-sm text-red-500">{registerForm.formState.errors.role.message}</p>
-                      )}
-                    </div>
-                    
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={registerMutation.isPending}
-                    >
-                      {registerMutation.isPending ? "Creating account..." : "Create Account"}
-                    </Button>
-                  </form>
-                </TabsContent>
-              </Tabs>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loginMutation.isPending}
+                >
+                  {loginMutation.isPending ? "Signing in..." : "Sign In"}
+                </Button>
+              </form>
+              
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600 font-medium mb-2">Test Credentials:</p>
+                <div className="text-xs text-gray-500 space-y-1">
+                  <div>Admin: admin / admin123</div>
+                  <div>Recruiter: recruiter / recruiter123</div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -49,6 +49,30 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        // Hardcoded credentials for admin and recruiter
+        const hardcodedUsers = {
+          admin: {
+            id: 1,
+            username: "admin",
+            password: "admin123",
+            name: "Administrator",
+            role: "admin" as const
+          },
+          recruiter: {
+            id: 2,
+            username: "recruiter", 
+            password: "recruiter123",
+            name: "Recruiter",
+            role: "recruiter" as const
+          }
+        };
+
+        const hardcodedUser = hardcodedUsers[username as keyof typeof hardcodedUsers];
+        if (hardcodedUser && hardcodedUser.password === password) {
+          return done(null, hardcodedUser);
+        }
+
+        // Fallback to database users if not hardcoded
         const user = await storage.getUserByUsername(username);
         if (!user || !(await comparePasswords(password, user.password))) {
           return done(null, false);
@@ -64,6 +88,25 @@ export function setupAuth(app: Express) {
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
     try {
+      // Handle hardcoded users
+      if (id === 1) {
+        return done(null, {
+          id: 1,
+          username: "admin",
+          name: "Administrator",
+          role: "admin" as const
+        });
+      }
+      if (id === 2) {
+        return done(null, {
+          id: 2,
+          username: "recruiter",
+          name: "Recruiter", 
+          role: "recruiter" as const
+        });
+      }
+
+      // Fallback to database users
       const user = await storage.getUser(id);
       done(null, user);
     } catch (error) {
