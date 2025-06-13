@@ -6,9 +6,9 @@
 @tailwind utilities;
 
 :root {
-  /* HSL value components for easier manipulation */
-  --primary-hue: 196;
-  --primary-saturation: 85%;
+  /* HSL value components for easier manipulation - Velocity Tech Blue */
+  --primary-hue: 217;
+  --primary-saturation: 91%;
   --primary-lightness: 50%;
   
   /* Light Mode - Enhanced modern color palette */
@@ -23,16 +23,16 @@
   --border: 214 25% 90%;
   --input: 214 30% 95%;
   
-  /* Primary: Vibrant teal/blue - modern, professional */
+  /* Primary: Velocity Tech Blue - modern, professional */
   --primary: var(--primary-hue) var(--primary-saturation) var(--primary-lightness);
   --primary-foreground: 0 0% 100%;
   
-  /* Secondary: Soft purple - complementary to primary */
-  --secondary: 265 40% 95%;
-  --secondary-foreground: 265 50% 40%;
+  /* Secondary: Tech Gray - complementary to primary */
+  --secondary: 220 15% 95%;
+  --secondary-foreground: 220 25% 40%;
   
-  /* Accent: Vibrant mint green - fresh, energetic */
-  --accent: 162 80% 47%;
+  /* Accent: Electric Blue - energetic, tech-forward */
+  --accent: 202 100% 55%;
   --accent-foreground: 0 0% 100%;
   
   /* Success color - rich green */

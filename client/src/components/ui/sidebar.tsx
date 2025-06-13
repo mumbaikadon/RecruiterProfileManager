@@ -8,7 +8,7 @@ import {
   Settings,
   BarChart4,
   PlusCircle,
-  LayoutGrid,
+  Zap,
   ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -76,11 +76,11 @@ const Sidebar = () => {
         {/* App logo */}
         <div className="flex items-center justify-center h-16 border-b border-sidebar-border/30">
           <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-white">
-              <LayoutGrid className="h-5 w-5" />
+            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
+              <Zap className="h-5 w-5" />
             </div>
             <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              RecruiterTracker
+              Velocity Tech
             </h1>
           </div>
         </div>
