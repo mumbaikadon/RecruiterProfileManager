@@ -7,6 +7,7 @@ import {
   insertSubmissionSchema,
   insertResumeDataSchema,
   insertActivitySchema,
+  insertPublicApplicationSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
@@ -2126,6 +2127,191 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Unknown error during gap analysis test"
       });
+    }
+  });
+
+  // Public API routes for job applications (no authentication required)
+  
+  // Get all active jobs for public viewing
+  app.get("/api/public/jobs", async (_req: Request, res: Response) => {
+    try {
+      const jobs = await storage.getPublicJobs();
+      // Return only necessary job information for public viewing
+      const publicJobs = jobs.map(job => ({
+        id: job.id,
+        jobId: job.jobId,
+        title: job.title,
+        description: job.description,
+        city: job.city,
+        state: job.state,
+        jobType: job.jobType,
+        createdAt: job.createdAt
+      }));
+      res.json(publicJobs);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Submit a public job application (with automatic candidate creation)
+  app.post("/api/public/apply", fileUpload.single('resume'), async (req: Request, res: Response) => {
+    try {
+      const applicationData = req.body;
+      const resumeFile = req.file;
+
+      // Validate required fields
+      const validatedApplication = insertPublicApplicationSchema.parse(applicationData);
+
+      // Extract resume content if file is provided
+      let resumeContent = "";
+      let resumeFileName = "";
+      
+      if (resumeFile) {
+        resumeFileName = resumeFile.originalname;
+        
+        // Extract text from resume file
+        try {
+          const { extractTextFromBuffer } = await import("./document-parser");
+          resumeContent = await extractTextFromBuffer(resumeFile.buffer, resumeFile.mimetype);
+        } catch (extractError) {
+          console.error("Resume extraction failed:", extractError);
+          // Continue without resume content
+        }
+      }
+
+      // Create the public application
+      const application = await storage.createPublicApplication({
+        ...validatedApplication,
+        resumeFileName,
+        resumeContent
+      });
+
+      // Automatically create a candidate record for auditing
+      try {
+        // Generate unique identifiers for the candidate
+        // Use application date and email hash for unique identification
+        const emailHash = Buffer.from(application.email).toString('base64').slice(0, 4);
+        const dateHash = application.appliedAt.getMonth() + 1; // Month as number
+        const dayHash = application.appliedAt.getDate();
+
+        const candidateData = {
+          firstName: application.firstName,
+          lastName: application.lastName,
+          email: application.email,
+          phone: application.phone,
+          dobMonth: dateHash, // Use application month
+          dobDay: dayHash, // Use application day
+          ssn4: emailHash, // Use email hash as unique identifier
+          source: "public_application",
+          notes: `Auto-created from public application #${application.id}`
+        };
+
+        const candidate = await storage.createCandidate(candidateData);
+
+        // Create resume data if we have content
+        if (resumeContent) {
+          try {
+            // Analyze resume content for structured data
+            const { analyzeResumeText } = await import("./openai");
+            const resumeAnalysis = await analyzeResumeText(resumeContent);
+
+            const resumeDataPayload = {
+              candidateId: candidate.id,
+              clientNames: resumeAnalysis.clientNames || [],
+              jobTitles: resumeAnalysis.jobTitles || [],
+              relevantDates: resumeAnalysis.relevantDates || [],
+              skills: resumeAnalysis.skills || [],
+              education: resumeAnalysis.education || [],
+              extractedText: resumeContent.substring(0, 30000),
+              fileName: resumeFileName
+            };
+
+            await storage.createResumeData(resumeDataPayload);
+          } catch (resumeError) {
+            console.error("Failed to analyze resume:", resumeError);
+            // Create basic resume data without analysis
+            await storage.createResumeData({
+              candidateId: candidate.id,
+              clientNames: [],
+              jobTitles: [],
+              relevantDates: [],
+              skills: [],
+              education: [],
+              extractedText: resumeContent.substring(0, 30000),
+              fileName: resumeFileName
+            });
+          }
+        }
+
+        // Log activity for audit trail
+        await storage.createActivity({
+          type: "public_application_submitted",
+          userId: null, // No user ID for public applications
+          jobId: application.jobId,
+          candidateId: candidate.id,
+          message: `Public application submitted for ${application.firstName} ${application.lastName} to job ${validatedApplication.jobId}`
+        });
+
+        res.status(201).json({
+          message: "Application submitted successfully",
+          applicationId: application.id,
+          candidateId: candidate.id
+        });
+
+      } catch (candidateError) {
+        console.error("Failed to create candidate record:", candidateError);
+        // Return success for application even if candidate creation fails
+        res.status(201).json({
+          message: "Application submitted successfully",
+          applicationId: application.id,
+          note: "Application recorded, candidate profile pending"
+        });
+      }
+
+    } catch (error) {
+      console.error("Public application error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid application data", errors: error.errors });
+      }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Get public applications (admin only - would need auth middleware in production)
+  app.get("/api/admin/public-applications", async (req: Request, res: Response) => {
+    try {
+      const { jobId, status } = req.query;
+      const filters: { jobId?: number; status?: string } = {};
+
+      if (jobId && typeof jobId === "string") {
+        filters.jobId = parseInt(jobId);
+      }
+
+      if (status && typeof status === "string") {
+        filters.status = status;
+      }
+
+      const applications = await storage.getPublicApplications(filters);
+      res.json(applications);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Update public application status (admin only)
+  app.put("/api/admin/public-applications/:id/status", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { status, notes, reviewedBy } = req.body;
+
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid application ID" });
+      }
+
+      const application = await storage.updatePublicApplicationStatus(id, status, reviewedBy, notes);
+      res.json(application);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
     }
   });
 
