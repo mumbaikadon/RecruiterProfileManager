@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { Job } from "@shared/schema";
-import { MapPin, Clock, Briefcase, LogIn, Users, CheckCircle } from "lucide-react";
+import { MapPin, Clock, Briefcase, LogIn, Users, CheckCircle, Zap, Target, Shield, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
 
 export default function PublicHome() {
@@ -18,7 +18,10 @@ export default function PublicHome() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">Recruitment Platform</h1>
+              <div className="flex items-center space-x-2">
+                <Zap className="w-6 h-6 text-blue-600" />
+                <h1 className="text-xl font-bold text-gray-900">Velocity Tech</h1>
+              </div>
             </div>
             
             <Link href="/auth">
@@ -36,10 +39,10 @@ export default function PublicHome() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Find Your Dream Job
+              Accelerate Your Career
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
-              AI-powered recruitment platform connecting talented professionals with exciting opportunities
+              Velocity Tech connects top talent with leading companies through intelligent recruitment solutions
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" variant="secondary" asChild>
@@ -59,33 +62,33 @@ export default function PublicHome() {
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose Our Platform?</h2>
-            <p className="text-lg text-gray-600">Advanced technology meets human expertise</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose Velocity Tech?</h2>
+            <p className="text-lg text-gray-600">Accelerating careers through intelligent recruitment</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Briefcase className="w-8 h-8 text-blue-600" />
+                <Target className="w-8 h-8 text-blue-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Smart Matching</h3>
-              <p className="text-gray-600">AI-powered algorithms match your skills with the perfect opportunities</p>
+              <h3 className="text-xl font-semibold mb-2">Precision Matching</h3>
+              <p className="text-gray-600">Advanced AI algorithms connect you with roles that match your exact skills and career goals</p>
             </div>
             
             <div className="text-center">
               <div className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-green-600" />
+                <Shield className="w-8 h-8 text-green-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Expert Support</h3>
-              <p className="text-gray-600">Dedicated recruitment specialists guide you through the process</p>
+              <h3 className="text-xl font-semibold mb-2">Trusted Security</h3>
+              <p className="text-gray-600">Enterprise-grade security protects your data throughout the recruitment process</p>
             </div>
             
             <div className="text-center">
               <div className="w-16 h-16 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-purple-600" />
+                <TrendingUp className="w-8 h-8 text-purple-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Quality Assured</h3>
-              <p className="text-gray-600">Verified companies and thorough screening for the best opportunities</p>
+              <h3 className="text-xl font-semibold mb-2">Career Acceleration</h3>
+              <p className="text-gray-600">Fast-track your career with opportunities from leading technology companies</p>
             </div>
           </div>
         </div>

@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Redirect, Link } from "wouter";
-import { Briefcase, Users, CheckCircle, ArrowLeft } from "lucide-react";
+import { Briefcase, Users, CheckCircle, ArrowLeft, Zap, Target, Shield } from "lucide-react";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -41,39 +41,42 @@ export default function AuthPage() {
       {/* Left side - Hero section */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-12 flex-col justify-center text-white">
         <div className="max-w-md">
-          <h1 className="text-4xl font-bold mb-6">AI-Powered Recruitment Platform</h1>
+          <div className="flex items-center space-x-3 mb-6">
+            <Zap className="w-8 h-8 text-white" />
+            <h1 className="text-4xl font-bold">Velocity Tech</h1>
+          </div>
           <p className="text-xl mb-8 text-blue-100">
-            Streamline your hiring process with intelligent candidate matching and comprehensive verification.
+            Accelerating careers through intelligent recruitment solutions and advanced matching technology.
           </p>
           
           <div className="space-y-6">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <Target className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Precision Matching</h3>
+                <p className="text-blue-200">Advanced AI algorithms for perfect candidate-role alignment</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <Shield className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Enterprise Security</h3>
+                <p className="text-blue-200">Military-grade security protecting sensitive recruitment data</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
                 <Briefcase className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-semibold">Smart Job Matching</h3>
-                <p className="text-blue-200">AI-powered candidate-job matching with fraud detection</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Comprehensive Verification</h3>
-                <p className="text-blue-200">Advanced candidate validation and audit trails</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Streamlined Process</h3>
-                <p className="text-blue-200">Efficient recruitment workflow for recruiters and job seekers</p>
+                <h3 className="font-semibold">Accelerated Hiring</h3>
+                <p className="text-blue-200">Streamlined workflows reducing time-to-hire by 60%</p>
               </div>
             </div>
           </div>
