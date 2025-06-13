@@ -56,14 +56,18 @@ export function setupAuth(app: Express) {
             username: "admin",
             password: "admin123",
             name: "Administrator",
-            role: "admin" as const
+            email: "admin@company.com",
+            role: "admin" as const,
+            createdAt: new Date()
           },
           recruiter: {
             id: 2,
             username: "recruiter", 
             password: "recruiter123",
             name: "Recruiter",
-            role: "recruiter" as const
+            email: "recruiter@company.com",
+            role: "recruiter" as const,
+            createdAt: new Date()
           }
         };
 
@@ -93,16 +97,22 @@ export function setupAuth(app: Express) {
         return done(null, {
           id: 1,
           username: "admin",
+          password: "admin123",
           name: "Administrator",
-          role: "admin" as const
+          email: "admin@company.com",
+          role: "admin" as const,
+          createdAt: new Date()
         });
       }
       if (id === 2) {
         return done(null, {
           id: 2,
           username: "recruiter",
-          name: "Recruiter", 
-          role: "recruiter" as const
+          password: "recruiter123",
+          name: "Recruiter",
+          email: "recruiter@company.com", 
+          role: "recruiter" as const,
+          createdAt: new Date()
         });
       }
 

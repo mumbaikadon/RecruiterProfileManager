@@ -7,7 +7,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import NotFound from "@/pages/not-found";
 import Layout from "@/components/layout";
-import HomePage from "@/pages/home-page";
+import PublicHome from "@/pages/public-home";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import JobsPage from "@/pages/jobs/index";
@@ -29,8 +29,8 @@ function Router() {
         <PublicJobs />
       </Route>
       
-      {/* Protected home route */}
-      <ProtectedRoute path="/" component={HomePage} />
+      {/* Public home route */}
+      <Route path="/" component={PublicHome} />
       
       {/* Protected admin/recruiter routes */}
       <ProtectedRoute 
