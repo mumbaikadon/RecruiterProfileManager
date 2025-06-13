@@ -1,5 +1,5 @@
 import { 
-  users, jobs, jobAssignments, candidates, resumeData, submissions, activities, candidateValidations,
+  users, jobs, jobAssignments, candidates, resumeData, submissions, activities, candidateValidations, publicApplications,
   type User, type InsertUser, 
   type Job, type InsertJob, 
   type JobAssignment, type InsertJobAssignment, 
@@ -7,7 +7,8 @@ import {
   type ResumeData, type InsertResumeData, 
   type Submission, type InsertSubmission, 
   type Activity, type InsertActivity,
-  type CandidateValidation, type InsertCandidateValidation
+  type CandidateValidation, type InsertCandidateValidation,
+  type PublicApplication, type InsertPublicApplication
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql, gte, lte } from "drizzle-orm";
@@ -77,6 +78,13 @@ export interface IStorage {
     assignedActiveJobs: number;
     submissionsThisWeek: number;
   }>;
+
+  // Public job application operations
+  getPublicJobs(): Promise<Job[]>;
+  createPublicApplication(application: InsertPublicApplication): Promise<PublicApplication>;
+  getPublicApplications(filters?: { jobId?: number, status?: string }): Promise<PublicApplication[]>;
+  getPublicApplication(id: number): Promise<PublicApplication | undefined>;
+  updatePublicApplicationStatus(id: number, status: string, reviewedBy?: number, notes?: string): Promise<PublicApplication>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -735,6 +743,83 @@ export class DatabaseStorage implements IStorage {
       assignedActiveJobs,
       submissionsThisWeek: submissionsThisWeekResult?.count ?? 0
     };
+  }
+
+  // Public job application methods
+  async getPublicJobs(): Promise<Job[]> {
+    return db
+      .select()
+      .from(jobs)
+      .where(eq(jobs.status, "active"))
+      .orderBy(desc(jobs.createdAt));
+  }
+
+  async createPublicApplication(insertApplication: InsertPublicApplication): Promise<PublicApplication> {
+    const [application] = await db
+      .insert(publicApplications)
+      .values(insertApplication)
+      .returning();
+    
+    return application;
+  }
+
+  async getPublicApplications(filters?: { jobId?: number; status?: string }): Promise<PublicApplication[]> {
+    let query = db.select().from(publicApplications);
+
+    if (filters) {
+      const conditions = [];
+      
+      if (filters.jobId) {
+        conditions.push(eq(publicApplications.jobId, filters.jobId));
+      }
+      
+      if (filters.status) {
+        conditions.push(eq(publicApplications.status, filters.status));
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+    }
+
+    return query.orderBy(desc(publicApplications.appliedAt));
+  }
+
+  async getPublicApplication(id: number): Promise<PublicApplication | undefined> {
+    const [application] = await db
+      .select()
+      .from(publicApplications)
+      .where(eq(publicApplications.id, id));
+    
+    return application;
+  }
+
+  async updatePublicApplicationStatus(
+    id: number, 
+    status: string, 
+    reviewedBy?: number, 
+    notes?: string
+  ): Promise<PublicApplication> {
+    const updateData: any = { 
+      status,
+      reviewedAt: new Date()
+    };
+    
+    if (reviewedBy) {
+      updateData.reviewedBy = reviewedBy;
+    }
+    
+    if (notes !== undefined) {
+      updateData.notes = notes;
+    }
+    
+    const [application] = await db
+      .update(publicApplications)
+      .set(updateData)
+      .where(eq(publicApplications.id, id))
+      .returning();
+    
+    return application;
   }
 }
 

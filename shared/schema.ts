@@ -176,6 +176,30 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Public job applications table (for non-admin users applying to jobs)
+export const publicApplications = pgTable("public_applications", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").notNull().references(() => jobs.id),
+  // Applicant information
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  // Optional fields
+  coverLetter: text("cover_letter"),
+  resumeFileName: text("resume_file_name"),
+  resumeContent: text("resume_content"), // Extracted text from resume
+  // Application status
+  status: text("status", { 
+    enum: ["pending", "reviewing", "shortlisted", "rejected", "hired"] 
+  }).notNull().default("pending"),
+  // Timestamps
+  appliedAt: timestamp("applied_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  notes: text("notes"), // Admin/recruiter notes
+});
+
 // Zod schemas for validation
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertJobSchema = createInsertSchema(jobs).omit({ id: true, createdAt: true });
@@ -185,6 +209,7 @@ export const insertResumeDataSchema = createInsertSchema(resumeData).omit({ id: 
 export const insertSubmissionSchema = createInsertSchema(submissions).omit({ id: true, submittedAt: true, updatedAt: true });
 export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, createdAt: true });
 export const insertCandidateValidationSchema = createInsertSchema(candidateValidations).omit({ id: true, validatedAt: true });
+export const insertPublicApplicationSchema = createInsertSchema(publicApplications).omit({ id: true, appliedAt: true });
 
 // Export types
 export type User = typeof users.$inferSelect;
@@ -210,3 +235,6 @@ export type InsertActivity = z.infer<typeof insertActivitySchema>;
 
 export type CandidateValidation = typeof candidateValidations.$inferSelect;
 export type InsertCandidateValidation = z.infer<typeof insertCandidateValidationSchema>;
+
+export type PublicApplication = typeof publicApplications.$inferSelect;
+export type InsertPublicApplication = z.infer<typeof insertPublicApplicationSchema>;
