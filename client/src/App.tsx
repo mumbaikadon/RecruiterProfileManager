@@ -1,10 +1,14 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 import NotFound from "@/pages/not-found";
 import Layout from "@/components/layout";
+import HomePage from "@/pages/home-page";
+import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import JobsPage from "@/pages/jobs/index";
 import JobDetailPage from "@/pages/jobs/[id]";
@@ -15,28 +19,78 @@ import SubmissionDetailPage from "@/pages/submissions/[id]";
 import { PublicJobs } from "@/pages/PublicJobs";
 
 function Router() {
-  const [location] = useLocation();
-  const isPublicRoute = location.startsWith('/public');
-
   return (
     <Switch>
+      {/* Authentication route */}
+      <Route path="/auth" component={AuthPage} />
+      
+      {/* Public job application route */}
       <Route path="/public/jobs">
-        {/* Public routes don't use the admin layout */}
         <PublicJobs />
       </Route>
-      {/* Admin routes use the admin layout */}
-      <Layout>
-        <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/jobs" component={JobsPage} />
-          <Route path="/jobs/:id" component={JobDetailPage} />
-          <Route path="/candidates" component={CandidatesPage} />
-          <Route path="/candidates/:id" component={CandidateDetailPage} />
-          <Route path="/submissions" component={SubmissionsPage} />
-          <Route path="/submissions/:id" component={SubmissionDetailPage} />
-          <Route component={NotFound} />
-        </Switch>
-      </Layout>
+      
+      {/* Protected home route */}
+      <ProtectedRoute path="/" component={HomePage} />
+      
+      {/* Protected admin/recruiter routes */}
+      <ProtectedRoute 
+        path="/dashboard" 
+        component={() => (
+          <Layout>
+            <Dashboard />
+          </Layout>
+        )} 
+      />
+      <ProtectedRoute 
+        path="/jobs" 
+        component={() => (
+          <Layout>
+            <JobsPage />
+          </Layout>
+        )} 
+      />
+      <ProtectedRoute 
+        path="/jobs/:id" 
+        component={() => (
+          <Layout>
+            <JobDetailPage />
+          </Layout>
+        )} 
+      />
+      <ProtectedRoute 
+        path="/candidates" 
+        component={() => (
+          <Layout>
+            <CandidatesPage />
+          </Layout>
+        )} 
+      />
+      <ProtectedRoute 
+        path="/candidates/:id" 
+        component={() => (
+          <Layout>
+            <CandidateDetailPage />
+          </Layout>
+        )} 
+      />
+      <ProtectedRoute 
+        path="/submissions" 
+        component={() => (
+          <Layout>
+            <SubmissionsPage />
+          </Layout>
+        )} 
+      />
+      <ProtectedRoute 
+        path="/submissions/:id" 
+        component={() => (
+          <Layout>
+            <SubmissionDetailPage />
+          </Layout>
+        )} 
+      />
+      
+      <Route component={NotFound} />
     </Switch>
   );
 }
@@ -44,10 +98,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

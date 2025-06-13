@@ -20,8 +20,11 @@ const multerStorage = multer.memoryStorage();
 const fileUpload = multer({ storage: multerStorage });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Jobs routes
-  app.get("/api/jobs", async (req: Request, res: Response) => {
+  // Setup authentication
+  setupAuth(app);
+
+  // Jobs routes (protected)
+  app.get("/api/jobs", requireAuth, async (req: Request, res: Response) => {
     try {
       const { status, date, search } = req.query;
 
