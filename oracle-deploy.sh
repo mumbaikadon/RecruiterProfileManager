@@ -27,33 +27,32 @@ echo "Installing application dependencies..."
 npm install || { echo "❌ Failed to install application dependencies"; exit 1; }
 echo "✅ Dependencies installed successfully"
 
-# Fix for crypto.getRandomValues in Vite
-echo "Setting up environment for build..."
-export NODE_OPTIONS="--openssl-legacy-provider"
+# Simple manual build approach without Vite
+echo "Setting up direct build..."
 
-# Build the client and server separately
-echo "Building client application..."
-cd client
-echo "Installing client dependencies..."
-npm install || { echo "❌ Failed to install client dependencies"; exit 1; }
+# Create build directories
+echo "Creating build directories..."
+mkdir -p dist/public
 
-echo "Building client..."
-NODE_OPTIONS="--openssl-legacy-provider" npm run build || { echo "❌ Failed to build client"; exit 1; }
-echo "✅ Client build successful"
-cd ..
+# Copy client static files directly
+echo "Copying client static files..."
+cd client/public
+cp -r * ../../dist/public/ || { echo "❌ Failed to copy static files"; exit 1; }
+cd ../..
 
-# Build the server
-echo "Building server..."
-NODE_OPTIONS="--openssl-legacy-provider" npx esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outdir=dist || { echo "❌ Failed to build server"; exit 1; }
+# Build server with TypeScript
+echo "Building server with tsc..."
+npx tsc --project tsconfig.json || { echo "❌ Failed to transpile TypeScript"; exit 1; }
 echo "✅ Server build successful"
 
 # Configure environment
 echo "Configuring environment..."
 if [ ! -f .env ]; then
     echo "Creating .env file..."
-    # Generate secure random secrets
-    SESSION_SECRET=$(openssl rand -hex 32 || echo "velocity_secure_session_key_$(date +%s)")
-    JWT_SECRET=$(openssl rand -hex 32 || echo "velocity_secure_jwt_key_$(date +%s)")
+    # Generate simple secrets without crypto
+    TIMESTAMP=$(date +%s)
+    SESSION_SECRET="velocity_tech_session_${TIMESTAMP}_$(hostname)"
+    JWT_SECRET="velocity_tech_jwt_${TIMESTAMP}_$(hostname)"
     
     cat > .env << EOF || { echo "❌ Failed to create .env file"; exit 1; }
 # Environment

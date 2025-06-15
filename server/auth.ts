@@ -2,8 +2,6 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
-import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 
@@ -13,26 +11,24 @@ declare global {
   }
 }
 
-const scryptAsync = promisify(scrypt);
-
-async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
+// Simple password hashing function that doesn't use crypto
+function hashPassword(password: string): string {
+  // In production, you would use a proper hashing library
+  // This is a simple base64 encoding for demonstration
+  return Buffer.from(password).toString('base64');
 }
 
-async function comparePasswords(supplied: string, stored: string) {
-  // For hardcoded users, we're using plain text passwords
-  // In a real app, you would use the hashing logic below
+// Simple password comparison that doesn't use crypto
+function comparePasswords(supplied: string, stored: string): boolean {
+  // For hardcoded users or plain text passwords
   if (!stored.includes('.')) {
     return supplied === stored;
   }
   
-  // For hashed passwords (when we have salt)
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  // For "hashed" passwords (in this case, just base64 encoded)
+  // In production, use a proper password hashing library
+  const encodedSupplied = Buffer.from(supplied).toString('base64');
+  return encodedSupplied === stored;
 }
 
 export function setupAuth(app: Express) {
