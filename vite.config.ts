@@ -4,9 +4,7 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { webcrypto } from "crypto";
 
-if (!globalThis.crypto) {
-  globalThis.crypto = webcrypto as unknown as Crypto;
-}
+globalThis.crypto = webcrypto as unknown as Crypto;
 
 export default defineConfig(async () => {
   const plugins = [react(), runtimeErrorOverlay()];
