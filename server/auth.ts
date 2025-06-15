@@ -61,18 +61,18 @@ export function setupAuth(app: Express) {
           admin: {
             id: 1,
             username: "admin",
-            password: "admin123",
+            password: "VelocityAdmin2025!",
             name: "Administrator",
-            email: "admin@company.com",
+            email: "admin@velocitytech.com",
             role: "admin" as const,
             createdAt: new Date()
           },
           recruiter: {
             id: 2,
             username: "recruiter", 
-            password: "recruiter123",
+            password: "VelocityRecruit2025!",
             name: "Recruiter",
-            email: "recruiter@company.com",
+            email: "recruiter@velocitytech.com",
             role: "recruiter" as const,
             createdAt: new Date()
           }
@@ -109,9 +109,9 @@ export function setupAuth(app: Express) {
         return done(null, {
           id: 1,
           username: "admin",
-          password: "admin123",
+          password: "VelocityAdmin2025!",
           name: "Administrator",
-          email: "admin@company.com",
+          email: "admin@velocitytech.com",
           role: "admin" as const,
           createdAt: new Date()
         });
@@ -120,9 +120,9 @@ export function setupAuth(app: Express) {
         return done(null, {
           id: 2,
           username: "recruiter",
-          password: "recruiter123",
+          password: "VelocityRecruit2025!",
           name: "Recruiter",
-          email: "recruiter@company.com", 
+          email: "recruiter@velocitytech.com", 
           role: "recruiter" as const,
           createdAt: new Date()
         });
