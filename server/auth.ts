@@ -84,11 +84,16 @@ export function setupAuth(app: Express) {
         }
 
         // Fallback to database users if not hardcoded
-        const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
+        try {
+          const user = await storage.getUserByUsername(username);
+          if (!user || !(await comparePasswords(password, user.password))) {
+            return done(null, false);
+          } else {
+            return done(null, user);
+          }
+        } catch (error) {
+          // If database lookup fails, still check if it's a hardcoded user
           return done(null, false);
-        } else {
-          return done(null, user);
         }
       } catch (error) {
         return done(error);
