@@ -22,6 +22,13 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
+  // For hardcoded users, we're using plain text passwords
+  // In a real app, you would use the hashing logic below
+  if (!stored.includes('.')) {
+    return supplied === stored;
+  }
+  
+  // For hashed passwords (when we have salt)
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
   const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;

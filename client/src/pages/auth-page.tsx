@@ -137,14 +137,6 @@ export default function AuthPage() {
                   {loginMutation.isPending ? "Signing in..." : "Sign In"}
                 </Button>
               </form>
-              
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600 font-medium mb-2">Test Credentials:</p>
-                <div className="text-xs text-gray-500 space-y-1">
-                  <div>Admin: admin / admin123</div>
-                  <div>Recruiter: recruiter / recruiter123</div>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>

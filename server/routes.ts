@@ -49,7 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/jobs/:id", async (req: Request, res: Response) => {
+  app.get("/api/jobs/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -89,7 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/jobs", async (req: Request, res: Response) => {
+  app.post("/api/jobs", requireAuth, async (req: Request, res: Response) => {
     try {
       // Import sanitization utility
       const { sanitizeHtml } = await import("./utils");
@@ -124,7 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/jobs/:id/description", async (req: Request, res: Response) => {
+  app.put("/api/jobs/:id/description", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -157,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/jobs/:id/status", async (req: Request, res: Response) => {
+  app.put("/api/jobs/:id/status", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -217,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/jobs/:id/assign", async (req: Request, res: Response) => {
+  app.post("/api/jobs/:id/assign", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -259,7 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Candidates routes
-  app.get("/api/candidates", async (_req: Request, res: Response) => {
+  app.get("/api/candidates", requireAuth, async (_req: Request, res: Response) => {
     try {
       const candidates = await storage.getCandidates();
       res.json(candidates);
@@ -268,7 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/candidates/:id", async (req: Request, res: Response) => {
+  app.get("/api/candidates/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -326,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/candidates", async (req: Request, res: Response) => {
+  app.post("/api/candidates", requireAuth, async (req: Request, res: Response) => {
     try {
       const validatedData = insertCandidateSchema.parse(req.body);
 
@@ -508,7 +508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Submission routes
-  app.get("/api/submissions", async (req: Request, res: Response) => {
+  app.get("/api/submissions", requireAuth, async (req: Request, res: Response) => {
     try {
       const { jobId, candidateId, recruiterId } = req.query;
 
@@ -590,7 +590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/submissions/:id", async (req: Request, res: Response) => {
+  app.get("/api/submissions/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -652,7 +652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/submissions", async (req: Request, res: Response) => {
+  app.post("/api/submissions", requireAuth, async (req: Request, res: Response) => {
     try {
       const submissionData = req.body;
       let candidateId: number;
@@ -957,7 +957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Activities routes
-  app.get("/api/activities", async (req: Request, res: Response) => {
+  app.get("/api/activities", requireAuth, async (req: Request, res: Response) => {
     try {
       const limit = req.query.limit
         ? parseInt(req.query.limit as string)
@@ -993,7 +993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/activities", async (req: Request, res: Response) => {
+  app.post("/api/activities", requireAuth, async (req: Request, res: Response) => {
     try {
       const validatedData = insertActivitySchema.parse(req.body);
       const activity = await storage.createActivity(validatedData);
@@ -1007,7 +1007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Users/recruiters routes
-  app.get("/api/recruiters", async (_req: Request, res: Response) => {
+  app.get("/api/recruiters", requireAuth, async (_req: Request, res: Response) => {
     try {
       const recruiters = await storage.getRecruiters();
       res.json(recruiters);
@@ -1017,7 +1017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard stats
-  app.get("/api/dashboard/stats", async (_req: Request, res: Response) => {
+  app.get("/api/dashboard/stats", requireAuth, async (_req: Request, res: Response) => {
     try {
       const stats = await storage.getDashboardStats();
       res.json(stats);
@@ -1028,7 +1028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Candidate validation endpoint
   // Add endpoint to check for similar employment histories
-  app.post("/api/candidates/check-similar-employment", async (req: Request, res: Response) => {
+  app.post("/api/candidates/check-similar-employment", requireAuth, async (req: Request, res: Response) => {
     try {
       const { candidateId, clientNames, relevantDates } = req.body;
       
@@ -1599,7 +1599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const multerStorage = multer.memoryStorage();
   const fileUpload = multer({ storage: multerStorage });
   
-  app.post("/api/parse-document", fileUpload.single('file'), async (req: Request, res: Response) => {
+  app.post("/api/parse-document", requireAuth, fileUpload.single('file'), async (req: Request, res: Response) => {
     console.log("Document parsing request received");
     
     try {
@@ -1675,7 +1675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/openai/match-resume", async (req: Request, res: Response) => {
+  app.post("/api/openai/match-resume", requireAuth, async (req: Request, res: Response) => {
     try {
       const { resumeText, jobDescription } = req.body;
 
@@ -1926,7 +1926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // New endpoint to validate a resume for duplicate/suspicious patterns before candidate creation
-  app.post("/api/validate-resume", async (req: Request, res: Response) => {
+  app.post("/api/validate-resume", requireAuth, async (req: Request, res: Response) => {
     try {
       const { clientNames, relevantDates } = req.body;
       
@@ -2117,7 +2117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Test route for gap analysis
-  app.get("/api/test-gap-analysis", async (_req: Request, res: Response) => {
+  app.get("/api/test-gap-analysis", requireAuth, async (_req: Request, res: Response) => {
     try {
       console.log("Running gap analysis test...");
       
@@ -2282,7 +2282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get public applications (admin only - would need auth middleware in production)
-  app.get("/api/admin/public-applications", async (req: Request, res: Response) => {
+  app.get("/api/admin/public-applications", requireAuth, async (req: Request, res: Response) => {
     try {
       const { jobId, status } = req.query;
       const filters: { jobId?: number; status?: string } = {};
@@ -2303,7 +2303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update public application status (admin only)
-  app.put("/api/admin/public-applications/:id/status", async (req: Request, res: Response) => {
+  app.put("/api/admin/public-applications/:id/status", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const { status, notes, reviewedBy } = req.body;

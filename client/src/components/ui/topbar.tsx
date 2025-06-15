@@ -5,19 +5,7 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { AccessibilityMenu } from "@/components/accessibility-menu";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
+import { UserProfileMenu } from "@/components/ui/user-profile-menu";
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -112,37 +100,7 @@ const Topbar: React.FC<TopbarProps> = ({
             </TooltipProvider>
             
             {/* User Profile Dropdown Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className="rounded-full h-8 w-8 p-0 ml-1 md:ml-2 transition-all duration-200 hover:ring-2 hover:ring-primary/20"
-                >
-                  <Avatar className="h-8 w-8 cursor-pointer">
-                    <AvatarImage src="" />
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-white font-medium text-sm">
-                      JD
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">John Doe</p>
-                    <p className="text-xs text-muted-foreground">john.doe@example.com</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuItem>Support</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <UserProfileMenu />
           </div>
         </div>
       </div>
