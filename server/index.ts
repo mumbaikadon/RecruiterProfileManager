@@ -2,6 +2,15 @@
 import { config } from 'dotenv';
 config();
 
+import { webcrypto } from "crypto";
+
+if (typeof globalThis.crypto === "undefined") {
+  Object.defineProperty(globalThis, "crypto", {
+    value: webcrypto,
+    configurable: true,
+  });
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";

@@ -2,9 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import { webcrypto } from "crypto";
 
-globalThis.crypto = webcrypto as unknown as Crypto;
 
 export default defineConfig(async () => {
   const plugins = [react(), runtimeErrorOverlay()];
