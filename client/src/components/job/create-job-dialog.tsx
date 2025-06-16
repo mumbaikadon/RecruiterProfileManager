@@ -45,7 +45,7 @@ const formSchema = z.object({
   state: z.string().optional(),
   status: z.enum(["active", "reviewing", "closed"]).default("active"),
   createdBy: z.number().optional(),
-  recruiterIds: z.array(z.number()).min(1, "You must assign at least one recruiter")
+  recruiterIds: z.array(z.number()).optional().default([])
 });
 
 type FormValues = z.infer<typeof formSchema>;
