@@ -3,14 +3,49 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from "url";
-import { webcrypto } from "crypto";
+import crypto from "crypto";
 
-// ✅ Add this early so Node has crypto.getRandomValues
-if (typeof globalThis.crypto === "undefined") {
-  Object.defineProperty(globalThis, "crypto", {
-    value: webcrypto,
-    configurable: true,
-  });
+// Polyfill crypto for both Windows and Linux environments
+if (!globalThis.crypto || !globalThis.crypto.getRandomValues) {
+  try {
+    // First try to use the webcrypto API if available
+    if (crypto.webcrypto) {
+      // @ts-ignore
+      globalThis.crypto = crypto.webcrypto;
+    } else {
+      // If webcrypto is not available, create a minimal polyfill
+      if (!globalThis.crypto) {
+        // @ts-ignore
+        globalThis.crypto = {};
+      }
+      
+      // Add getRandomValues if it doesn't exist
+      if (!globalThis.crypto.getRandomValues) {
+        // @ts-ignore - Properly type the crypto polyfill
+        globalThis.crypto.getRandomValues = function getRandomValues(array) {
+          if (array === null) throw new Error('Array cannot be null');
+          const bytes = crypto.randomBytes(array.byteLength);
+          
+          // Copy bytes into the array using a more type-safe approach
+          if (array instanceof Uint8Array) {
+            for (let i = 0; i < bytes.length; i++) {
+              array[i] = bytes[i];
+            }
+          } else {
+            // For other TypedArray types
+            const view = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
+            for (let i = 0; i < bytes.length; i++) {
+              view[i] = bytes[i];
+            }
+          }
+          
+          return array;
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Failed to polyfill crypto:', error);
+  }
 }
 
 const __filename = fileURLToPath(import.meta.url);
