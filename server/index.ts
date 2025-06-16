@@ -2,14 +2,80 @@
 import { config } from 'dotenv';
 config();
 
+// Cross-platform crypto setup
 import { webcrypto } from "crypto";
 
-if (typeof globalThis.crypto === "undefined") {
-  Object.defineProperty(globalThis, "crypto", {
-    value: webcrypto,
-    configurable: true,
-  });
+// Comprehensive crypto polyfill for cross-platform compatibility
+function setupServerCrypto() {
+  // Check if crypto is already properly set up
+  if (globalThis.crypto && 
+      typeof globalThis.crypto.getRandomValues === 'function' && 
+      typeof globalThis.crypto.randomUUID === 'function') {
+    return;
+  }
+
+  try {
+    // Use Node.js webcrypto if available (Node 16+)
+    if (webcrypto && 
+        typeof webcrypto.getRandomValues === 'function' && 
+        typeof webcrypto.randomUUID === 'function') {
+      Object.defineProperty(globalThis, "crypto", {
+        value: webcrypto,
+        configurable: true,
+        writable: true
+      });
+      console.log('✅ Server crypto initialized with Node.js webcrypto');
+      return;
+    }
+
+    // Fallback polyfill
+    const crypto = require('crypto');
+    const cryptoPolyfill: any = {};
+
+    // Add getRandomValues
+    cryptoPolyfill.getRandomValues = function(array: any) {
+      if (!array || typeof array.byteLength !== 'number') {
+        throw new TypeError('Expected a TypedArray');
+      }
+      const bytes = crypto.randomBytes(array.byteLength);
+      if (array instanceof Uint8Array) {
+        array.set(bytes);
+      } else {
+        const view = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
+        view.set(bytes);
+      }
+      return array;
+    };
+
+    // Add randomUUID
+    cryptoPolyfill.randomUUID = function() {
+      const bytes = crypto.randomBytes(16);
+      bytes[6] = (bytes[6] & 0x0f) | 0x40; // Version 4
+      bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant 10
+      const hex = bytes.toString('hex');
+      return [
+        hex.slice(0, 8),
+        hex.slice(8, 12),
+        hex.slice(12, 16),
+        hex.slice(16, 20),
+        hex.slice(20, 32)
+      ].join('-');
+    };
+
+    Object.defineProperty(globalThis, "crypto", {
+      value: cryptoPolyfill,
+      configurable: true,
+      writable: true
+    });
+
+    console.log('✅ Server crypto initialized with polyfill');
+  } catch (error) {
+    console.error('❌ Failed to setup server crypto:', error);
+  }
 }
+
+// Initialize crypto before anything else
+setupServerCrypto();
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
