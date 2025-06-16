@@ -102,9 +102,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertJobSchema.parse(req.body);
       const job = await storage.createJob(validatedData);
 
-      // Assign recruiters if provided
-      if (req.body.recruiterIds && Array.isArray(req.body.recruiterIds)) {
+      // Assign recruiters if provided, otherwise assign all recruiters with "recruiter" role
+      if (req.body.recruiterIds && Array.isArray(req.body.recruiterIds) && req.body.recruiterIds.length > 0) {
         await storage.assignRecruitersToJob(job.id, req.body.recruiterIds);
+      } else {
+        // Auto-assign all users with recruiter role
+        try {
+          const allUsers = await storage.getUsers();
+          const recruiters = allUsers.filter(user => user.role === 'recruiter');
+          
+          if (recruiters.length > 0) {
+            const recruiterIds = recruiters.map(recruiter => recruiter.id);
+            await storage.assignRecruitersToJob(job.id, recruiterIds);
+          }
+        } catch (assignError) {
+          console.error('Failed to auto-assign recruiters:', assignError);
+          // Continue with job creation even if auto-assignment fails
+        }
       }
 
       // Create an activity
