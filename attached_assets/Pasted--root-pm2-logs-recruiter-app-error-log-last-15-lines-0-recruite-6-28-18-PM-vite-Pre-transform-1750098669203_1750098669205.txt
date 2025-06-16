@@ -1,0 +1,16 @@
+/root/.pm2/logs/recruiter-app-error.log last 15 lines:
+0|recruite | 6:28:18 PM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=bPpFArG8xqBmos36SFf-b (resolved id: /src/main.tsx?v=bPpFArG8xqBmos36SFf-b). Does the file exist?
+0|recruite | Database connection error: Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
+0|recruite |     at /home/opc/RecruiterProfileManager/node_modules/pg-pool/index.js:45:11
+0|recruite |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|recruite | 6:28:24 PM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=fXG4qm7Oh2dUwMywN3aZ4 (resolved id: /src/main.tsx?v=fXG4qm7Oh2dUwMywN3aZ4). Does the file exist?
+0|recruite | Database connection error: Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
+0|recruite |     at /home/opc/RecruiterProfileManager/node_modules/pg-pool/index.js:45:11
+0|recruite |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|recruite | 6:28:39 PM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=lDJua1mioEZ9OK7fBs_do (resolved id: /src/main.tsx?v=lDJua1mioEZ9OK7fBs_do). Does the file exist?
+0|recruite | Database connection error: Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
+0|recruite |     at /home/opc/RecruiterProfileManager/node_modules/pg-pool/index.js:45:11
+0|recruite |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|recruite | 6:29:38 PM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=E8bv0hIl_uz8Bl6-S9KmD (resolved id: /src/main.tsx?v=E8bv0hIl_uz8Bl6-S9KmD). Does the file exist?
+0|recruite | 6:29:44 PM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=fRZIEv75inJQUb5qKflnG (resolved id: /src/main.tsx?v=fRZIEv75inJQUb5qKflnG). Does the file exist?
+0|recruite | 6:29:59 PM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=obqSNLP5B917egz6_fAjx (resolved id: /src/main.tsx?v=obqSNLP5B917egz6_fAjx). Does the file exist?
