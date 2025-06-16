@@ -1,21 +1,24 @@
-// build.cjs - A custom build script that applies the crypto polyfill before running Vite
+#!/usr/bin/env node
+// vite-patched.cjs - A patched version of the Vite CLI with crypto polyfill
+
+// Apply crypto polyfill BEFORE requiring any modules
 const crypto = require('crypto');
 
-// Apply crypto polyfill
-if (!globalThis.crypto || !globalThis.crypto.getRandomValues) {
+// Apply crypto polyfill to global scope
+if (!global.crypto || !global.crypto.getRandomValues) {
   try {
     // First try to use the webcrypto API if available
     if (crypto.webcrypto) {
-      globalThis.crypto = crypto.webcrypto;
+      global.crypto = crypto.webcrypto;
     } else {
       // If webcrypto is not available, create a minimal polyfill
-      if (!globalThis.crypto) {
-        globalThis.crypto = {};
+      if (!global.crypto) {
+        global.crypto = {};
       }
       
       // Add getRandomValues if it doesn't exist
-      if (!globalThis.crypto.getRandomValues) {
-        globalThis.crypto.getRandomValues = function getRandomValues(array) {
+      if (!global.crypto.getRandomValues) {
+        global.crypto.getRandomValues = function getRandomValues(array) {
           if (array === null) throw new Error('Array cannot be null');
           const bytes = crypto.randomBytes(array.byteLength);
           
@@ -36,7 +39,7 @@ if (!globalThis.crypto || !globalThis.crypto.getRandomValues) {
         };
       }
     }
-    console.log('✅ Crypto polyfill successfully applied');
+    console.log('✅ Crypto polyfill successfully applied to global scope');
   } catch (error) {
     console.error('❌ Failed to polyfill crypto:', error);
   }
@@ -44,20 +47,18 @@ if (!globalThis.crypto || !globalThis.crypto.getRandomValues) {
   console.log('✅ Native crypto.getRandomValues is available');
 }
 
-// Run the build process
-const { execSync } = require('child_process');
+// Now run the actual Vite CLI
+// Find the path to the Vite CLI
 const path = require('path');
+const fs = require('fs');
 
-try {
-  console.log('Starting Vite build with patched CLI...');
-  // Use the patched Vite CLI directly
-  execSync('node ./vite-patched.cjs build', { stdio: 'inherit' });
-  
-  console.log('Building server with esbuild...');
-  execSync('esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist', { stdio: 'inherit' });
-  
-  console.log('✅ Build completed successfully');
-} catch (error) {
-  console.error('❌ Build failed:', error);
+// Get the path to the Vite CLI
+const vitePath = path.resolve(__dirname, 'node_modules', 'vite', 'bin', 'vite.js');
+
+if (!fs.existsSync(vitePath)) {
+  console.error(`❌ Could not find Vite CLI at ${vitePath}`);
   process.exit(1);
 }
+
+// Execute the Vite CLI with the same arguments
+require(vitePath);
