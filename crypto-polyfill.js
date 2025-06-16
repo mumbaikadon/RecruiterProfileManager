@@ -1,6 +1,6 @@
 // crypto-polyfill.js
 // Cross-platform crypto polyfill for Windows and Linux compatibility
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 // Comprehensive crypto polyfill for cross-platform compatibility
 function setupCrypto() {
