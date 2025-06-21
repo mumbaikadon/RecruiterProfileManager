@@ -98,27 +98,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.description) {
         req.body.description = sanitizeHtml(req.body.description);
       }
+      
+      // Make sure createdBy is either a valid user ID or null
+      if (req.body.createdBy && typeof req.body.createdBy === 'number') {
+        // Check if the user exists
+        try {
+          const user = await storage.getUser(req.body.createdBy);
+          if (!user) {
+            // If user doesn't exist, set createdBy to null
+            req.body.createdBy = null;
+          }
+        } catch (error) {
+          // If error occurs when checking user, set createdBy to null
+          req.body.createdBy = null;
+        }
+      } else {
+        // If createdBy is not provided or not a number, set to null
+        req.body.createdBy = null;
+      }
 
       const validatedData = insertJobSchema.parse(req.body);
       const job = await storage.createJob(validatedData);
 
       // Assign recruiters if provided, otherwise assign all recruiters with "recruiter" role
-      if (req.body.recruiterIds && Array.isArray(req.body.recruiterIds) && req.body.recruiterIds.length > 0) {
-        await storage.assignRecruitersToJob(job.id, req.body.recruiterIds);
-      } else {
-        // Auto-assign all users with recruiter role
-        try {
+      try {
+        // Check if recruiterIds is provided and not empty
+        if (req.body.recruiterIds && Array.isArray(req.body.recruiterIds) && req.body.recruiterIds.length > 0) {
+          await storage.assignRecruitersToJob(job.id, req.body.recruiterIds);
+        } else {
+          // Auto-assign all users with recruiter role
           const allUsers = await storage.getUsers();
           const recruiters = allUsers.filter(user => user.role === 'recruiter');
           
           if (recruiters.length > 0) {
             const recruiterIds = recruiters.map(recruiter => recruiter.id);
             await storage.assignRecruitersToJob(job.id, recruiterIds);
+          } else {
+            // If no recruiters found, assign to a default user (usually admin)
+            const adminUser = allUsers.find(user => user.role === 'admin');
+            if (adminUser) {
+              await storage.assignRecruitersToJob(job.id, [adminUser.id]);
+            }
+            // If no admin or recruiter, job will have no assignments, which is acceptable
           }
-        } catch (assignError) {
-          console.error('Failed to auto-assign recruiters:', assignError);
-          // Continue with job creation even if auto-assignment fails
         }
+      } catch (assignError) {
+        console.error('Failed to assign recruiters:', assignError);
+        // Continue with job creation even if assignment fails
       }
 
       // Create an activity

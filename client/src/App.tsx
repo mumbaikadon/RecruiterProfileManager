@@ -24,8 +24,13 @@ function Router() {
       {/* Authentication route */}
       <Route path="/auth" component={AuthPage} />
       
-      {/* Public job application route */}
+      {/* Public job application routes */}
       <Route path="/public/jobs">
+        <PublicJobs />
+      </Route>
+      
+      {/* Simple URL for public jobs access */}
+      <Route path="/careers">
         <PublicJobs />
       </Route>
       
