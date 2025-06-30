@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import logo from "@/assets/images/logo.png";
 import { useQuery } from "@tanstack/react-query";
 import { Job } from "@shared/schema";
 import { MapPin, Clock, Briefcase, LogIn, Users, CheckCircle, Zap, Target, Shield, TrendingUp, ChevronRight, Star, Mail, Phone, Bell, Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
@@ -91,9 +92,12 @@ export default function PublicHome() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center">
-              <div className="flex items-center space-x-3">
-                <Zap className={`w-7 h-7 ${isScrolled ? 'text-blue-600' : 'text-white'} transition-colors duration-300`} />
-                <h1 className={`text-2xl font-bold ${isScrolled ? 'text-gray-900' : 'text-white'} transition-colors duration-300`}>Velocity Tech</h1>
+              <div className="flex items-center">
+                <img 
+                  src={logo} 
+                  alt="Company Logo" 
+                  className={`h-10 w-auto object-contain ${!isScrolled && 'filter brightness-0 invert'} transition-all duration-300`} 
+                />
               </div>
             </div>
             

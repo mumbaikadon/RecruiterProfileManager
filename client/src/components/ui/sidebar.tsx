@@ -11,6 +11,7 @@ import {
   Zap,
   ChevronRight
 } from "lucide-react";
+import logo from "@/assets/images/logo.png";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import CreateJobDialog from "@/components/job/create-job-dialog";
@@ -75,13 +76,8 @@ const Sidebar = () => {
       <div className="flex flex-col w-64 bg-sidebar text-sidebar-foreground shadow-lg rounded-r-2xl">
         {/* App logo */}
         <div className="flex items-center justify-center h-16 border-b border-sidebar-border/30">
-          <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
-              <Zap className="h-5 w-5" />
-            </div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              Velocity Tech
-            </h1>
+          <div className="flex items-center">
+            <img src={logo} alt="Company Logo" className="h-10 w-auto object-contain filter brightness-0 invert" />
           </div>
         </div>
         

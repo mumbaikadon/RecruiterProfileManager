@@ -2,6 +2,7 @@ import React from "react";
 import { Bell, Menu, Search, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/images/logo.png";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { AccessibilityMenu } from "@/components/accessibility-menu";
@@ -32,11 +33,9 @@ const Topbar: React.FC<TopbarProps> = ({
               <Menu className="h-5 w-5" />
             </button>
             
-            {/* Mobile app title */}
+            {/* Mobile app logo */}
             <div className="flex-shrink-0 flex items-center md:hidden">
-              <div className="ml-2 font-bold text-xl bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                RecruiterTracker
-              </div>
+              <img src={logo} alt="Company Logo" className="h-8 w-auto object-contain" />
             </div>
             
             {/* Search bar - hidden on small screens */}

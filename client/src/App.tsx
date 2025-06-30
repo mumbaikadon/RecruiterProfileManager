@@ -34,6 +34,11 @@ function Router() {
         <PublicJobs />
       </Route>
       
+      {/* Additional route to catch /careers/ with trailing slash */}
+      <Route path="/careers/">
+        <PublicJobs />
+      </Route>
+      
       {/* Public home route */}
       <Route path="/" component={PublicHome} />
       

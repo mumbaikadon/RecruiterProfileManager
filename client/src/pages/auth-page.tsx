@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Redirect, Link } from "wouter";
 import { Briefcase, Users, CheckCircle, ArrowLeft, Zap, Target, Shield } from "lucide-react";
+import logo from "@/assets/images/logo.png";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -41,9 +42,8 @@ export default function AuthPage() {
       {/* Left side - Hero section */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-12 flex-col justify-center text-white">
         <div className="max-w-md">
-          <div className="flex items-center space-x-3 mb-6">
-            <Zap className="w-8 h-8 text-white" />
-            <h1 className="text-4xl font-bold">Velocity Tech</h1>
+          <div className="flex items-center mb-6">
+            <img src={logo} alt="Company Logo" className="h-12 w-auto object-contain filter brightness-0 invert" />
           </div>
           <p className="text-xl mb-8 text-blue-100">
             Accelerating careers through intelligent recruitment solutions and advanced matching technology.
@@ -97,6 +97,9 @@ export default function AuthPage() {
           
           <Card>
             <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <img src={logo} alt="Company Logo" className="h-10 w-auto object-contain" />
+              </div>
               <CardTitle className="text-2xl">Staff Login</CardTitle>
               <CardDescription>
                 Sign in to access the recruitment dashboard
