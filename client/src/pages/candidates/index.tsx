@@ -30,10 +30,12 @@ const CandidatesPage: React.FC = () => {
         const fullName = `${candidate.firstName} ${candidate.middleName || ''} ${candidate.lastName}`.toLowerCase();
         const location = candidate.location.toLowerCase();
         const email = candidate.email.toLowerCase();
+        const jobTitle = (candidate.jobTitle || '').toLowerCase();
         
         if (!fullName.includes(searchLower) && 
             !location.includes(searchLower) && 
-            !email.includes(searchLower)) {
+            !email.includes(searchLower) &&
+            !jobTitle.includes(searchLower)) {
           return false;
         }
       }
@@ -84,7 +86,7 @@ const CandidatesPage: React.FC = () => {
               <Input
                 value={searchTerm}
                 onChange={handleSearchChange}
-                placeholder="Search candidates..."
+                placeholder="Search by name, location, email, or job title..."
                 className="pl-8"
               />
             </div>

@@ -38,7 +38,7 @@ export interface IStorage {
   getUserAssignedJobs(userId: number): Promise<Job[]>;
 
   // Candidate operations
-  getCandidates(): Promise<Candidate[]>;
+  getCandidates(): Promise<Array<Candidate & { jobTitle?: string }>>;
   getCandidate(id: number): Promise<Candidate | undefined>;
   getCandidateByIdentity(dobMonth: number, dobDay: number, ssn4: string): Promise<Candidate | undefined>;
   createCandidate(candidate: InsertCandidate): Promise<Candidate>;
@@ -315,11 +315,26 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(jobs.createdAt));
   }
 
-  async getCandidates(): Promise<Candidate[]> {
-    return db
-      .select()
+  async getCandidates(): Promise<Array<Candidate & { jobTitle?: string }>> {
+    const result = await db
+      .select({
+        ...candidates,
+        jobTitle: sql<string | null>`
+          CASE 
+            WHEN ${resumeData.jobTitles} IS NOT NULL AND array_length(${resumeData.jobTitles}, 1) > 0 
+            THEN ${resumeData.jobTitles}[1]
+            ELSE NULL
+          END
+        `.as('jobTitle')
+      })
       .from(candidates)
+      .leftJoin(resumeData, eq(resumeData.candidateId, candidates.id))
       .orderBy(desc(candidates.createdAt));
+    
+    return result.map(row => ({
+      ...row,
+      jobTitle: row.jobTitle || undefined
+    }));
   }
 
   async getCandidate(id: number): Promise<Candidate | undefined> {

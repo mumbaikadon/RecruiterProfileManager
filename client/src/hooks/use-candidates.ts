@@ -3,7 +3,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Candidate, InsertCandidate } from "@shared/schema";
 
 export function useCandidates() {
-  return useQuery<Candidate[]>({
+  return useQuery<Array<Candidate & { jobTitle?: string }>>({
     queryKey: ["/api/candidates"]
   });
 }
