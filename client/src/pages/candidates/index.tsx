@@ -35,6 +35,7 @@ const CandidatesPage: React.FC = () => {
           const email = candidate.email.toLowerCase();
           const jobTitle = (candidate.jobTitle || '').toLowerCase();
           const experience = candidate.yearsOfExperience?.toString() || '';
+          const workAuth = candidate.workAuthorization.toLowerCase();
           
           // Check if ALL search terms match somewhere in this candidate's data (AND logic)
           const candidateMatches = searchTerms.every(searchTerm => 
@@ -42,7 +43,8 @@ const CandidatesPage: React.FC = () => {
             location.includes(searchTerm) || 
             email.includes(searchTerm) ||
             jobTitle.includes(searchTerm) ||
-            experience.includes(searchTerm)
+            experience.includes(searchTerm) ||
+            workAuth.includes(searchTerm)
           );
           
           if (!candidateMatches) {
@@ -97,7 +99,7 @@ const CandidatesPage: React.FC = () => {
               <Input
                 value={searchTerm}
                 onChange={handleSearchChange}
-                placeholder="Search for candidates matching ALL criteria (e.g., 'java, san jose' finds Java developers in San Jose)..."
+                placeholder="Search by name, location, job title, experience, work authorization (e.g., 'java, san jose' or 'green card')..."
                 className="pl-8"
               />
             </div>
