@@ -207,25 +207,43 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                                 variant="outline"
                                 role="combobox"
                                 aria-expanded={open}
-                                className="w-full justify-between"
+                                className="w-full justify-between h-10 px-3 py-2 text-left font-normal"
                               >
-                                {field.value || "Select or type..."}
+                                <span className={field.value ? "text-foreground" : "text-muted-foreground"}>
+                                  {field.value || "Select or type..."}
+                                </span>
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
-                          <PopoverContent className="w-full p-0">
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                             <Command>
                               <CommandInput 
                                 placeholder="Search or type custom value..." 
                                 value={field.value || ""}
                                 onValueChange={(value) => field.onChange(value)}
+                                className="h-11"
                               />
-                              <CommandEmpty>
-                                Press Enter to use custom value
+                              <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                                <div className="flex flex-col items-center gap-2">
+                                  <span>Press Enter to use custom value</span>
+                                  {field.value && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setOpen(false);
+                                      }}
+                                      className="text-xs"
+                                    >
+                                      Use "{field.value}"
+                                    </Button>
+                                  )}
+                                </div>
                               </CommandEmpty>
                               <CommandGroup>
-                                <CommandList>
+                                <CommandList className="max-h-[200px]">
                                   {options.map((option) => (
                                     <CommandItem
                                       key={option}
@@ -234,14 +252,15 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                                         field.onChange(currentValue);
                                         setOpen(false);
                                       }}
+                                      className="flex items-center gap-2 px-3 py-2"
                                     >
                                       <Check
                                         className={cn(
-                                          "mr-2 h-4 w-4",
+                                          "h-4 w-4",
                                           field.value === option ? "opacity-100" : "opacity-0"
                                         )}
                                       />
-                                      {option}
+                                      <span>{option}</span>
                                     </CommandItem>
                                   ))}
                                 </CommandList>
@@ -249,6 +268,9 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                             </Command>
                           </PopoverContent>
                         </Popover>
+                        <FormDescription className="text-xs text-muted-foreground">
+                          Select from options or type a custom value
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     );
