@@ -24,21 +24,30 @@ const CandidatesPage: React.FC = () => {
     if (!candidates) return [];
     
     return candidates.filter(candidate => {
-      // Apply search filter
+      // Apply search filter with comma-separated terms
       if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        const fullName = `${candidate.firstName} ${candidate.middleName || ''} ${candidate.lastName}`.toLowerCase();
-        const location = candidate.location.toLowerCase();
-        const email = candidate.email.toLowerCase();
-        const jobTitle = (candidate.jobTitle || '').toLowerCase();
-        const experience = candidate.yearsOfExperience?.toString() || '';
+        // Split search terms by comma and trim whitespace
+        const searchTerms = searchTerm.split(',').map(term => term.trim().toLowerCase()).filter(term => term.length > 0);
         
-        if (!fullName.includes(searchLower) && 
-            !location.includes(searchLower) && 
-            !email.includes(searchLower) &&
-            !jobTitle.includes(searchLower) &&
-            !experience.includes(searchLower)) {
-          return false;
+        if (searchTerms.length > 0) {
+          const fullName = `${candidate.firstName} ${candidate.middleName || ''} ${candidate.lastName}`.toLowerCase();
+          const location = candidate.location.toLowerCase();
+          const email = candidate.email.toLowerCase();
+          const jobTitle = (candidate.jobTitle || '').toLowerCase();
+          const experience = candidate.yearsOfExperience?.toString() || '';
+          
+          // Check if ANY search term matches ANY field of this candidate
+          const candidateMatches = searchTerms.some(searchTerm => 
+            fullName.includes(searchTerm) || 
+            location.includes(searchTerm) || 
+            email.includes(searchTerm) ||
+            jobTitle.includes(searchTerm) ||
+            experience.includes(searchTerm)
+          );
+          
+          if (!candidateMatches) {
+            return false;
+          }
         }
       }
       
@@ -88,7 +97,7 @@ const CandidatesPage: React.FC = () => {
               <Input
                 value={searchTerm}
                 onChange={handleSearchChange}
-                placeholder="Search by name, location, email, job title, or experience..."
+                placeholder="Search by name, location, email, job title, or experience (separate multiple terms with commas)..."
                 className="pl-8"
               />
             </div>
