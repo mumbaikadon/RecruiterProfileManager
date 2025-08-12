@@ -38,7 +38,7 @@ export interface IStorage {
   getUserAssignedJobs(userId: number): Promise<Job[]>;
 
   // Candidate operations
-  getCandidates(): Promise<Array<Candidate & { jobTitle?: string }>>;
+  getCandidates(): Promise<Array<Candidate & { jobTitle?: string; yearsOfExperience?: number }>>;
   getCandidate(id: number): Promise<Candidate | undefined>;
   getCandidateByIdentity(dobMonth: number, dobDay: number, ssn4: string): Promise<Candidate | undefined>;
   createCandidate(candidate: InsertCandidate): Promise<Candidate>;
@@ -315,7 +315,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(jobs.createdAt));
   }
 
-  async getCandidates(): Promise<Array<Candidate & { jobTitle?: string }>> {
+  async getCandidates(): Promise<Array<Candidate & { jobTitle?: string; yearsOfExperience?: number }>> {
     const result = await db
       .select({
         ...candidates,
@@ -325,7 +325,8 @@ export class DatabaseStorage implements IStorage {
             THEN ${resumeData.jobTitles}[1]
             ELSE NULL
           END
-        `.as('jobTitle')
+        `.as('jobTitle'),
+        relevantDates: resumeData.relevantDates
       })
       .from(candidates)
       .leftJoin(resumeData, eq(resumeData.candidateId, candidates.id))
@@ -333,8 +334,57 @@ export class DatabaseStorage implements IStorage {
     
     return result.map(row => ({
       ...row,
-      jobTitle: row.jobTitle || undefined
+      jobTitle: row.jobTitle || undefined,
+      yearsOfExperience: this.calculateYearsOfExperience(row.relevantDates)
     }));
+  }
+
+  private calculateYearsOfExperience(relevantDates: string[] | null): number | undefined {
+    if (!relevantDates || relevantDates.length === 0) {
+      return undefined;
+    }
+
+    let earliestStartDate: Date | null = null;
+
+    for (const dateRange of relevantDates) {
+      // Extract start date from various formats like:
+      // "March 2011 - Nov 2013", "Mar 2011", "2011-2013", "Aug 2022 - Till Date", etc.
+      const startDateMatch = dateRange.match(
+        /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})|(\d{4})/i
+      );
+      
+      if (startDateMatch) {
+        const year = parseInt(startDateMatch[1] || startDateMatch[2]);
+        const monthMatch = dateRange.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i);
+        
+        let month = 0; // Default to January if no month found
+        if (monthMatch) {
+          const monthName = monthMatch[1].toLowerCase();
+          const monthMap: { [key: string]: number } = {
+            'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+            'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+          };
+          month = monthMap[monthName.substring(0, 3)] ?? 0;
+        }
+        
+        const startDate = new Date(year, month, 1);
+        
+        if (!earliestStartDate || startDate < earliestStartDate) {
+          earliestStartDate = startDate;
+        }
+      }
+    }
+
+    if (!earliestStartDate) {
+      return undefined;
+    }
+
+    // Calculate years from earliest start date to now
+    const now = new Date();
+    const yearsDiff = now.getFullYear() - earliestStartDate.getFullYear();
+    const monthsDiff = now.getMonth() - earliestStartDate.getMonth();
+    
+    return monthsDiff < 0 ? yearsDiff - 1 : yearsDiff;
   }
 
   async getCandidate(id: number): Promise<Candidate | undefined> {

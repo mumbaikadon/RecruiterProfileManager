@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/tooltip";
 
 interface CandidateTableProps {
-  candidates: Array<Candidate & { jobTitle?: string }>;
+  candidates: Array<Candidate & { jobTitle?: string; yearsOfExperience?: number }>;
   isLoading?: boolean;
 }
 
@@ -126,6 +126,7 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
           <TableRow className="border-border hover:bg-transparent">
             <TableHead>Name</TableHead>
             <TableHead className="hidden lg:table-cell">Job Title</TableHead>
+            <TableHead className="hidden md:table-cell">Experience</TableHead>
             <TableHead className="hidden sm:table-cell">Date of Birth</TableHead>
             <TableHead className="hidden md:table-cell">Location</TableHead>
             <TableHead className="hidden md:table-cell">Contact</TableHead>
@@ -180,6 +181,13 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
               <TableCell className="hidden lg:table-cell">
                 <span className="text-sm text-muted-foreground">
                   {candidate.jobTitle || "Not specified"}
+                </span>
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
+                <span className="text-sm font-medium">
+                  {candidate.yearsOfExperience !== undefined 
+                    ? `${candidate.yearsOfExperience}+ years` 
+                    : "N/A"}
                 </span>
               </TableCell>
               <TableCell className="hidden sm:table-cell">

@@ -31,11 +31,13 @@ const CandidatesPage: React.FC = () => {
         const location = candidate.location.toLowerCase();
         const email = candidate.email.toLowerCase();
         const jobTitle = (candidate.jobTitle || '').toLowerCase();
+        const experience = candidate.yearsOfExperience?.toString() || '';
         
         if (!fullName.includes(searchLower) && 
             !location.includes(searchLower) && 
             !email.includes(searchLower) &&
-            !jobTitle.includes(searchLower)) {
+            !jobTitle.includes(searchLower) &&
+            !experience.includes(searchLower)) {
           return false;
         }
       }
@@ -74,7 +76,7 @@ const CandidatesPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-foreground">Candidates</h2>
-          <p className="mt-1 text-sm text-muted-foreground">View and manage all candidates</p>
+          <p className="mt-1 text-sm text-muted-foreground">View and manage all candidates with job titles and experience levels</p>
         </div>
       </div>
 
@@ -86,7 +88,7 @@ const CandidatesPage: React.FC = () => {
               <Input
                 value={searchTerm}
                 onChange={handleSearchChange}
-                placeholder="Search by name, location, email, or job title..."
+                placeholder="Search by name, location, email, job title, or experience..."
                 className="pl-8"
               />
             </div>
