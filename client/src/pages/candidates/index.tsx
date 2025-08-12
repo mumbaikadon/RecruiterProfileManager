@@ -19,11 +19,11 @@ const CandidatesPage: React.FC = () => {
   // Fetch all candidates
   const { data: candidates, isLoading } = useCandidates();
   
-  // Filter candidates based on search and filters
+  // Filter and sort candidates based on search and filters with priority
   const filteredCandidates = React.useMemo(() => {
     if (!candidates) return [];
     
-    return candidates.filter(candidate => {
+    let matchedCandidates = candidates.filter(candidate => {
       // Apply search filter with comma-separated terms (AND logic)
       if (searchTerm) {
         // Split search terms by comma and trim whitespace
@@ -110,6 +110,46 @@ const CandidatesPage: React.FC = () => {
       
       return true;
     });
+
+    // If there's a search term, sort by relevance (exact matches first, then broader matches)
+    if (searchTerm) {
+      const searchTerms = searchTerm.split(',').map(term => term.trim().toLowerCase()).filter(term => term.length > 0);
+      
+      matchedCandidates.sort((a, b) => {
+        const aJobTitle = (a.jobTitle || '').toLowerCase();
+        const bJobTitle = (b.jobTitle || '').toLowerCase();
+        
+        // Calculate priority scores for each candidate
+        let aScore = 0;
+        let bScore = 0;
+        
+        searchTerms.forEach(searchTerm => {
+          // Check if it's a tech skill search
+          const techSkills = ['java', 'python', '.net', 'node', 'nodejs', 'node js', 'react', 'angular', 'vue'];
+          
+          if (techSkills.includes(searchTerm)) {
+            // Higher score for exact tech matches in job title
+            if (aJobTitle.includes(searchTerm) || aJobTitle.includes(searchTerm + ' developer')) {
+              aScore += 10;
+            }
+            if (bJobTitle.includes(searchTerm) || bJobTitle.includes(searchTerm + ' developer')) {
+              bScore += 10;
+            }
+            
+            // Lower score for general engineering roles
+            const generalRoles = ['software engineer', 'full stack', 'backend', 'lead software'];
+            generalRoles.forEach(role => {
+              if (aJobTitle.includes(role)) aScore += 1;
+              if (bJobTitle.includes(role)) bScore += 1;
+            });
+          }
+        });
+        
+        return bScore - aScore; // Higher scores first
+      });
+    }
+    
+    return matchedCandidates;
   }, [candidates, searchTerm, filterType]);
   
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
