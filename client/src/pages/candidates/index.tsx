@@ -24,7 +24,7 @@ const CandidatesPage: React.FC = () => {
     if (!candidates) return [];
     
     return candidates.filter(candidate => {
-      // Apply search filter with comma-separated terms
+      // Apply search filter with comma-separated terms (AND logic)
       if (searchTerm) {
         // Split search terms by comma and trim whitespace
         const searchTerms = searchTerm.split(',').map(term => term.trim().toLowerCase()).filter(term => term.length > 0);
@@ -36,8 +36,8 @@ const CandidatesPage: React.FC = () => {
           const jobTitle = (candidate.jobTitle || '').toLowerCase();
           const experience = candidate.yearsOfExperience?.toString() || '';
           
-          // Check if ANY search term matches ANY field of this candidate
-          const candidateMatches = searchTerms.some(searchTerm => 
+          // Check if ALL search terms match somewhere in this candidate's data (AND logic)
+          const candidateMatches = searchTerms.every(searchTerm => 
             fullName.includes(searchTerm) || 
             location.includes(searchTerm) || 
             email.includes(searchTerm) ||
@@ -97,7 +97,7 @@ const CandidatesPage: React.FC = () => {
               <Input
                 value={searchTerm}
                 onChange={handleSearchChange}
-                placeholder="Search by name, location, email, job title, or experience (separate multiple terms with commas)..."
+                placeholder="Search for candidates matching ALL criteria (e.g., 'java, san jose' finds Java developers in San Jose)..."
                 className="pl-8"
               />
             </div>
