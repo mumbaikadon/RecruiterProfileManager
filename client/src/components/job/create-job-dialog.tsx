@@ -41,6 +41,8 @@ const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   jobId: z.string().min(3, "Job ID must be at least 3 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
+  client: z.string().optional(),
+  implOrPv: z.enum(["IMPL", "PV"]).optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   status: z.enum(["active", "reviewing", "closed"]).default("active"),
@@ -66,6 +68,8 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
       title: "",
       jobId: "",
       description: "",
+      client: "",
+      implOrPv: undefined,
       city: "",
       state: "",
       status: "active",
@@ -151,6 +155,47 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                       <FormControl>
                         <Input placeholder="e.g. JOB-2025-001" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="sm:col-span-3">
+                <FormField
+                  control={form.control}
+                  name="client"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Client</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Acme Corp" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="sm:col-span-3">
+                <FormField
+                  control={form.control}
+                  name="implOrPv"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>IMPL or PV</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="IMPL">IMPL</SelectItem>
+                          <SelectItem value="PV">PV</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

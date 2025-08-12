@@ -65,6 +65,8 @@ const JobTable: React.FC<JobTableProps> = ({
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="w-[120px]">Job ID</TableHead>
               <TableHead>Title</TableHead>
+              <TableHead className="hidden lg:table-cell">Client</TableHead>
+              <TableHead className="hidden lg:table-cell">IMPL/PV</TableHead>
               <TableHead className="hidden md:table-cell">Created</TableHead>
               <TableHead className="hidden lg:table-cell">Assigned To</TableHead>
               <TableHead className="hidden md:table-cell">Submissions</TableHead>
@@ -81,6 +83,12 @@ const JobTable: React.FC<JobTableProps> = ({
               >
                 <TableCell className="font-medium">{job.jobId}</TableCell>
                 <TableCell className="font-medium md:font-normal">{job.title}</TableCell>
+                <TableCell className="hidden lg:table-cell">
+                  {job.client || <span className="text-muted-foreground">-</span>}
+                </TableCell>
+                <TableCell className="hidden lg:table-cell">
+                  {job.implOrPv || <span className="text-muted-foreground">-</span>}
+                </TableCell>
                 <TableCell className="hidden md:table-cell">
                   {formatDate(job.createdAt)}
                 </TableCell>
