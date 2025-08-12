@@ -56,10 +56,36 @@ const CandidatesPage: React.FC = () => {
             // Check if this search term matches work authorization (with mapping)
             const workAuthMatch = workAuthMappings[searchTerm] === workAuth || workAuth.includes(searchTerm);
             
+            // Enhanced job title matching - include broader engineering roles for tech searches
+            const techSkillMappings = {
+              'java': ['software engineer', 'lead software engineer', 'full stack', 'backend developer', 'senior software'],
+              'python': ['software engineer', 'lead software engineer', 'full stack', 'backend developer', 'senior software'],
+              '.net': ['software engineer', 'lead software engineer', 'full stack', 'backend developer', 'senior software'],
+              'node': ['software engineer', 'lead software engineer', 'full stack', 'backend developer', 'senior software'],
+              'nodejs': ['software engineer', 'lead software engineer', 'full stack', 'backend developer', 'senior software'],
+              'node js': ['software engineer', 'lead software engineer', 'full stack', 'backend developer', 'senior software'],
+              'react': ['software engineer', 'lead software engineer', 'full stack', 'frontend developer', 'senior software'],
+              'angular': ['software engineer', 'lead software engineer', 'full stack', 'frontend developer', 'senior software'],
+              'vue': ['software engineer', 'lead software engineer', 'full stack', 'frontend developer', 'senior software'],
+              'backend': ['software engineer', 'lead software engineer', 'full stack', 'senior software'],
+              'frontend': ['software engineer', 'lead software engineer', 'full stack', 'senior software'],
+              'developer': ['software engineer', 'lead software engineer', 'senior software']
+            };
+            
+            // Check for direct job title match
+            let jobTitleMatch = jobTitle.includes(searchTerm);
+            
+            // If no direct match, check if this search term should include broader engineering roles
+            if (!jobTitleMatch && techSkillMappings[searchTerm]) {
+              jobTitleMatch = techSkillMappings[searchTerm].some(broadTitle => 
+                jobTitle.includes(broadTitle)
+              );
+            }
+            
             return fullName.includes(searchTerm) || 
                    location.includes(searchTerm) || 
                    email.includes(searchTerm) ||
-                   jobTitle.includes(searchTerm) ||
+                   jobTitleMatch ||
                    experience.includes(searchTerm) ||
                    workAuthMatch;
           });
@@ -116,7 +142,7 @@ const CandidatesPage: React.FC = () => {
               <Input
                 value={searchTerm}
                 onChange={handleSearchChange}
-                placeholder="Search by name, location, job title, experience, work auth (e.g., 'java, us' or 'green card, 10')..."
+                placeholder="Search by name, location, skills, experience, work auth (e.g., 'java, us' finds Java developers with US citizenship)..."
                 className="pl-8"
               />
             </div>
