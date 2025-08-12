@@ -64,3 +64,14 @@ export function isValidJson(str: string): boolean {
     return false;
   }
 }
+
+/**
+ * Remove surrounding quotes from a string value
+ * This fixes issues where JSON parsing leaves quotes around string values
+ */
+export function removeQuotes(value: string): string {
+  if (!value || typeof value !== 'string') return value;
+  
+  // Remove surrounding quotes (both single and double)
+  return value.replace(/^["']|["']$/g, '').trim();
+}

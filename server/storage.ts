@@ -332,8 +332,12 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(resumeData, eq(resumeData.candidateId, candidates.id))
       .orderBy(desc(candidates.createdAt));
     
+    // Import quote removal utility
+    const { removeQuotes } = await import("./utils");
+    
     return result.map(row => ({
       ...row,
+      location: removeQuotes(row.location), // Clean location data when retrieving candidates
       jobTitle: row.jobTitle || undefined,
       yearsOfExperience: this.calculateYearsOfExperience(row.relevantDates)
     }));

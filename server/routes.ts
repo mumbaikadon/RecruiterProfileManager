@@ -484,7 +484,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const candidate = await storage.createCandidate(validatedData);
+      // Import the removeQuotes utility
+      const { removeQuotes } = await import("./utils");
+      
+      // Clean the location data to remove quotes
+      const cleanedData = {
+        ...validatedData,
+        location: removeQuotes(validatedData.location)
+      };
+
+      const candidate = await storage.createCandidate(cleanedData);
 
       // Import the sanitization utility
       const { sanitizeHtml } = await import("./utils");
