@@ -37,15 +37,30 @@ const CandidatesPage: React.FC = () => {
           const experience = candidate.yearsOfExperience?.toString() || '';
           const workAuth = candidate.workAuthorization.toLowerCase();
           
+          // Enhanced work authorization matching - map different search terms to stored values
+          const workAuthMappings = {
+            'us': 'citizen',
+            'citizen': 'citizen',
+            'us citizen': 'citizen',
+            'ead': 'ead',
+            'green card': 'green-card',
+            'green': 'green-card',
+            'greencard': 'green-card',
+            'other': 'other'
+          };
+          
           // Check if ALL search terms match somewhere in this candidate's data (AND logic)
-          const candidateMatches = searchTerms.every(searchTerm => 
-            fullName.includes(searchTerm) || 
-            location.includes(searchTerm) || 
-            email.includes(searchTerm) ||
-            jobTitle.includes(searchTerm) ||
-            experience.includes(searchTerm) ||
-            workAuth.includes(searchTerm)
-          );
+          const candidateMatches = searchTerms.every(searchTerm => {
+            // Check if this search term matches work authorization (with mapping)
+            const workAuthMatch = workAuthMappings[searchTerm] === workAuth || workAuth.includes(searchTerm);
+            
+            return fullName.includes(searchTerm) || 
+                   location.includes(searchTerm) || 
+                   email.includes(searchTerm) ||
+                   jobTitle.includes(searchTerm) ||
+                   experience.includes(searchTerm) ||
+                   workAuthMatch;
+          });
           
           if (!candidateMatches) {
             return false;
@@ -99,7 +114,7 @@ const CandidatesPage: React.FC = () => {
               <Input
                 value={searchTerm}
                 onChange={handleSearchChange}
-                placeholder="Search by name, location, job title, experience, work authorization (e.g., 'java, san jose' or 'green card')..."
+                placeholder="Search by name, location, job title, experience, work auth (e.g., 'java, us' or 'green card, 10')..."
                 className="pl-8"
               />
             </div>
