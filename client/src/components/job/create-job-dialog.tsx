@@ -42,7 +42,8 @@ const formSchema = z.object({
   jobId: z.string().min(3, "Job ID must be at least 3 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
   client: z.string().optional(),
-  implOrPv: z.enum(["IMPL", "PV"]).optional(),
+  implOrPv: z.string().optional(),
+  implOrPvOther: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   status: z.enum(["active", "reviewing", "closed"]).default("active"),
@@ -70,6 +71,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
       description: "",
       client: "",
       implOrPv: undefined,
+      implOrPvOther: "",
       city: "",
       state: "",
       status: "active",
@@ -79,12 +81,18 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
   });
 
   const onSubmit = (values: FormValues) => {
+    // Handle "Other" option for implOrPv
+    const finalImplOrPv = values.implOrPv === "Other" ? values.implOrPvOther : values.implOrPv;
+    
     // Sanitize description field to remove HTML tags
     const sanitizedValues = {
       ...values,
-      description: sanitizeHtml(values.description)
-      // No need to type cast status anymore since the schema ensures it's the correct type
+      description: sanitizeHtml(values.description),
+      implOrPv: finalImplOrPv
     };
+    
+    // Remove the helper field before sending to API
+    delete (sanitizedValues as any).implOrPvOther;
     
     createJob(sanitizedValues, {
       onSuccess: () => {
@@ -104,6 +112,9 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
       }
     });
   };
+  
+  // Watch for implOrPv changes to show/hide the "Other" input
+  const watchImplOrPv = form.watch("implOrPv");
   
   const handleMultiSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const options = Array.from(e.target.selectedOptions).map(option => parseInt(option.value));
@@ -192,8 +203,11 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="IMPL">IMPL</SelectItem>
-                          <SelectItem value="PV">PV</SelectItem>
+                          <SelectItem value="Kforce">Kforce</SelectItem>
+                          <SelectItem value="Randstand">Randstand</SelectItem>
+                          <SelectItem value="Collebra">Collebra</SelectItem>
+                          <SelectItem value="State Client">State Client</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -201,6 +215,24 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                   )}
                 />
               </div>
+
+              {watchImplOrPv === "Other" && (
+                <div className="sm:col-span-3">
+                  <FormField
+                    control={form.control}
+                    name="implOrPvOther"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Specify Other</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter custom value" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
 
               <div className="sm:col-span-3">
                 <FormField

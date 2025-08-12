@@ -20,7 +20,7 @@ export const jobs = pgTable("jobs", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   client: text("client"), // Client name
-  implOrPv: text("impl_or_pv", { enum: ["IMPL", "PV"] }), // Implementation or Professional Services
+  implOrPv: text("impl_or_pv"), // Implementation or Professional Services
   city: text("city"), // City for job location
   state: text("state"), // State for job location
   jobType: text("job_type", { enum: ["onsite", "remote", "hybrid"] }), // Job type (onsite, remote, hybrid)
