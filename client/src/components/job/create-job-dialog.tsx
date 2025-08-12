@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRecruiters } from "@/hooks/use-recruiters";
 import { useCreateJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
-import { sanitizeHtml } from "@/lib/utils";
+import { sanitizeHtml, cn } from "@/lib/utils";
 
 import {
   Dialog,
@@ -32,10 +32,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus } from "lucide-react";
+import { Plus, Check, ChevronsUpDown } from "lucide-react";
 
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
@@ -43,7 +56,6 @@ const formSchema = z.object({
   description: z.string().min(20, "Description must be at least 20 characters"),
   client: z.string().optional(),
   implOrPv: z.string().optional(),
-  implOrPvOther: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   status: z.enum(["active", "reviewing", "closed"]).default("active"),
@@ -71,7 +83,6 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
       description: "",
       client: "",
       implOrPv: undefined,
-      implOrPvOther: "",
       city: "",
       state: "",
       status: "active",
@@ -81,18 +92,11 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
   });
 
   const onSubmit = (values: FormValues) => {
-    // Handle "Other" option for implOrPv
-    const finalImplOrPv = values.implOrPv === "Other" ? values.implOrPvOther : values.implOrPv;
-    
     // Sanitize description field to remove HTML tags
     const sanitizedValues = {
       ...values,
-      description: sanitizeHtml(values.description),
-      implOrPv: finalImplOrPv
+      description: sanitizeHtml(values.description)
     };
-    
-    // Remove the helper field before sending to API
-    delete (sanitizedValues as any).implOrPvOther;
     
     createJob(sanitizedValues, {
       onSuccess: () => {
@@ -112,9 +116,6 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
       }
     });
   };
-  
-  // Watch for implOrPv changes to show/hide the "Other" input
-  const watchImplOrPv = form.watch("implOrPv");
   
   const handleMultiSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const options = Array.from(e.target.selectedOptions).map(option => parseInt(option.value));
@@ -192,47 +193,68 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                 <FormField
                   control={form.control}
                   name="implOrPv"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>IMPL or PV</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Kforce">Kforce</SelectItem>
-                          <SelectItem value="Randstand">Randstand</SelectItem>
-                          <SelectItem value="Collebra">Collebra</SelectItem>
-                          <SelectItem value="State Client">State Client</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {watchImplOrPv === "Other" && (
-                <div className="sm:col-span-3">
-                  <FormField
-                    control={form.control}
-                    name="implOrPvOther"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Specify Other</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter custom value" {...field} />
-                        </FormControl>
+                  render={({ field }) => {
+                    const [open, setOpen] = React.useState(false);
+                    const options = ["Kforce", "Randstand", "Collebra", "State Client"];
+                    
+                    return (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>IMPL or PV</FormLabel>
+                        <Popover open={open} onOpenChange={setOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={open}
+                                className="w-full justify-between"
+                              >
+                                {field.value || "Select or type..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0">
+                            <Command>
+                              <CommandInput 
+                                placeholder="Search or type custom value..." 
+                                value={field.value || ""}
+                                onValueChange={(value) => field.onChange(value)}
+                              />
+                              <CommandEmpty>
+                                Press Enter to use custom value
+                              </CommandEmpty>
+                              <CommandGroup>
+                                <CommandList>
+                                  {options.map((option) => (
+                                    <CommandItem
+                                      key={option}
+                                      value={option}
+                                      onSelect={(currentValue) => {
+                                        field.onChange(currentValue);
+                                        setOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === option ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {option}
+                                    </CommandItem>
+                                  ))}
+                                </CommandList>
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
-                    )}
-                  />
-                </div>
-              )}
+                    );
+                  }}
+                />
+              </div>
 
               <div className="sm:col-span-3">
                 <FormField
