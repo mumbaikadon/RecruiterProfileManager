@@ -344,47 +344,28 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
 
-    let earliestStartDate: Date | null = null;
+    let earliestYear: number | null = null;
 
     for (const dateRange of relevantDates) {
-      // Extract start date from various formats like:
-      // "March 2011 - Nov 2013", "Mar 2011", "2011-2013", "Aug 2022 - Till Date", etc.
-      const startDateMatch = dateRange.match(
-        /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})|(\d{4})/i
-      );
+      // Extract year from any format: "March 2011", "2011-2013", "Mar 2011 - Nov 2013", etc.
+      const yearMatch = dateRange.match(/(\d{4})/);
       
-      if (startDateMatch) {
-        const year = parseInt(startDateMatch[1] || startDateMatch[2]);
-        const monthMatch = dateRange.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*/i);
+      if (yearMatch) {
+        const year = parseInt(yearMatch[1]);
         
-        let month = 0; // Default to January if no month found
-        if (monthMatch) {
-          const monthName = monthMatch[1].toLowerCase();
-          const monthMap: { [key: string]: number } = {
-            'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
-            'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
-          };
-          month = monthMap[monthName.substring(0, 3)] ?? 0;
-        }
-        
-        const startDate = new Date(year, month, 1);
-        
-        if (!earliestStartDate || startDate < earliestStartDate) {
-          earliestStartDate = startDate;
+        if (!earliestYear || year < earliestYear) {
+          earliestYear = year;
         }
       }
     }
 
-    if (!earliestStartDate) {
+    if (!earliestYear) {
       return undefined;
     }
 
-    // Calculate years from earliest start date to now
-    const now = new Date();
-    const yearsDiff = now.getFullYear() - earliestStartDate.getFullYear();
-    const monthsDiff = now.getMonth() - earliestStartDate.getMonth();
-    
-    return monthsDiff < 0 ? yearsDiff - 1 : yearsDiff;
+    // Simple calculation: current year minus start year
+    const currentYear = new Date().getFullYear();
+    return currentYear - earliestYear;
   }
 
   async getCandidate(id: number): Promise<Candidate | undefined> {
