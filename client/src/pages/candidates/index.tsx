@@ -40,9 +40,11 @@ const CandidatesPage: React.FC = () => {
           // Enhanced work authorization matching - map different search terms to stored values
           const workAuthMappings = {
             'us': 'citizen',
+            'usc': 'citizen',
             'citizen': 'citizen',
             'us citizen': 'citizen',
             'ead': 'ead',
+            'gc': 'green-card',
             'green card': 'green-card',
             'green': 'green-card',
             'greencard': 'green-card',
