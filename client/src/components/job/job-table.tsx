@@ -1,6 +1,6 @@
 import React from "react";
 import { useLocation } from "wouter";
-import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, MapPin, DollarSign, Calendar, Users } from "lucide-react";
 
 import {
   Table,
@@ -10,6 +10,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Job } from "@shared/schema";
 import { formatDate } from "@/lib/date-utils";
@@ -33,6 +39,58 @@ const JobTable: React.FC<JobTableProps> = ({
   const handleRowClick = (jobId: number) => {
     setLocation(`/jobs/${jobId}`);
   };
+
+  // Job details tooltip content
+  const JobTooltip: React.FC<{ job: Job }> = ({ job }) => (
+    <div className="space-y-3 p-1 max-w-sm">
+      <div>
+        <h4 className="font-semibold text-sm mb-1">{job.title}</h4>
+        <p className="text-xs text-muted-foreground">ID: {job.jobId}</p>
+      </div>
+      
+      {(job.city || job.state) && (
+        <div className="flex items-center gap-2 text-xs">
+          <MapPin className="h-3 w-3 text-muted-foreground" />
+          <span>{[job.city, job.state].filter(Boolean).join(", ")}</span>
+        </div>
+      )}
+      
+      {job.rate && (
+        <div className="flex items-center gap-2 text-xs">
+          <DollarSign className="h-3 w-3 text-muted-foreground" />
+          <span>{job.rate}</span>
+        </div>
+      )}
+      
+      {job.interviewType && (
+        <div className="flex items-center gap-2 text-xs">
+          <Users className="h-3 w-3 text-muted-foreground" />
+          <span>{job.interviewType} interview</span>
+        </div>
+      )}
+      
+      {job.requiredSkills && job.requiredSkills.length > 0 && (
+        <div className="text-xs">
+          <p className="font-medium mb-1">Skills:</p>
+          <div className="flex flex-wrap gap-1">
+            {job.requiredSkills.slice(0, 5).map((skill, index) => (
+              <span key={index} className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-xs">
+                {skill}
+              </span>
+            ))}
+            {job.requiredSkills.length > 5 && (
+              <span className="text-muted-foreground">+{job.requiredSkills.length - 5} more</span>
+            )}
+          </div>
+        </div>
+      )}
+      
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Calendar className="h-3 w-3" />
+        <span>Created {formatDate(job.createdAt)}</span>
+      </div>
+    </div>
+  );
 
   // Status badge color mapping
   const statusColors: Record<string, string> = {
@@ -58,85 +116,92 @@ const JobTable: React.FC<JobTableProps> = ({
   }
 
   return (
-    <div>
-      <div className="table-container overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="w-[120px]">Job ID</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead className="hidden lg:table-cell">Client</TableHead>
-              <TableHead className="hidden lg:table-cell">IMPL/PV</TableHead>
-              <TableHead className="hidden md:table-cell">Created</TableHead>
-              <TableHead className="hidden lg:table-cell">Assigned To</TableHead>
-              <TableHead className="hidden md:table-cell">Submissions</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {jobs.map((job) => (
-              <TableRow 
-                key={job.id} 
-                className="cursor-pointer border-border transition-colors duration-200 hover:bg-accent/5"
-                onClick={() => handleRowClick(job.id)}
-              >
-                <TableCell className="font-medium">{job.jobId}</TableCell>
-                <TableCell className="font-medium md:font-normal">{job.title}</TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  {job.client || <span className="text-muted-foreground">-</span>}
-                </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  {job.implOrPv || <span className="text-muted-foreground">-</span>}
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {formatDate(job.createdAt)}
-                </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  {assignedRecruiters[job.id] && assignedRecruiters[job.id].length > 0 ? (
-                    <div className="flex -space-x-2 overflow-hidden">
-                      {assignedRecruiters[job.id].slice(0, 3).map((recruiter) => (
-                        <div 
-                          key={recruiter.id} 
-                          className="inline-block h-6 w-6 rounded-full ring-2 ring-background bg-primary/10 flex items-center justify-center text-xs font-bold text-primary"
-                          title={recruiter.name}
-                        >
-                          {recruiter.name.charAt(0)}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">None</span>
-                  )}
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {submissionCounts[job.id] || 0}
-                </TableCell>
-                <TableCell>
-                  <span className={cn(
-                    "px-2 inline-flex text-xs leading-5 font-semibold rounded-full", 
-                    statusColors[job.status] || "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
-                  )}>
-                    {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-primary hover:text-primary/80 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRowClick(job.id);
-                    }}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">View</span>
-                  </Button>
-                </TableCell>
+    <TooltipProvider>
+      <div>
+        <div className="table-container overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="w-[120px]">Job ID</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead className="hidden lg:table-cell">Client</TableHead>
+                <TableHead className="hidden lg:table-cell">IMPL/PV</TableHead>
+                <TableHead className="hidden md:table-cell">Created</TableHead>
+                <TableHead className="hidden lg:table-cell">Assigned To</TableHead>
+                <TableHead className="hidden md:table-cell">Submissions</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
+            </TableHeader>
+            <TableBody>
+              {jobs.map((job) => (
+                <Tooltip key={job.id} delayDuration={300}>
+                  <TooltipTrigger asChild>
+                    <TableRow 
+                      className="cursor-pointer border-border transition-colors duration-200 hover:bg-accent/5"
+                      onClick={() => handleRowClick(job.id)}
+                    >
+                      <TableCell className="font-medium">{job.jobId}</TableCell>
+                      <TableCell className="font-medium md:font-normal">{job.title}</TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {job.client || <span className="text-muted-foreground">-</span>}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {job.implOrPv || <span className="text-muted-foreground">-</span>}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {formatDate(job.createdAt)}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {assignedRecruiters[job.id] && assignedRecruiters[job.id].length > 0 ? (
+                          <div className="flex -space-x-2 overflow-hidden">
+                            {assignedRecruiters[job.id].slice(0, 3).map((recruiter) => (
+                              <div 
+                                key={recruiter.id} 
+                                className="inline-block h-6 w-6 rounded-full ring-2 ring-background bg-primary/10 flex items-center justify-center text-xs font-bold text-primary"
+                                title={recruiter.name}
+                              >
+                                {recruiter.name.charAt(0)}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">None</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {submissionCounts[job.id] || 0}
+                      </TableCell>
+                      <TableCell>
+                        <span className={cn(
+                          "px-2 inline-flex text-xs leading-5 font-semibold rounded-full", 
+                          statusColors[job.status] || "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                        )}>
+                          {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-primary hover:text-primary/80 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRowClick(job.id);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          <span className="hidden sm:inline">View</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="z-50">
+                    <JobTooltip job={job} />
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </TableBody>
         </Table>
       </div>
 
@@ -169,7 +234,8 @@ const JobTable: React.FC<JobTableProps> = ({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 
