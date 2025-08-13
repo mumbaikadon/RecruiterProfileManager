@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export interface ParsedJobData {
   title?: string;
@@ -8,129 +10,65 @@ export interface ParsedJobData {
   city?: string;
   state?: string;
   rate?: string;
-  interviewType?: "phone" | "video" | "onsite" | "hybrid";
+  interviewType?: string;
   visaRestrictions?: string;
   requiredSkills?: string[];
   description?: string;
-  duration?: string;
-  jobType?: "onsite" | "remote" | "hybrid";
 }
 
-/**
- * Parse job requirements text using OpenAI to extract structured data
- * @param requirementText Raw job requirement text to parse
- * @returns Parsed job data structure
- */
 export async function parseJobRequirements(requirementText: string): Promise<ParsedJobData> {
-  if (!requirementText || requirementText.trim().length === 0) {
-    throw new Error("Requirement text cannot be empty");
-  }
-
   try {
-    console.log("Starting job requirement parsing with OpenAI...");
-    console.log(`Requirement text length: ${requirementText.length} characters`);
+    const prompt = `
+Parse the following job requirements and extract structured information. Return a JSON object with these fields:
+- title: Job title/position
+- client: Company/client name
+- city: City location
+- state: State location
+- rate: Pay rate (e.g., "$55/hr", "$80k-100k/year")
+- interviewType: Type of interview (phone, video, onsite, hybrid)
+- visaRestrictions: Visa/work authorization requirements
+- requiredSkills: Array of required technical skills
+- description: Clean job description
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+Job Requirements Text:
+${requirementText}
+
+Return only valid JSON without any markdown formatting or explanations.
+`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: 
-            "You are an expert job posting parser specializing in extracting structured information from job requirements. " +
-            "Your task is to extract REAL data from the job posting - never generate fake or generic data. " +
-            "Parse the text carefully and extract job details like position title, location, rate, visa restrictions, " +
-            "interview type, required skills, and job description. Be precise and only extract information actually present."
+          content: "You are a job requirements parser. Extract structured information from job postings and return valid JSON only."
         },
         {
           role: "user",
-          content: `
-            Parse this job requirement text and extract the following information in JSON format:
-            
-            {
-              "title": "Job title/position name",
-              "client": "Client/company name",
-              "city": "City name",
-              "state": "State (use 2-letter code like FL, CA, or 'Remote')",
-              "rate": "Pay rate (e.g., '$55/hr C2C', '$75-85/hour')",
-              "interviewType": "phone|video|onsite|hybrid",
-              "visaRestrictions": "Visa/sponsorship restrictions",
-              "requiredSkills": ["skill1", "skill2", "skill3"],
-              "description": "Detailed job description",
-              "duration": "Contract duration if mentioned",
-              "jobType": "onsite|remote|hybrid"
-            }
-            
-            IMPORTANT PARSING RULES:
-            1. Extract only information explicitly mentioned in the text
-            2. For rates, capture the exact format used (e.g., "$55/hr C2C", "$75hr - $85/hour max")
-            3. For locations, if city and state are mentioned separately, extract both
-            4. For skills, extract from sections like "REQUIRED SKILLS" or "Requirements"
-            5. For visa restrictions, look for phrases like "No Sponsorship", "USC/GC only", etc.
-            6. For interview type, look for "Video", "Phone", "Onsite" mentions
-            7. If information is not present, omit the field from the JSON
-            8. For state, use standard 2-letter codes or "Remote"
-            
-            Job Requirement Text:
-            ${requirementText}
-          `
+          content: prompt
         }
       ],
-      response_format: { type: "json_object" }
+      temperature: 0.1,
+      max_tokens: 1000,
     });
 
-    const result = JSON.parse(response.choices[0].message.content || "{}");
-    
-    // Validate and clean the parsed data
-    const parsedData: ParsedJobData = {};
-    
-    if (result.title && typeof result.title === 'string') {
-      parsedData.title = result.title.trim();
-    }
-    
-    if (result.client && typeof result.client === 'string') {
-      parsedData.client = result.client.trim();
-    }
-    
-    if (result.city && typeof result.city === 'string') {
-      parsedData.city = result.city.trim();
-    }
-    
-    if (result.state && typeof result.state === 'string') {
-      parsedData.state = result.state.trim();
-    }
-    
-    if (result.rate && typeof result.rate === 'string') {
-      parsedData.rate = result.rate.trim();
-    }
-    
-    if (result.interviewType && ["phone", "video", "onsite", "hybrid"].includes(result.interviewType)) {
-      parsedData.interviewType = result.interviewType;
-    }
-    
-    if (result.visaRestrictions && typeof result.visaRestrictions === 'string') {
-      parsedData.visaRestrictions = result.visaRestrictions.trim();
-    }
-    
-    if (result.requiredSkills && Array.isArray(result.requiredSkills)) {
-      parsedData.requiredSkills = result.requiredSkills
-        .filter((skill: any) => typeof skill === 'string' && skill.trim().length > 0)
-        .map((skill: any) => skill.trim());
-    }
-    
-    if (result.description && typeof result.description === 'string') {
-      parsedData.description = result.description.trim();
-    }
-    
-    if (result.jobType && ["onsite", "remote", "hybrid"].includes(result.jobType)) {
-      parsedData.jobType = result.jobType;
+    const responseContent = completion.choices[0]?.message?.content;
+    if (!responseContent) {
+      throw new Error('No response from OpenAI');
     }
 
-    console.log("Job parsing completed successfully");
-    console.log("Parsed data:", JSON.stringify(parsedData, null, 2));
+    // Parse the JSON response
+    const parsedData = JSON.parse(responseContent);
     
+    // Ensure requiredSkills is an array
+    if (parsedData.requiredSkills && !Array.isArray(parsedData.requiredSkills)) {
+      parsedData.requiredSkills = [parsedData.requiredSkills];
+    }
+
     return parsedData;
   } catch (error) {
-    console.error('Job requirement parsing error:', error);
-    throw new Error('Failed to parse job requirements');
+    console.error('Error parsing job requirements:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    throw new Error(`Failed to parse job requirements: ${errorMessage}`);
   }
 }

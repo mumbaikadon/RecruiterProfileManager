@@ -198,6 +198,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Job requirements parser endpoint
+  app.post("/api/jobs/parse-requirements", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { requirementText } = req.body;
+      
+      if (!requirementText || typeof requirementText !== "string") {
+        return res.status(400).json({ message: "Requirement text is required" });
+      }
+
+      const parsedData = await parseJobRequirements(requirementText);
+      res.json(parsedData);
+    } catch (error) {
+      console.error("Error parsing job requirements:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   app.put("/api/jobs/:id/status", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
@@ -2387,41 +2404,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(application);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
-    }
-  });
-
-  // Job requirements parsing endpoint
-  app.post("/api/parse-job-requirements", requireAuth, async (req: Request, res: Response) => {
-    try {
-      console.log("Received job requirements parsing request");
-      
-      const { requirementsText } = req.body;
-      
-      if (!requirementsText || typeof requirementsText !== 'string') {
-        return res.status(400).json({ 
-          message: "Requirements text is required" 
-        });
-      }
-
-      if (requirementsText.trim().length < 10) {
-        return res.status(400).json({ 
-          message: "Requirements text is too short for meaningful parsing" 
-        });
-      }
-
-      // Import the parser function
-      const { parseJobRequirementsWithAI } = await import('./jobRequirementsParser.js');
-      
-      const result = await parseJobRequirementsWithAI(requirementsText);
-      
-      console.log("Job requirements parsing completed successfully");
-      
-      res.json(result);
-    } catch (error) {
-      console.error("Error in job requirements parsing:", error);
-      res.status(500).json({ 
-        message: error instanceof Error ? error.message : "Failed to parse job requirements" 
-      });
     }
   });
 

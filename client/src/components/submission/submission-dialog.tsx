@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import SimpleCandidateForm, { SimpleCandidateFormValues } from "@/components/candidate/simple-candidate-form";
+import CandidateForm, { CandidateFormValues } from "@/components/candidate/candidate-form";
 import CandidateValidationDialog from "@/components/candidate/candidate-validation-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,22 +122,24 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
     }
   };
 
-  const handleSubmit = async (values: SimpleCandidateFormValues & { 
-    resumeFile?: File;
+  const handleSubmit = async (values: CandidateFormValues & { 
+    resumeData?: any;
+    matchResults?: any;
   }) => {
     try {
       setSubmissionError(null);
       
-      // Handle resume file upload if provided
-      let resumeData = {};
-      if (values.resumeFile) {
-        // For now, just store filename and size info (no AI processing)
-        resumeData = {
-          fileName: values.resumeFile.name,
-          fileSize: values.resumeFile.size,
-          fileType: values.resumeFile.type,
-          uploadedAt: new Date().toISOString(),
-        };
+      // First create candidate with resumeData
+      // Check if resume data is too large (greater than 40MB)
+      const resumeDataSize = JSON.stringify(values.resumeData || {}).length;
+      if (resumeDataSize > 40 * 1024 * 1024) {
+        setSubmissionError("Resume file is too large. Please use a smaller file (under 40MB).");
+        toast({
+          title: "File too large",
+          description: "Your resume file exceeds the maximum size limit. Please use a smaller file.",
+          variant: "destructive",
+        });
+        return;
       }
       
       const candidateResponse = await fetch("/api/candidates", {
@@ -149,7 +151,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           ...values,
           createdBy: recruiterId,
           jobId: jobId, // Pass jobId to check for candidate duplication within the same job
-          resumeData: resumeData,
+          resumeData: values.resumeData,
         }),
       });
       
@@ -238,9 +240,9 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           };
           
           const newData = {
-            clientNames: [], // No AI parsing in simplified form
-            jobTitles: [], // No AI parsing in simplified form
-            relevantDates: [] // No AI parsing in simplified form
+            clientNames: values.resumeData?.clientNames || [],
+            jobTitles: values.resumeData?.jobTitles || [],
+            relevantDates: values.resumeData?.relevantDates || []
           };
           
           // Log validation data for debugging
@@ -253,7 +255,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           setValidationData({
             candidateId: data.candidateId,
             candidateName,
-            resumeFileName: (resumeData as any).fileName || "Resume",
+            resumeFileName: values.resumeData?.fileName || "Resume",
             existingResumeData: existingData,
             newResumeData: newData,
             // Add any suspicious flags if they exist
@@ -343,8 +345,8 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           relevantDates: Array.isArray(existingData.relevantDates) ? existingData.relevantDates : []
         };
         
-        // Use form resume data if server didn't provide new resume data (simplified form has no resumeData)
-        const sourceNewData = data.newResumeData || {};
+        // Use form resume data if server didn't provide new resume data
+        const sourceNewData = data.newResumeData || values.resumeData || {};
         
         // Create a safe version of new data with arrays
         const safeNewData = {
@@ -373,7 +375,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         setValidationData({
           candidateId: data.candidateId,
           candidateName,
-          resumeFileName: (resumeData as any).fileName || "Resume",
+          resumeFileName: values.resumeData?.fileName || "Resume",
           existingResumeData: safeExistingData,
           newResumeData: safeNewData,
           // Include suspicious flags if they exist in the validation data
@@ -412,7 +414,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         recruiterId,
         status: "New",
         agreedRate: values.agreedRate,
-        matchScore: null, // No AI matching for simplified form
+        matchScore: values.matchResults?.score || null,
         notes: "",
       }, {
         onSuccess: () => {
@@ -497,9 +499,10 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             </Card>
           )}
 
-          <SimpleCandidateForm
+          <CandidateForm
             jobId={jobId}
             jobTitle={jobTitle}
+            jobDescription={sanitizeHtml(jobDescription)}
             onSubmit={handleSubmit}
             isPending={isPending || isValidating}
           />
