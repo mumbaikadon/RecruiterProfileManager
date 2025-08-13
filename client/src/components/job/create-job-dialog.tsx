@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRecruiters } from "@/hooks/use-recruiters";
 import { useCreateJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
-import { useParseJobRequirements } from "@/hooks/use-job-parser";
+import { useJobParser } from "@/hooks/use-job-parser";
 import { sanitizeHtml, cn } from "@/lib/utils";
 
 import {
@@ -80,7 +80,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
   const [requirementText, setRequirementText] = React.useState("");
   const { data: recruiters } = useRecruiters();
   const { mutate: createJob, isPending } = useCreateJob();
-  const { mutate: parseRequirements, isPending: isParsing } = useParseJobRequirements();
+  const { parseRequirements, isParsing } = useJobParser();
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
