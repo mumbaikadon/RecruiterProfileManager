@@ -203,19 +203,24 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
         <div className="flex-1 overflow-y-auto px-2 py-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Smart Requirements Parser Section */}
+            {/* Requirements Parser Section */}
             <div className="bg-gray-50 p-4 rounded-lg border">
               <h3 className="text-lg font-medium text-gray-900 mb-3">
-                Smart Requirements Parser
+                Requirements Parser
               </h3>
               <p className="text-sm text-gray-600 mb-4">
-                Paste your job requirements below and let AI automatically fill the form fields
+                Paste your job requirements below and automatically extract key information to fill the form fields
               </p>
               <div className="space-y-3">
                 <Textarea
                   value={requirementText}
                   onChange={(e) => setRequirementText(e.target.value)}
-                  placeholder="Paste your job requirements here (e.g., POSITION, LOCATION, RATE, VISA RESTRICTIONS, REQUIRED SKILLS, etc.)"
+                  placeholder="Paste your job requirements here using labels like:
+Position: Senior Developer
+Client: ABC Company  
+Location: New York, NY
+Rate: $75/hr
+Skills: React, Node.js, TypeScript"
                   rows={6}
                   className="w-full"
                 />
