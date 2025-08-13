@@ -54,7 +54,7 @@ import { Plus, Check, ChevronsUpDown, X } from "lucide-react";
 
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
-  jobId: z.string().min(3, "Job ID must be at least 3 characters"),
+  jobId: z.string().optional(), // Auto-generated on backend if empty
   description: z.string().min(20, "Description must be at least 20 characters"),
   client: z.string().optional(),
   implOrPv: z.string().optional(),
@@ -261,12 +261,11 @@ Skills: React, Node.js, TypeScript"
                   name="jobId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Job ID (Auto-generated)</FormLabel>
+                      <FormLabel>Job ID <span className="text-sm font-normal text-gray-500">(Optional - Auto-generated)</span></FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Auto-generated (e.g. JOB-01/13-001)" 
+                          placeholder="Leave empty to auto-generate (e.g. JOB-01/13-001)" 
                           {...field} 
-                          className="text-gray-500"
                         />
                       </FormControl>
                       <FormMessage />
