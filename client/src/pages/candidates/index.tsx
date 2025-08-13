@@ -69,7 +69,7 @@ const CandidatesPage: React.FC = () => {
           // Check if ALL search terms match somewhere in this candidate's data (AND logic)
           const candidateMatches = searchTerms.every(searchTerm => {
             // Check if this search term matches work authorization (with mapping)
-            const workAuthMatch = (workAuthMappings as any)[searchTerm] === workAuth || workAuth.includes(searchTerm);
+            const workAuthMatch = workAuthMappings[searchTerm] === workAuth || workAuth.includes(searchTerm);
             
             // Enhanced location matching with state abbreviation support
             let locationMatch = location.includes(searchTerm);
@@ -77,17 +77,13 @@ const CandidatesPage: React.FC = () => {
             // If no direct location match, check if search term is a state abbreviation
             if (!locationMatch) {
               // Check if search term is a 2-letter state abbreviation
-              if (searchTerm.length === 2 && (stateAbbreviationMap as any)[searchTerm]) {
-                // Check if location contains the abbreviation in uppercase (e.g., "Denver, CO")
-                const upperSearchTerm = searchTerm.toUpperCase();
-                locationMatch = location.includes(`, ${upperSearchTerm}`) || 
-                              location.endsWith(` ${upperSearchTerm}`) ||
-                              location.includes(`, ${searchTerm}`) || 
-                              location.endsWith(` ${searchTerm}`);
+              if (searchTerm.length === 2 && stateAbbreviationMap[searchTerm]) {
+                // Check if location contains the abbreviation (e.g., "Denver, CO")
+                locationMatch = location.includes(`, ${searchTerm}`) || location.endsWith(` ${searchTerm}`);
                 
                 // Also check if location contains the full state name
                 if (!locationMatch) {
-                  const fullStateName = (stateAbbreviationMap as any)[searchTerm];
+                  const fullStateName = stateAbbreviationMap[searchTerm];
                   locationMatch = location.includes(fullStateName);
                 }
               }
@@ -95,14 +91,12 @@ const CandidatesPage: React.FC = () => {
               else {
                 // Find abbreviation for the full state name
                 const stateAbbr = Object.keys(stateAbbreviationMap).find(
-                  abbr => (stateAbbreviationMap as any)[abbr] === searchTerm
+                  abbr => stateAbbreviationMap[abbr] === searchTerm
                 );
                 if (stateAbbr) {
-                  // Check if location contains the abbreviation in both cases
+                  // Check if location contains the abbreviation
                   locationMatch = location.includes(`, ${stateAbbr.toUpperCase()}`) || 
-                                location.endsWith(` ${stateAbbr.toUpperCase()}`) ||
-                                location.includes(`, ${stateAbbr}`) || 
-                                location.endsWith(` ${stateAbbr}`);
+                                location.endsWith(` ${stateAbbr.toUpperCase()}`);
                 }
               }
             }
@@ -127,8 +121,8 @@ const CandidatesPage: React.FC = () => {
             let jobTitleMatch = jobTitle.includes(searchTerm);
             
             // If no direct match, check if this search term should include broader engineering roles
-            if (!jobTitleMatch && (techSkillMappings as any)[searchTerm]) {
-              jobTitleMatch = (techSkillMappings as any)[searchTerm].some((broadTitle: string) => 
+            if (!jobTitleMatch && techSkillMappings[searchTerm]) {
+              jobTitleMatch = techSkillMappings[searchTerm].some(broadTitle => 
                 jobTitle.includes(broadTitle)
               );
             }
