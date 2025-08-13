@@ -46,6 +46,7 @@ import SubmissionTable from "@/components/submission/submission-table";
 import SubmissionDialog from "@/components/submission/submission-dialog";
 import StatusBadge from "@/components/submission/status-badge";
 import JobDescriptionEditDialog from "@/components/job/job-description-edit-dialog";
+import EditJobDialog from "@/components/job/edit-job-dialog";
 
 const JobDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -55,6 +56,7 @@ const JobDetailPage: React.FC = () => {
   
   const [isSubmissionDialogOpen, setIsSubmissionDialogOpen] = useState(false);
   const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
+  const [isEditJobDialogOpen, setIsEditJobDialogOpen] = useState(false);
   const [selectedRecruiters, setSelectedRecruiters] = useState<number[]>([]);
   
   // Fetch job data
@@ -391,7 +393,7 @@ const JobDetailPage: React.FC = () => {
             <TabsContent value="description" className="mt-4">
               <Card>
                 <CardHeader className="pb-0 pt-6">
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-2">
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -400,6 +402,15 @@ const JobDetailPage: React.FC = () => {
                     >
                       <Pencil className="h-4 w-4" />
                       Edit Description
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setIsEditJobDialogOpen(true)}
+                      className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Edit Job
                     </Button>
                   </div>
                 </CardHeader>
@@ -455,6 +466,15 @@ const JobDetailPage: React.FC = () => {
             // Refetch the submissions when a new submission is created
             refetchSubmissions();
           }}
+        />
+      )}
+      
+      {/* Edit Job dialog */}
+      {isEditJobDialogOpen && (
+        <EditJobDialog
+          job={job}
+          isOpen={isEditJobDialogOpen}
+          onClose={() => setIsEditJobDialogOpen(false)}
         />
       )}
     </div>

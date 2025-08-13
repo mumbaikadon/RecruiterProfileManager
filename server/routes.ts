@@ -238,6 +238,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/jobs/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid job ID" });
+      }
+
+      // Verify the job exists
+      const existingJob = await storage.getJob(id);
+      if (!existingJob) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      // Validate the request body using the insert schema
+      const validateResult = insertJobSchema.safeParse(req.body);
+      if (!validateResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid job data", 
+          errors: validateResult.error.errors 
+        });
+      }
+
+      const updatedJob = await storage.updateJob(id, validateResult.data);
+      res.json(updatedJob);
+    } catch (error) {
+      console.error("Error updating job:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   app.put("/api/jobs/:id/status", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);

@@ -4,6 +4,8 @@ import { useSubmissions } from "@/hooks/use-submissions";
 import JobTable from "@/components/job/job-table";
 import JobFilter from "@/components/job/job-filter";
 import CreateJobDialog from "@/components/job/create-job-dialog";
+import EditJobDialog from "@/components/job/edit-job-dialog";
+import { Job } from "@shared/schema";
 
 const JobsPage: React.FC = () => {
   const [filters, setFilters] = useState<{
@@ -11,6 +13,7 @@ const JobsPage: React.FC = () => {
     date?: string;
     search?: string;
   }>({});
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
 
   // Fetch jobs with filters
   const { data: jobs, isLoading } = useJobs(filters);
@@ -70,6 +73,14 @@ const JobsPage: React.FC = () => {
     setFilters(newFilters);
   };
 
+  const handleEditJob = (job: Job) => {
+    setEditingJob(job);
+  };
+
+  const handleCloseEditDialog = () => {
+    setEditingJob(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -91,8 +102,18 @@ const JobsPage: React.FC = () => {
           assignedRecruiters={assignedRecruiters}
           submissionCounts={submissionCounts}
           isLoading={isLoading} 
+          onEdit={handleEditJob}
         />
       </div>
+      
+      {/* Edit Job Dialog */}
+      {editingJob && (
+        <EditJobDialog
+          job={editingJob}
+          isOpen={true}
+          onClose={handleCloseEditDialog}
+        />
+      )}
     </div>
   );
 };

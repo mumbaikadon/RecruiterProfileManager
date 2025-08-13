@@ -1,6 +1,6 @@
 import React from "react";
 import { useLocation } from "wouter";
-import { ChevronLeft, ChevronRight, Eye, MapPin, DollarSign, Calendar, Users, Shield } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, MapPin, DollarSign, Calendar, Users, Shield, Edit } from "lucide-react";
 
 import {
   Table,
@@ -26,13 +26,15 @@ interface JobTableProps {
   assignedRecruiters?: Record<number, { id: number; name: string }[]>;
   submissionCounts?: Record<number, number>;
   isLoading?: boolean;
+  onEdit?: (job: Job) => void;
 }
 
 const JobTable: React.FC<JobTableProps> = ({ 
   jobs, 
   assignedRecruiters = {}, 
   submissionCounts = {},
-  isLoading = false
+  isLoading = false,
+  onEdit
 }) => {
   const [_, setLocation] = useLocation();
 
@@ -198,18 +200,34 @@ const JobTable: React.FC<JobTableProps> = ({
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-primary hover:text-primary/80 transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRowClick(job.id);
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          <span className="hidden sm:inline">View</span>
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-primary hover:text-primary/80 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRowClick(job.id);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            <span className="hidden sm:inline">View</span>
+                          </Button>
+                          {onEdit && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-orange-600 hover:text-orange-700 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit(job);
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">Edit</span>
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   </TooltipTrigger>

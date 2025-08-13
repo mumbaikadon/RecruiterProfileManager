@@ -30,6 +30,7 @@ export interface IStorage {
   getJob(id: number): Promise<Job | undefined>;
   getJobByJobId(jobId: string): Promise<Job | undefined>;
   createJob(job: InsertJob): Promise<Job>;
+  updateJob(id: number, job: Partial<InsertJob>): Promise<Job>;
   updateJobStatus(id: number, status: string): Promise<Job>;
 
   // Job assignment operations
@@ -248,6 +249,16 @@ export class DatabaseStorage implements IStorage {
     const [job] = await db
       .insert(jobs)
       .values(insertJob)
+      .returning();
+    
+    return job;
+  }
+
+  async updateJob(id: number, jobUpdate: Partial<InsertJob>): Promise<Job> {
+    const [job] = await db
+      .update(jobs)
+      .set(jobUpdate)
+      .where(eq(jobs.id, id))
       .returning();
     
     return job;

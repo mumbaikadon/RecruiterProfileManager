@@ -179,6 +179,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // General job update endpoint
+  app.put("/api/jobs/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid job ID" });
+      }
+
+      // Verify the job exists
+      const existingJob = await storage.getJob(id);
+      if (!existingJob) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      // Import sanitization utility
+      const { sanitizeHtml } = await import("./utils");
+
+      // Sanitize job description if it exists
+      if (req.body.description) {
+        req.body.description = sanitizeHtml(req.body.description);
+      }
+
+      // Validate the request body using the insert schema (excluding id and createdAt)
+      const updateSchema = insertJobSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+
+      const updatedJob = await storage.updateJob(id, validatedData);
+
+      // Create an activity for the job update
+      await storage.createActivity({
+        type: "job_updated",
+        jobId: id,
+        message: `Job ${updatedJob.title} (${updatedJob.jobId}) has been updated.`,
+      });
+
+      res.json(updatedJob);
+    } catch (error) {
+      console.error("Error updating job:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   app.post("/api/jobs/:id/assign", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
