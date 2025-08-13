@@ -24,6 +24,10 @@ export const jobs = pgTable("jobs", {
   city: text("city"), // City for job location
   state: text("state"), // State for job location
   jobType: text("job_type", { enum: ["onsite", "remote", "hybrid"] }), // Job type (onsite, remote, hybrid)
+  rate: text("rate"), // Pay rate (e.g., "$55/hr C2C", "$75-85/hour")
+  interviewType: text("interview_type", { enum: ["phone", "video", "onsite", "hybrid"] }), // Interview type
+  visaRestrictions: text("visa_restrictions"), // Visa/sponsorship restrictions
+  requiredSkills: text("required_skills").array(), // Array of required skills
   status: text("status", { enum: ["active", "reviewing", "closed"] }).notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").references(() => users.id),

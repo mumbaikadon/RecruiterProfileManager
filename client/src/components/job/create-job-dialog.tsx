@@ -48,7 +48,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Check, ChevronsUpDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Check, ChevronsUpDown, X } from "lucide-react";
 
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
@@ -58,6 +59,10 @@ const formSchema = z.object({
   implOrPv: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
+  rate: z.string().optional(),
+  interviewType: z.enum(["phone", "video", "onsite", "hybrid"]).optional(),
+  visaRestrictions: z.string().optional(),
+  requiredSkills: z.array(z.string()).optional().default([]),
   status: z.enum(["active", "reviewing", "closed"]).default("active"),
   createdBy: z.number().optional(),
   recruiterIds: z.array(z.number()).optional().default([])
@@ -85,6 +90,10 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
       implOrPv: undefined,
       city: "",
       state: "",
+      rate: "",
+      interviewType: undefined,
+      visaRestrictions: "",
+      requiredSkills: [],
       status: "active",
       createdBy: 1, // In a real app, this would be the current user's ID
       recruiterIds: []
@@ -120,6 +129,18 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
   const handleMultiSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const options = Array.from(e.target.selectedOptions).map(option => parseInt(option.value));
     form.setValue("recruiterIds", options);
+  };
+
+  const addSkill = (skill: string) => {
+    if (skill.trim() && !form.getValues("requiredSkills").includes(skill.trim())) {
+      const currentSkills = form.getValues("requiredSkills");
+      form.setValue("requiredSkills", [...currentSkills, skill.trim()]);
+    }
+  };
+
+  const removeSkill = (skillToRemove: string) => {
+    const currentSkills = form.getValues("requiredSkills");
+    form.setValue("requiredSkills", currentSkills.filter(skill => skill !== skillToRemove));
   };
 
   return (
@@ -368,7 +389,138 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                   )}
                 />
               </div>
+
+              <div className="sm:col-span-3">
+                <FormField
+                  control={form.control}
+                  name="rate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rate</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. $55/hr C2C, $75-85/hour" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="sm:col-span-3">
+                <FormField
+                  control={form.control}
+                  name="interviewType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Interview Type</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select interview type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="phone">Phone</SelectItem>
+                          <SelectItem value="video">Video</SelectItem>
+                          <SelectItem value="onsite">Onsite</SelectItem>
+                          <SelectItem value="hybrid">Hybrid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="sm:col-span-6">
+                <FormField
+                  control={form.control}
+                  name="visaRestrictions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Visa Restrictions</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. No Sponsorship Available, USC/GC only" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               
+              <div className="sm:col-span-6">
+                <FormField
+                  control={form.control}
+                  name="requiredSkills"
+                  render={({ field }) => {
+                    const [skillInput, setSkillInput] = React.useState("");
+                    
+                    const handleKeyPress = (e: React.KeyboardEvent) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (skillInput.trim()) {
+                          addSkill(skillInput);
+                          setSkillInput("");
+                        }
+                      }
+                    };
+
+                    const handleAddClick = () => {
+                      if (skillInput.trim()) {
+                        addSkill(skillInput);
+                        setSkillInput("");
+                      }
+                    };
+
+                    return (
+                      <FormItem>
+                        <FormLabel>Required Skills</FormLabel>
+                        <FormControl>
+                          <div className="space-y-3">
+                            <div className="flex gap-2">
+                              <Input
+                                value={skillInput}
+                                onChange={(e) => setSkillInput(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                                placeholder="Type a skill and press Enter"
+                                className="flex-1"
+                              />
+                              <Button
+                                type="button"
+                                onClick={handleAddClick}
+                                size="sm"
+                                variant="outline"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {field.value.map((skill, index) => (
+                                <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                                  {skill}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSkill(skill)}
+                                    className="ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full p-0.5"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Add skills one by one. Press Enter or click + to add.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+              </div>
+
               <div className="sm:col-span-6">
                 <FormField
                   control={form.control}
