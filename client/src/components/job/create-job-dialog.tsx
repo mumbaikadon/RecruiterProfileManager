@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRecruiters } from "@/hooks/use-recruiters";
 import { useCreateJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
+import { useParseJobRequirements } from "@/hooks/use-job-parser";
 import { sanitizeHtml, cn } from "@/lib/utils";
 
 import {
@@ -76,8 +77,10 @@ interface CreateJobDialogProps {
 
 const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "default" }) => {
   const [open, setOpen] = React.useState(false);
+  const [requirementText, setRequirementText] = React.useState("");
   const { data: recruiters } = useRecruiters();
   const { mutate: createJob, isPending } = useCreateJob();
+  const { mutate: parseRequirements, isPending: isParsing } = useParseJobRequirements();
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -143,6 +146,44 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
     form.setValue("requiredSkills", currentSkills.filter(skill => skill !== skillToRemove));
   };
 
+  const handleParseRequirements = () => {
+    if (!requirementText.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter job requirements to parse",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    parseRequirements(requirementText, {
+      onSuccess: (parsedData) => {
+        // Populate form fields with parsed data
+        if (parsedData.title) form.setValue("title", parsedData.title);
+        if (parsedData.client) form.setValue("client", parsedData.client);
+        if (parsedData.city) form.setValue("city", parsedData.city);
+        if (parsedData.state) form.setValue("state", parsedData.state);
+        if (parsedData.rate) form.setValue("rate", parsedData.rate);
+        if (parsedData.interviewType) form.setValue("interviewType", parsedData.interviewType);
+        if (parsedData.visaRestrictions) form.setValue("visaRestrictions", parsedData.visaRestrictions);
+        if (parsedData.requiredSkills) form.setValue("requiredSkills", parsedData.requiredSkills);
+        if (parsedData.description) form.setValue("description", parsedData.description);
+
+        toast({
+          title: "Requirements Parsed",
+          description: "Job details have been automatically filled from the requirements",
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: "Parsing Error",
+          description: error.message || "Failed to parse job requirements",
+          variant: "destructive",
+        });
+      }
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -161,6 +202,51 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Smart Requirements Parser Section */}
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">
+                Smart Requirements Parser
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Paste your job requirements below and let AI automatically fill the form fields
+              </p>
+              <div className="space-y-3">
+                <Textarea
+                  value={requirementText}
+                  onChange={(e) => setRequirementText(e.target.value)}
+                  placeholder="Paste your job requirements here (e.g., POSITION, LOCATION, RATE, VISA RESTRICTIONS, REQUIRED SKILLS, etc.)"
+                  rows={6}
+                  className="w-full"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleParseRequirements}
+                    disabled={isParsing || !requirementText.trim()}
+                    variant="outline"
+                  >
+                    {isParsing ? "Parsing..." : "Parse Requirements"}
+                  </Button>
+                  {requirementText && (
+                    <Button
+                      type="button"
+                      onClick={() => setRequirementText("")}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Job Details
+              </h3>
+            </div>
+
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
               <div className="sm:col-span-3">
                 <FormField

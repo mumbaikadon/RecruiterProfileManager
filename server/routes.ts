@@ -12,6 +12,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
+import { parseJobRequirements } from "./job-parser";
 import fs from "fs";
 import multer from "multer";
 
@@ -294,6 +295,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(assignments);
     } catch (error) {
       console.error("Error assigning recruiters:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Job requirement parsing endpoint
+  app.post("/api/jobs/parse-requirements", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { requirementText } = req.body;
+      
+      if (!requirementText || typeof requirementText !== 'string') {
+        return res.status(400).json({ message: "Requirement text is required" });
+      }
+
+      if (requirementText.trim().length === 0) {
+        return res.status(400).json({ message: "Requirement text cannot be empty" });
+      }
+
+      const parsedData = await parseJobRequirements(requirementText);
+      res.json(parsedData);
+    } catch (error) {
+      console.error("Error parsing job requirements:", error);
       res.status(500).json({ message: (error as Error).message });
     }
   });
