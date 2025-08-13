@@ -1,6 +1,6 @@
 import React from "react";
 import { useLocation } from "wouter";
-import { ChevronLeft, ChevronRight, Eye, MapPin, DollarSign, Calendar, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, MapPin, DollarSign, Calendar, Users, Shield } from "lucide-react";
 
 import {
   Table,
@@ -69,6 +69,13 @@ const JobTable: React.FC<JobTableProps> = ({
         </div>
       )}
       
+      {job.visaRestrictions && (
+        <div className="flex items-center gap-2 text-xs">
+          <Shield className="h-3 w-3 text-muted-foreground" />
+          <span>{job.visaRestrictions}</span>
+        </div>
+      )}
+      
       {job.requiredSkills && job.requiredSkills.length > 0 && (
         <div className="text-xs">
           <p className="font-medium mb-1">Skills:</p>
@@ -126,6 +133,7 @@ const JobTable: React.FC<JobTableProps> = ({
                 <TableHead>Title</TableHead>
                 <TableHead className="hidden lg:table-cell">Client</TableHead>
                 <TableHead className="hidden lg:table-cell">IMPL/PV</TableHead>
+                <TableHead className="hidden lg:table-cell">Visa Restrictions</TableHead>
                 <TableHead className="hidden md:table-cell">Created</TableHead>
                 <TableHead className="hidden lg:table-cell">Assigned To</TableHead>
                 <TableHead className="hidden md:table-cell">Submissions</TableHead>
@@ -148,6 +156,15 @@ const JobTable: React.FC<JobTableProps> = ({
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         {job.implOrPv || <span className="text-muted-foreground">-</span>}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {job.visaRestrictions ? (
+                          <span className="text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-200">
+                            {job.visaRestrictions}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {formatDate(job.createdAt)}

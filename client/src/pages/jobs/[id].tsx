@@ -34,7 +34,13 @@ import {
   Users, 
   UserPlus,
   Clock,
-  Pencil
+  Pencil,
+  Building,
+  Briefcase,
+  MapPin,
+  DollarSign,
+  Video,
+  Shield
 } from "lucide-react";
 import SubmissionTable from "@/components/submission/submission-table";
 import SubmissionDialog from "@/components/submission/submission-dialog";
@@ -234,6 +240,81 @@ const JobDetailPage: React.FC = () => {
                   {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                 </p>
               </div>
+
+              {job.client && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground">Client</h4>
+                  <p className="flex items-center mt-1 text-sm text-foreground">
+                    <Building className="h-4 w-4 mr-2 text-muted-foreground" />
+                    {job.client}
+                  </p>
+                </div>
+              )}
+
+              {job.implOrPv && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground">IMPL/PV</h4>
+                  <p className="flex items-center mt-1 text-sm text-foreground">
+                    <Briefcase className="h-4 w-4 mr-2 text-muted-foreground" />
+                    {job.implOrPv}
+                  </p>
+                </div>
+              )}
+
+              {(job.city || job.state) && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground">Location</h4>
+                  <p className="flex items-center mt-1 text-sm text-foreground">
+                    <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                    {[job.city, job.state].filter(Boolean).join(", ")}
+                  </p>
+                </div>
+              )}
+
+              {job.rate && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground">Rate</h4>
+                  <p className="flex items-center mt-1 text-sm text-foreground">
+                    <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
+                    {job.rate}
+                  </p>
+                </div>
+              )}
+
+              {job.interviewType && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground">Interview Type</h4>
+                  <p className="flex items-center mt-1 text-sm text-foreground">
+                    <Video className="h-4 w-4 mr-2 text-muted-foreground" />
+                    {job.interviewType.charAt(0).toUpperCase() + job.interviewType.slice(1)}
+                  </p>
+                </div>
+              )}
+
+              {job.visaRestrictions && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground">Visa Restrictions</h4>
+                  <p className="flex items-center mt-1 text-sm text-foreground">
+                    <Shield className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded text-xs border border-amber-200">
+                      {job.visaRestrictions}
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {job.requiredSkills && job.requiredSkills.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground">Required Skills</h4>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {job.requiredSkills.map((skill, index) => (
+                      <span key={index} className="px-2 py-1 bg-primary/10 text-primary rounded text-xs">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <Separator />
               
