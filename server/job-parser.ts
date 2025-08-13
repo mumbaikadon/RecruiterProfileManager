@@ -28,12 +28,28 @@ export interface ParsedJobData {
 // Helper function to clean and capitalize text
 function cleanAndCapitalize(text: string): string {
   return text
-    .replace(/[:\-_]+/g, '') // Remove colons, dashes, underscores
+    .replace(/^[:\-_\s]+/, '') // Remove leading colons, dashes, underscores, spaces
+    .replace(/[:\-_]+$/, '') // Remove trailing colons, dashes, underscores
     .replace(/\s+/g, ' ') // Replace multiple spaces with single space
     .trim()
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
+}
+
+// Helper function to extract value after colon or dash
+function extractValueAfterSeparator(text: string, pattern: RegExp): string | null {
+  const match = text.match(pattern);
+  if (match && match[1]) {
+    // Extract everything after the colon/dash and clean it
+    let value = match[1].trim();
+    
+    // Remove any remaining label prefixes like "Name:", "Client:", etc.
+    value = value.replace(/^(name|client|company|location|city|position|title|role|job)\s*:?\s*/i, '');
+    
+    return cleanAndCapitalize(value);
+  }
+  return null;
 }
 
 export async function parseJobRequirements(requirementText: string): Promise<ParsedJobData> {
@@ -44,35 +60,45 @@ export async function parseJobRequirements(requirementText: string): Promise<Par
     const result: ParsedJobData = {};
     
     // Extract job title (common patterns: "position:", "title:", "role:")
-    const titleMatch = text.match(/(?:position|title|role|job)\s*:?\s*(.+)/i);
-    if (titleMatch) {
-      result.title = cleanAndCapitalize(titleMatch[1]);
+    const titleValue = extractValueAfterSeparator(text, /(?:position|title|role|job)\s*[:‒-]?\s*(.+)/i);
+    if (titleValue) {
+      result.title = titleValue;
     }
     
     // Extract client/company (common patterns: "client:", "company:")
-    const clientMatch = text.match(/(?:client|company|employer)\s*:?\s*(.+)/i);
-    if (clientMatch) {
-      result.client = cleanAndCapitalize(clientMatch[1]);
+    const clientValue = extractValueAfterSeparator(text, /(?:client|company|employer)\s*[:‒-]?\s*(.+)/i);
+    if (clientValue) {
+      result.client = clientValue;
     }
     
     // Extract location (patterns: "location:", "city, state", state abbreviations)
-    let locationMatch = text.match(/(?:location|city|address)\s*:?\s*([^,\n]+)(?:,\s*([a-z]{2}|\w+\s+\w+))?/i);
-    
-    // If no labeled location found, try to find city, state patterns anywhere in text
-    if (!locationMatch) {
-      locationMatch = text.match(/([a-z\s]+),?\s+([a-z]{2})\b/i);
+    const locationValue = extractValueAfterSeparator(text, /(?:location|city|address|start date & location)\s*[:‒-]?\s*([^.\n]+)/i);
+    if (locationValue) {
+      // Parse city and state from the location value
+      const locationParts = locationValue.match(/([^,]+)(?:,\s*([a-z]{2}|\w+(?:\s+\w+)*))?/i);
+      if (locationParts) {
+        result.city = cleanAndCapitalize(locationParts[1]);
+        if (locationParts[2]) {
+          let stateValue = locationParts[2].trim();
+          // Convert state abbreviation to full name if found
+          const stateAbbr = stateValue.toUpperCase();
+          if (STATE_ABBREVIATIONS[stateAbbr]) {
+            result.state = STATE_ABBREVIATIONS[stateAbbr];
+          } else {
+            result.state = cleanAndCapitalize(stateValue);
+          }
+        }
+      }
     }
     
-    if (locationMatch) {
-      result.city = cleanAndCapitalize(locationMatch[1]);
-      if (locationMatch[2]) {
-        let stateValue = locationMatch[2].trim();
-        // Convert state abbreviation to full name if found
-        const stateAbbr = stateValue.toUpperCase();
+    // If no labeled location found, try to find city, state patterns anywhere in text
+    if (!result.city) {
+      const fallbackLocationMatch = text.match(/([a-z\s]+),?\s+([a-z]{2})\b/i);
+      if (fallbackLocationMatch) {
+        result.city = cleanAndCapitalize(fallbackLocationMatch[1]);
+        const stateAbbr = fallbackLocationMatch[2].toUpperCase();
         if (STATE_ABBREVIATIONS[stateAbbr]) {
           result.state = STATE_ABBREVIATIONS[stateAbbr];
-        } else {
-          result.state = cleanAndCapitalize(stateValue);
         }
       }
     }
