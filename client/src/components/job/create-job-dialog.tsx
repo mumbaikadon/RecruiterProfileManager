@@ -192,16 +192,17 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
           New Job
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[900px] max-h-[95vh] w-[95vw] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Create New Job</DialogTitle>
           <DialogDescription>
             Create a new job and assign recruiters to it.
           </DialogDescription>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="flex-1 overflow-y-auto px-2 py-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Smart Requirements Parser Section */}
             <div className="bg-gray-50 p-4 rounded-lg border">
               <h3 className="text-lg font-medium text-gray-900 mb-3">
@@ -247,8 +248,8 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-              <div className="sm:col-span-3">
+            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2 lg:grid-cols-6">
+              <div className="sm:col-span-1 lg:col-span-3">
                 <FormField
                   control={form.control}
                   name="title"
@@ -264,7 +265,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                 />
               </div>
               
-              <div className="sm:col-span-3">
+              <div className="sm:col-span-1 lg:col-span-3">
                 <FormField
                   control={form.control}
                   name="jobId"
@@ -280,7 +281,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                 />
               </div>
 
-              <div className="sm:col-span-3">
+              <div className="sm:col-span-1 lg:col-span-3">
                 <FormField
                   control={form.control}
                   name="client"
@@ -476,7 +477,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                 />
               </div>
 
-              <div className="sm:col-span-3">
+              <div className="sm:col-span-1 lg:col-span-3">
                 <FormField
                   control={form.control}
                   name="rate"
@@ -660,17 +661,22 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
                 />
               </div>
             </div>
-            
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "Creating..." : "Create Job"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            </form>
+          </Form>
+        </div>
+        
+        <DialogFooter className="flex-shrink-0 mt-4">
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={isPending}
+            onClick={form.handleSubmit(onSubmit)}
+          >
+            {isPending ? "Creating..." : "Create Job"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
