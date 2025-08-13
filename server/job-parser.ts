@@ -1,3 +1,18 @@
+// State abbreviation to full name mapping
+const STATE_ABBREVIATIONS: { [key: string]: string } = {
+  'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
+  'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
+  'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
+  'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+  'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
+  'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
+  'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
+  'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+  'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
+  'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
+  'DC': 'District of Columbia'
+};
+
 export interface ParsedJobData {
   title?: string;
   client?: string;
@@ -30,11 +45,24 @@ export async function parseJobRequirements(requirementText: string): Promise<Par
     }
     
     // Extract location (patterns: "location:", "city, state", state abbreviations)
-    const locationMatch = text.match(/(?:location|city|address)\s*:?\s*([^,\n]+)(?:,\s*([a-z]{2}|\w+\s+\w+))?/i);
+    let locationMatch = text.match(/(?:location|city|address)\s*:?\s*([^,\n]+)(?:,\s*([a-z]{2}|\w+\s+\w+))?/i);
+    
+    // If no labeled location found, try to find city, state patterns anywhere in text
+    if (!locationMatch) {
+      locationMatch = text.match(/([a-z\s]+),?\s+([a-z]{2})\b/i);
+    }
+    
     if (locationMatch) {
       result.city = locationMatch[1].trim();
       if (locationMatch[2]) {
-        result.state = locationMatch[2].trim();
+        let stateValue = locationMatch[2].trim();
+        // Convert state abbreviation to full name if found
+        const stateAbbr = stateValue.toUpperCase();
+        if (STATE_ABBREVIATIONS[stateAbbr]) {
+          result.state = STATE_ABBREVIATIONS[stateAbbr];
+        } else {
+          result.state = stateValue;
+        }
       }
     }
     
