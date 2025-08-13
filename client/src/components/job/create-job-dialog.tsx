@@ -146,42 +146,35 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
     form.setValue("requiredSkills", currentSkills.filter(skill => skill !== skillToRemove));
   };
 
-  const handleParseRequirements = () => {
-    if (!requirementText.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter job requirements to parse",
-        variant: "destructive",
+  const handleRequirementTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    setRequirementText(text);
+    
+    // Auto-parse when text is pasted (detected by significant length increase)
+    if (text.trim().length > 50 && text.trim().length > requirementText.length + 20) {
+      parseRequirements(text, {
+        onSuccess: (parsedData) => {
+          // Populate form fields with parsed data
+          if (parsedData.title) form.setValue("title", parsedData.title);
+          if (parsedData.client) form.setValue("client", parsedData.client);
+          if (parsedData.city) form.setValue("city", parsedData.city);
+          if (parsedData.state) form.setValue("state", parsedData.state);
+          if (parsedData.rate) form.setValue("rate", parsedData.rate);
+          if (parsedData.interviewType) form.setValue("interviewType", parsedData.interviewType);
+          if (parsedData.visaRestrictions) form.setValue("visaRestrictions", parsedData.visaRestrictions);
+          if (parsedData.requiredSkills) form.setValue("requiredSkills", parsedData.requiredSkills);
+          if (parsedData.description) form.setValue("description", parsedData.description);
+
+          toast({
+            title: "Auto-parsed",
+            description: "Job details filled automatically from pasted requirements",
+          });
+        },
+        onError: (error) => {
+          console.warn("Auto-parsing failed:", error.message);
+        }
       });
-      return;
     }
-
-    parseRequirements(requirementText, {
-      onSuccess: (parsedData) => {
-        // Populate form fields with parsed data
-        if (parsedData.title) form.setValue("title", parsedData.title);
-        if (parsedData.client) form.setValue("client", parsedData.client);
-        if (parsedData.city) form.setValue("city", parsedData.city);
-        if (parsedData.state) form.setValue("state", parsedData.state);
-        if (parsedData.rate) form.setValue("rate", parsedData.rate);
-        if (parsedData.interviewType) form.setValue("interviewType", parsedData.interviewType);
-        if (parsedData.visaRestrictions) form.setValue("visaRestrictions", parsedData.visaRestrictions);
-        if (parsedData.requiredSkills) form.setValue("requiredSkills", parsedData.requiredSkills);
-        if (parsedData.description) form.setValue("description", parsedData.description);
-
-        toast({
-          title: "Requirements Parsed",
-          description: "Job details have been automatically filled from the requirements",
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: "Parsing Error",
-          description: error.message || "Failed to parse job requirements",
-          variant: "destructive",
-        });
-      }
-    });
   };
 
   return (
@@ -214,7 +207,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
               <div className="space-y-3">
                 <Textarea
                   value={requirementText}
-                  onChange={(e) => setRequirementText(e.target.value)}
+                  onChange={handleRequirementTextChange}
                   placeholder="Paste your job requirements here using labels like:
 Position: Senior Developer
 Client: ABC Company  
@@ -224,16 +217,8 @@ Skills: React, Node.js, TypeScript"
                   rows={6}
                   className="w-full"
                 />
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    onClick={handleParseRequirements}
-                    disabled={isParsing || !requirementText.trim()}
-                    variant="outline"
-                  >
-                    {isParsing ? "Parsing..." : "Parse Requirements"}
-                  </Button>
-                  {requirementText && (
+                {requirementText && (
+                  <div className="flex justify-end">
                     <Button
                       type="button"
                       onClick={() => setRequirementText("")}
@@ -242,8 +227,8 @@ Skills: React, Node.js, TypeScript"
                     >
                       Clear
                     </Button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
 
