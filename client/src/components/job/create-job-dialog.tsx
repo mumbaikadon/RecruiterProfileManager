@@ -107,7 +107,8 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
     // Sanitize description field to remove HTML tags
     const sanitizedValues = {
       ...values,
-      description: sanitizeHtml(values.description)
+      description: sanitizeHtml(values.description),
+      jobId: values.jobId || "" // Ensure jobId is always a string
     };
     
     createJob(sanitizedValues, {
@@ -160,7 +161,9 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({ buttonVariant = "defa
           if (parsedData.city) form.setValue("city", parsedData.city);
           if (parsedData.state) form.setValue("state", parsedData.state);
           if (parsedData.rate) form.setValue("rate", parsedData.rate);
-          if (parsedData.interviewType) form.setValue("interviewType", parsedData.interviewType);
+          if (parsedData.interviewType && ["phone", "video", "onsite", "hybrid"].includes(parsedData.interviewType)) {
+            form.setValue("interviewType", parsedData.interviewType as "phone" | "video" | "onsite" | "hybrid");
+          }
           if (parsedData.visaRestrictions) form.setValue("visaRestrictions", parsedData.visaRestrictions);
           if (parsedData.requiredSkills) form.setValue("requiredSkills", parsedData.requiredSkills);
           if (parsedData.description) form.setValue("description", parsedData.description);
@@ -520,9 +523,20 @@ Skills: React, Node.js, TypeScript"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Visa Restrictions</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. No Sponsorship Available, USC/GC only" {...field} />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select visa restrictions" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="us-citizen-only">US Citizens Only</SelectItem>
+                          <SelectItem value="no-sponsorship">No Sponsorship</SelectItem>
+                          <SelectItem value="h1b-acceptable">H1B Acceptable</SelectItem>
+                          <SelectItem value="opt-acceptable">OPT Acceptable</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
