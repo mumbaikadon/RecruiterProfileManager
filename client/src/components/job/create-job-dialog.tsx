@@ -261,9 +261,13 @@ Skills: React, Node.js, TypeScript"
                   name="jobId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Job ID</FormLabel>
+                      <FormLabel>Job ID (Auto-generated)</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. JOB-2025-001" {...field} />
+                        <Input 
+                          placeholder="Auto-generated (e.g. JOB-01/13-001)" 
+                          {...field} 
+                          className="text-gray-500"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

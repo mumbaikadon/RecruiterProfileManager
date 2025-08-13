@@ -90,6 +90,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to generate auto Job ID
+  async function generateJobId(): Promise<string> {
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const datePrefix = `${month}/${day}`;
+    
+    // Get all jobs created today
+    const allJobs = await storage.getJobs({});
+    const todayJobs = allJobs.filter(job => {
+      if (!job.jobId || !job.jobId.startsWith(`JOB-${datePrefix}`)) return false;
+      return true;
+    });
+    
+    const nextIncrement = String(todayJobs.length + 1).padStart(3, '0');
+    return `JOB-${datePrefix}-${nextIncrement}`;
+  }
+
   app.post("/api/jobs", requireAuth, async (req: Request, res: Response) => {
     try {
       // Import sanitization utility
@@ -98,6 +116,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sanitize job description if it exists
       if (req.body.description) {
         req.body.description = sanitizeHtml(req.body.description);
+      }
+      
+      // Auto-generate Job ID if not provided
+      if (!req.body.jobId || req.body.jobId.trim() === '') {
+        req.body.jobId = await generateJobId();
       }
       
       // Make sure createdBy is either a valid user ID or null
