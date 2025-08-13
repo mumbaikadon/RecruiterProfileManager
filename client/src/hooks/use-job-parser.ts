@@ -21,10 +21,7 @@ interface UseJobParserOptions {
 export function useJobParser(options?: UseJobParserOptions) {
   const mutation = useMutation({
     mutationFn: async (requirementText: string): Promise<ParsedJobData> => {
-      return apiRequest('/api/jobs/parse-requirements', {
-        method: 'POST',
-        body: { requirementText },
-      });
+      return apiRequestWithJson('POST', '/api/jobs/parse-requirements', { requirementText });
     },
     onSuccess: options?.onSuccess,
     onError: options?.onError,
@@ -35,5 +32,17 @@ export function useJobParser(options?: UseJobParserOptions) {
     isParsing: mutation.isPending,
     error: mutation.error,
     data: mutation.data,
+  };
+}
+
+// Export alias for backward compatibility
+export function useParseJobRequirements() {
+  const { parseRequirements, isParsing, error, data } = useJobParser();
+  
+  return {
+    mutate: parseRequirements,
+    isPending: isParsing,
+    error,
+    data,
   };
 }
