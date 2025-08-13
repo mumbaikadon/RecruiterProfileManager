@@ -25,6 +25,17 @@ export interface ParsedJobData {
   description?: string;
 }
 
+// Helper function to clean and capitalize text
+function cleanAndCapitalize(text: string): string {
+  return text
+    .replace(/[:\-_]+/g, '') // Remove colons, dashes, underscores
+    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+    .trim()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export async function parseJobRequirements(requirementText: string): Promise<ParsedJobData> {
   try {
     const text = requirementText.toLowerCase();
@@ -35,13 +46,13 @@ export async function parseJobRequirements(requirementText: string): Promise<Par
     // Extract job title (common patterns: "position:", "title:", "role:")
     const titleMatch = text.match(/(?:position|title|role|job)\s*:?\s*(.+)/i);
     if (titleMatch) {
-      result.title = titleMatch[1].trim();
+      result.title = cleanAndCapitalize(titleMatch[1]);
     }
     
     // Extract client/company (common patterns: "client:", "company:")
     const clientMatch = text.match(/(?:client|company|employer)\s*:?\s*(.+)/i);
     if (clientMatch) {
-      result.client = clientMatch[1].trim();
+      result.client = cleanAndCapitalize(clientMatch[1]);
     }
     
     // Extract location (patterns: "location:", "city, state", state abbreviations)
@@ -53,7 +64,7 @@ export async function parseJobRequirements(requirementText: string): Promise<Par
     }
     
     if (locationMatch) {
-      result.city = locationMatch[1].trim();
+      result.city = cleanAndCapitalize(locationMatch[1]);
       if (locationMatch[2]) {
         let stateValue = locationMatch[2].trim();
         // Convert state abbreviation to full name if found
@@ -61,7 +72,7 @@ export async function parseJobRequirements(requirementText: string): Promise<Par
         if (STATE_ABBREVIATIONS[stateAbbr]) {
           result.state = STATE_ABBREVIATIONS[stateAbbr];
         } else {
-          result.state = stateValue;
+          result.state = cleanAndCapitalize(stateValue);
         }
       }
     }
@@ -75,13 +86,13 @@ export async function parseJobRequirements(requirementText: string): Promise<Par
     // Extract interview type
     const interviewMatch = text.match(/(?:interview|meeting)\s*:?\s*(phone|video|onsite|hybrid|in-person|remote)/i);
     if (interviewMatch) {
-      result.interviewType = interviewMatch[1].trim();
+      result.interviewType = cleanAndCapitalize(interviewMatch[1]);
     }
     
     // Extract visa restrictions
     const visaMatch = text.match(/(?:visa|authorization|citizenship|eligibility)\s*:?\s*([^.\n]+)/i);
     if (visaMatch) {
-      result.visaRestrictions = visaMatch[1].trim();
+      result.visaRestrictions = cleanAndCapitalize(visaMatch[1]);
     }
     
     // Extract skills (look for common skill-related keywords and lists)
@@ -91,7 +102,7 @@ export async function parseJobRequirements(requirementText: string): Promise<Par
       // Split by common delimiters and clean up
       const skills = skillsString
         .split(/[,;|\n]/)
-        .map(skill => skill.trim())
+        .map(skill => cleanAndCapitalize(skill))
         .filter(skill => skill && skill.length > 1 && skill.length < 50)
         .slice(0, 20); // Limit to reasonable number
       
