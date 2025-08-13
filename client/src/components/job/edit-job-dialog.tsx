@@ -59,13 +59,15 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
       title: job.title,
       client: job.client,
       description: job.description,
-      location: job.location,
-      type: job.type,
-      status: job.status,
+      implOrPv: job.implOrPv,
+      city: job.city,
+      state: job.state,
+      jobType: job.jobType,
       rate: job.rate,
-      ratePeriod: job.ratePeriod,
       interviewType: job.interviewType,
       visaRestrictions: job.visaRestrictions,
+      requiredSkills: job.requiredSkills,
+      status: job.status,
     },
   });
 
@@ -78,13 +80,15 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
         title: job.title,
         client: job.client,
         description: job.description,
-        location: job.location,
-        type: job.type,
-        status: job.status,
+        implOrPv: job.implOrPv,
+        city: job.city,
+        state: job.state,
+        jobType: job.jobType,
         rate: job.rate,
-        ratePeriod: job.ratePeriod,
         interviewType: job.interviewType,
         visaRestrictions: job.visaRestrictions,
+        requiredSkills: job.requiredSkills,
+        status: job.status,
       });
     }
   }, [job, form]);
@@ -92,11 +96,15 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
   const updateJobMutation = useMutation({
     mutationFn: async (data: EditJobFormData) => {
       const { id, ...updateData } = data;
-      return apiRequest(`/api/jobs/${id}`, {
+      const response = await fetch(`/api/jobs/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updateData),
       });
+      if (!response.ok) {
+        throw new Error(`Failed to update job: ${response.statusText}`);
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
@@ -157,11 +165,9 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="open">Open</SelectItem>
-                        <SelectItem value="in-progress">In Progress</SelectItem>
-                        <SelectItem value="on-hold">On Hold</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="reviewing">Reviewing</SelectItem>
                         <SelectItem value="closed">Closed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -191,7 +197,21 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
                 <FormItem>
                   <FormLabel>Client</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Company Name" />
+                    <Input {...field} value={field.value || ''} placeholder="Company Name" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="implOrPv"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Implementation or PV</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value || ''} placeholder="Implementation / Professional Services" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -201,12 +221,12 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="location"
+                name="city"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location</FormLabel>
+                    <FormLabel>City</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="San Francisco, CA" />
+                      <Input {...field} value={field.value || ''} placeholder="San Francisco" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -215,24 +235,13 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
 
               <FormField
                 control={form.control}
-                name="type"
+                name="state"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Job Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="full-time">Full Time</SelectItem>
-                        <SelectItem value="part-time">Part Time</SelectItem>
-                        <SelectItem value="contract">Contract</SelectItem>
-                        <SelectItem value="temporary">Temporary</SelectItem>
-                        <SelectItem value="internship">Internship</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>State</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ''} placeholder="CA" />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -242,18 +251,22 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="rate"
+                name="jobType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Rate</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        placeholder="120000"
-                        type="number"
-                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                      />
-                    </FormControl>
+                    <FormLabel>Job Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="onsite">Onsite</SelectItem>
+                        <SelectItem value="remote">Remote</SelectItem>
+                        <SelectItem value="hybrid">Hybrid</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -261,24 +274,17 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
 
               <FormField
                 control={form.control}
-                name="ratePeriod"
+                name="rate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Rate Period</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select period" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="hourly">Hourly</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="yearly">Yearly</SelectItem>
-                        <SelectItem value="project">Project</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Rate</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        value={field.value || ''}
+                        placeholder="$55/hr C2C"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -292,7 +298,7 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Interview Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select interview type" />
@@ -301,8 +307,8 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
                       <SelectContent>
                         <SelectItem value="phone">Phone</SelectItem>
                         <SelectItem value="video">Video</SelectItem>
-                        <SelectItem value="in-person">In Person</SelectItem>
-                        <SelectItem value="mixed">Mixed</SelectItem>
+                        <SelectItem value="onsite">Onsite</SelectItem>
+                        <SelectItem value="hybrid">Hybrid</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -316,7 +322,7 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Visa Restrictions</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select visa restrictions" />
@@ -335,6 +341,27 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="requiredSkills"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Required Skills</FormLabel>
+                  <FormControl>
+                    <Input 
+                      value={field.value?.join(', ') || ''}
+                      onChange={(e) => {
+                        const skills = e.target.value.split(',').map(skill => skill.trim()).filter(Boolean);
+                        field.onChange(skills);
+                      }}
+                      placeholder="React, Node.js, TypeScript (comma separated)"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
