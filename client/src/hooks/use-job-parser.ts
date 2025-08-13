@@ -1,5 +1,5 @@
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation } from '@tanstack/react-query';
+import { apiRequestWithJson } from '@/lib/queryClient';
 
 export interface ParsedJobData {
   title?: string;
@@ -7,28 +7,33 @@ export interface ParsedJobData {
   city?: string;
   state?: string;
   rate?: string;
-  interviewType?: "phone" | "video" | "onsite" | "hybrid";
+  interviewType?: string;
   visaRestrictions?: string;
   requiredSkills?: string[];
   description?: string;
-  duration?: string;
-  jobType?: "onsite" | "remote" | "hybrid";
 }
 
-export function useParseJobRequirements() {
-  return useMutation({
+interface UseJobParserOptions {
+  onSuccess?: (data: ParsedJobData) => void;
+  onError?: (error: Error) => void;
+}
+
+export function useJobParser(options?: UseJobParserOptions) {
+  const mutation = useMutation({
     mutationFn: async (requirementText: string): Promise<ParsedJobData> => {
-      const response = await apiRequest("/api/jobs/parse-requirements", {
-        method: "POST",
+      return apiRequest('/api/jobs/parse-requirements', {
+        method: 'POST',
         body: { requirementText },
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to parse job requirements");
-      }
-      
-      return response.json();
     },
+    onSuccess: options?.onSuccess,
+    onError: options?.onError,
   });
+
+  return {
+    parseRequirements: mutation.mutate,
+    isParsing: mutation.isPending,
+    error: mutation.error,
+    data: mutation.data,
+  };
 }

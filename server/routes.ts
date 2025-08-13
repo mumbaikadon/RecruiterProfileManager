@@ -198,6 +198,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Job requirements parser endpoint
+  app.post("/api/jobs/parse-requirements", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { requirementText } = req.body;
+      
+      if (!requirementText || typeof requirementText !== "string") {
+        return res.status(400).json({ message: "Requirement text is required" });
+      }
+
+      const parsedData = await parseJobRequirements(requirementText);
+      res.json(parsedData);
+    } catch (error) {
+      console.error("Error parsing job requirements:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   app.put("/api/jobs/:id/status", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
