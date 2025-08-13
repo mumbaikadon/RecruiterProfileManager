@@ -50,11 +50,56 @@ const CandidatesPage: React.FC = () => {
             'greencard': 'green-card',
             'other': 'other'
           };
+
+          // Complete US state abbreviation to full name mapping
+          const stateAbbreviationMap = {
+            'al': 'alabama', 'ak': 'alaska', 'az': 'arizona', 'ar': 'arkansas', 'ca': 'california',
+            'co': 'colorado', 'ct': 'connecticut', 'de': 'delaware', 'fl': 'florida', 'ga': 'georgia',
+            'hi': 'hawaii', 'id': 'idaho', 'il': 'illinois', 'in': 'indiana', 'ia': 'iowa',
+            'ks': 'kansas', 'ky': 'kentucky', 'la': 'louisiana', 'me': 'maine', 'md': 'maryland',
+            'ma': 'massachusetts', 'mi': 'michigan', 'mn': 'minnesota', 'ms': 'mississippi', 'mo': 'missouri',
+            'mt': 'montana', 'ne': 'nebraska', 'nv': 'nevada', 'nh': 'new hampshire', 'nj': 'new jersey',
+            'nm': 'new mexico', 'ny': 'new york', 'nc': 'north carolina', 'nd': 'north dakota', 'oh': 'ohio',
+            'ok': 'oklahoma', 'or': 'oregon', 'pa': 'pennsylvania', 'ri': 'rhode island', 'sc': 'south carolina',
+            'sd': 'south dakota', 'tn': 'tennessee', 'tx': 'texas', 'ut': 'utah', 'vt': 'vermont',
+            'va': 'virginia', 'wa': 'washington', 'wv': 'west virginia', 'wi': 'wisconsin', 'wy': 'wyoming',
+            'dc': 'district of columbia'
+          };
           
           // Check if ALL search terms match somewhere in this candidate's data (AND logic)
           const candidateMatches = searchTerms.every(searchTerm => {
             // Check if this search term matches work authorization (with mapping)
             const workAuthMatch = workAuthMappings[searchTerm] === workAuth || workAuth.includes(searchTerm);
+            
+            // Enhanced location matching with state abbreviation support
+            let locationMatch = location.includes(searchTerm);
+            
+            // If no direct location match, check if search term is a state abbreviation
+            if (!locationMatch) {
+              // Check if search term is a 2-letter state abbreviation
+              if (searchTerm.length === 2 && stateAbbreviationMap[searchTerm]) {
+                // Check if location contains the abbreviation (e.g., "Denver, CO")
+                locationMatch = location.includes(`, ${searchTerm}`) || location.endsWith(` ${searchTerm}`);
+                
+                // Also check if location contains the full state name
+                if (!locationMatch) {
+                  const fullStateName = stateAbbreviationMap[searchTerm];
+                  locationMatch = location.includes(fullStateName);
+                }
+              }
+              // Check if search term is a full state name that maps to an abbreviation
+              else {
+                // Find abbreviation for the full state name
+                const stateAbbr = Object.keys(stateAbbreviationMap).find(
+                  abbr => stateAbbreviationMap[abbr] === searchTerm
+                );
+                if (stateAbbr) {
+                  // Check if location contains the abbreviation
+                  locationMatch = location.includes(`, ${stateAbbr.toUpperCase()}`) || 
+                                location.endsWith(` ${stateAbbr.toUpperCase()}`);
+                }
+              }
+            }
             
             // Enhanced job title matching - include broader engineering roles for tech searches
             const techSkillMappings = {
@@ -83,7 +128,7 @@ const CandidatesPage: React.FC = () => {
             }
             
             return fullName.includes(searchTerm) || 
-                   location.includes(searchTerm) || 
+                   locationMatch || 
                    email.includes(searchTerm) ||
                    jobTitleMatch ||
                    experience.includes(searchTerm) ||
