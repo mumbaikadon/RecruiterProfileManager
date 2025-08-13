@@ -15,6 +15,7 @@ import {
 const CandidatesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
+  const [filterState, setFilterState] = useState<string | null>(null);
   
   // Fetch all candidates
   const { data: candidates, isLoading } = useCandidates();
@@ -152,6 +153,56 @@ const CandidatesPage: React.FC = () => {
           return false;
         }
       }
+
+      // Apply state filter
+      if (filterState) {
+        const candidateLocation = candidate.location.toLowerCase();
+        
+        // State abbreviation mapping for filtering
+        const stateAbbreviationMap = {
+          'al': 'alabama', 'ak': 'alaska', 'az': 'arizona', 'ar': 'arkansas', 'ca': 'california',
+          'co': 'colorado', 'ct': 'connecticut', 'de': 'delaware', 'fl': 'florida', 'ga': 'georgia',
+          'hi': 'hawaii', 'id': 'idaho', 'il': 'illinois', 'in': 'indiana', 'ia': 'iowa',
+          'ks': 'kansas', 'ky': 'kentucky', 'la': 'louisiana', 'me': 'maine', 'md': 'maryland',
+          'ma': 'massachusetts', 'mi': 'michigan', 'mn': 'minnesota', 'ms': 'mississippi', 'mo': 'missouri',
+          'mt': 'montana', 'ne': 'nebraska', 'nv': 'nevada', 'nh': 'new hampshire', 'nj': 'new jersey',
+          'nm': 'new mexico', 'ny': 'new york', 'nc': 'north carolina', 'nd': 'north dakota', 'oh': 'ohio',
+          'ok': 'oklahoma', 'or': 'oregon', 'pa': 'pennsylvania', 'ri': 'rhode island', 'sc': 'south carolina',
+          'sd': 'south dakota', 'tn': 'tennessee', 'tx': 'texas', 'ut': 'utah', 'vt': 'vermont',
+          'va': 'virginia', 'wa': 'washington', 'wv': 'west virginia', 'wi': 'wisconsin', 'wy': 'wyoming',
+          'dc': 'district of columbia'
+        };
+
+        const filterStateLower = filterState.toLowerCase();
+        
+        // Check if location matches the selected state (abbreviation or full name)
+        let stateMatches = false;
+        
+        // Check for abbreviation match (e.g., "Denver, CO" matches "co")
+        if (candidateLocation.includes(`, ${filterStateLower}`) || candidateLocation.endsWith(` ${filterStateLower}`)) {
+          stateMatches = true;
+        }
+        
+        // Check for full state name match
+        if (!stateMatches && stateAbbreviationMap[filterStateLower]) {
+          const fullStateName = stateAbbreviationMap[filterStateLower];
+          stateMatches = candidateLocation.includes(fullStateName);
+        }
+        
+        // If filter is a full state name, check for abbreviation in location
+        if (!stateMatches) {
+          const stateAbbr = Object.keys(stateAbbreviationMap).find(
+            abbr => stateAbbreviationMap[abbr] === filterStateLower
+          );
+          if (stateAbbr) {
+            stateMatches = candidateLocation.includes(`, ${stateAbbr}`) || candidateLocation.endsWith(` ${stateAbbr}`);
+          }
+        }
+        
+        if (!stateMatches) {
+          return false;
+        }
+      }
       
       return true;
     });
@@ -195,7 +246,7 @@ const CandidatesPage: React.FC = () => {
     }
     
     return matchedCandidates;
-  }, [candidates, searchTerm, filterType]);
+  }, [candidates, searchTerm, filterType, filterState]);
   
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -204,10 +255,15 @@ const CandidatesPage: React.FC = () => {
   const handleFilterChange = (value: string) => {
     setFilterType(value === "all" ? null : value);
   };
+
+  const handleStateFilterChange = (value: string) => {
+    setFilterState(value === "all" ? null : value);
+  };
   
   const handleClearFilters = () => {
     setSearchTerm("");
     setFilterType(null);
+    setFilterState(null);
   };
 
   return (
@@ -245,8 +301,70 @@ const CandidatesPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="w-full md:w-40">
+              <Select value={filterState || "all"} onValueChange={handleStateFilterChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="State" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All States</SelectItem>
+                  <SelectItem value="al">Alabama (AL)</SelectItem>
+                  <SelectItem value="ak">Alaska (AK)</SelectItem>
+                  <SelectItem value="az">Arizona (AZ)</SelectItem>
+                  <SelectItem value="ar">Arkansas (AR)</SelectItem>
+                  <SelectItem value="ca">California (CA)</SelectItem>
+                  <SelectItem value="co">Colorado (CO)</SelectItem>
+                  <SelectItem value="ct">Connecticut (CT)</SelectItem>
+                  <SelectItem value="de">Delaware (DE)</SelectItem>
+                  <SelectItem value="fl">Florida (FL)</SelectItem>
+                  <SelectItem value="ga">Georgia (GA)</SelectItem>
+                  <SelectItem value="hi">Hawaii (HI)</SelectItem>
+                  <SelectItem value="id">Idaho (ID)</SelectItem>
+                  <SelectItem value="il">Illinois (IL)</SelectItem>
+                  <SelectItem value="in">Indiana (IN)</SelectItem>
+                  <SelectItem value="ia">Iowa (IA)</SelectItem>
+                  <SelectItem value="ks">Kansas (KS)</SelectItem>
+                  <SelectItem value="ky">Kentucky (KY)</SelectItem>
+                  <SelectItem value="la">Louisiana (LA)</SelectItem>
+                  <SelectItem value="me">Maine (ME)</SelectItem>
+                  <SelectItem value="md">Maryland (MD)</SelectItem>
+                  <SelectItem value="ma">Massachusetts (MA)</SelectItem>
+                  <SelectItem value="mi">Michigan (MI)</SelectItem>
+                  <SelectItem value="mn">Minnesota (MN)</SelectItem>
+                  <SelectItem value="ms">Mississippi (MS)</SelectItem>
+                  <SelectItem value="mo">Missouri (MO)</SelectItem>
+                  <SelectItem value="mt">Montana (MT)</SelectItem>
+                  <SelectItem value="ne">Nebraska (NE)</SelectItem>
+                  <SelectItem value="nv">Nevada (NV)</SelectItem>
+                  <SelectItem value="nh">New Hampshire (NH)</SelectItem>
+                  <SelectItem value="nj">New Jersey (NJ)</SelectItem>
+                  <SelectItem value="nm">New Mexico (NM)</SelectItem>
+                  <SelectItem value="ny">New York (NY)</SelectItem>
+                  <SelectItem value="nc">North Carolina (NC)</SelectItem>
+                  <SelectItem value="nd">North Dakota (ND)</SelectItem>
+                  <SelectItem value="oh">Ohio (OH)</SelectItem>
+                  <SelectItem value="ok">Oklahoma (OK)</SelectItem>
+                  <SelectItem value="or">Oregon (OR)</SelectItem>
+                  <SelectItem value="pa">Pennsylvania (PA)</SelectItem>
+                  <SelectItem value="ri">Rhode Island (RI)</SelectItem>
+                  <SelectItem value="sc">South Carolina (SC)</SelectItem>
+                  <SelectItem value="sd">South Dakota (SD)</SelectItem>
+                  <SelectItem value="tn">Tennessee (TN)</SelectItem>
+                  <SelectItem value="tx">Texas (TX)</SelectItem>
+                  <SelectItem value="ut">Utah (UT)</SelectItem>
+                  <SelectItem value="vt">Vermont (VT)</SelectItem>
+                  <SelectItem value="va">Virginia (VA)</SelectItem>
+                  <SelectItem value="wa">Washington (WA)</SelectItem>
+                  <SelectItem value="wv">West Virginia (WV)</SelectItem>
+                  <SelectItem value="wi">Wisconsin (WI)</SelectItem>
+                  <SelectItem value="wy">Wyoming (WY)</SelectItem>
+                  <SelectItem value="dc">District of Columbia (DC)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             
-            {(searchTerm || filterType) && (
+            {(searchTerm || filterType || filterState) && (
               <Button variant="ghost" size="sm" onClick={handleClearFilters}>
                 <X className="h-4 w-4 mr-2" />
                 Clear
