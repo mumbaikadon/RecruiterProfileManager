@@ -1,0 +1,123 @@
+Format in Sending Profiles  - IF THIS FORM ISNT COMPLETED YOUR CANDIDATE WILL BE DISQUALIFIED FROM SUBMISSION
+
+Candidate Name:
+
+Location:
+
+Bill Rate:
+
+Level of Expertise:
+
+Sponsorship:
+
+Availability to Start:
+
+Email Address:
+
+Phone Number:
+
+LinkedIn Profile:
+
+Attachments: Resume & Valid Photo ID (naming convention: Project 315Resource Full name_Resume/ID)
+
+ 
+
+ 
+
+
+
+JO Details
+
+Client Name
+
+KFORCE
+
+Job Title
+
+Apigee Cloud Platform Engineer
+
+C/CTH/Perm + Duration
+
+6 months CTH
+
+Start date & Location
+
+Location: Jacksonville, FL  
+
+Pay Rate
+
+$75hr - $85/hour max on C2C
+
+Sponsorship
+
+No (will not provide sponsorship)
+
+Previous placements in this group
+
+Y
+
+Competition
+
+N
+
+Position Notes
+
+Client Detail (What does the company do? Recent history? Website? Parent Company? Size of Company?)
+
+a global leader in business data and analytics, helping organizations make informed decisions about risk, growth, and performance.
+
+Job Order (Why might someone want to work here?)
+
+Key Responsibilities
+
+Hybrid 3 days in jax
+Cloud Enablement Team:
+-             Backstage is the portal being used
+-             Going live this month with this product
+-             The teams ahs come from either a cloud engineering background or a true dev/devops background
+-             Integration expectation with the tools
+-             Need to understand:
+o            Security policy
+o            IAM
+o            Networking profile
+-             Not looking for  a developer
+-             Looking for someone with a larger perview – Devops
+-             Infrastructure as code
+-             Foundational knowledge in terraform
+o            Don’t need to be experts but MUST have hands on experience
+-             Embedded in IDE – good gemini codesses
+ 
+Our Hybrid Engineering team is looking for a high-caliber, well-rounded cloud technology professional with experience partnering with application teams to bring solutions to market.   This API Engineer + DevOps + Cloud Engineering role will design and develop the automated deployments & ApigeeX solutions that our applications rely upon, as well as design and manage the related components within our IDP suite of solutions. The candidate will be instrumental in the design, implementation, and management of our path-to-production experience for API based applications.
+What You'll Do:
+•            Lead analytical and consulting working sessions to solve technical problems faced by the application teams trying to onboard Apigee.
+•            Configure and manage Apigee resources, including gateways, policies, and deployment models.
+•            Monitor cloud resources, identify performance bottlenecks, and implement optimization strategies.
+•            Define and implement monitoring requirements for Apigee components and APIs
+•            Design, develop and engineer re-usable self-service modules and pipelines for deploying API and Apigee Security infrastructure that developers and portfolio managers can leverage at scale.
+•            Work with development and product owners directly and regularly to prioritize future enhancements which allows the business and the organization to scale and grow quickly.
+•            Partner with Cyber Security in assuring our modules and automation deploy componentry that is secure-by-default.
+•            Contribute to whiteboarding the design, implementation, monitoring, and maintenance of our platforms.
+•            Develop well defined processes for testing and integrating new technologies to meet both business and technical needs while driving the elimination of operational tasks through automation and self-service.
+ 
+
+Requirements (MUST HAVE):
+•            5+ years of DevOps / DevSecOps / cloud platform engineering experience in a hybrid cloud environment (GCP + AWS)
+•            3+ years of proven experience using Hashicorp Terraform for Infrastructure as Code to write advanced modules for deploying infrastructure or services which will provide automated & self-service deployment services.
+•            3+ years of proven experience designing, developing, and implementing APIs using the Apigee platform, focusing on building reusable API proxies and ensuring smooth API integration.
+•            Strong understanding of API management life cycle components like creating environments, virtual hosts, API proxies, and cache.
+•            Strong automation skills; Configuration management, Python/bash or equivalent scripting experience 
+•            Working knowledge and experience with Cloud (GCP) Networking components and technologies.
+•            Advanced applied knowledge and experience using some of the following tools: Kubernetes, Docker, Jenkins, Harness, Artifactory, Python, Splunk.
+•            Strong, hands-on GCP cloud engineering and administration experience required
+•            Possess troubleshooting skills that span applications, networking, and systems.
+•            Excellent written and verbal communication skills. Collaborative but able to work autonomously with minimal guidance in a rapidly changing environment.
+•            Self-driven, willing to work in a fast-paced dynamic environment.
+ 
+
+Preferences (NICE TO HAVE):
+
+•            Desired hands-on experience with Generative AI
+•            Advanced troubleshooting of production issues, conducting root cause analysis, and resolving technical problems related to the Apigee platform.
+•            Desired hands-on experience administrating and configuring Server OS for automated deployments; Linux & Windows
+•            Computer Science degree or other degree with equivalent work experience. 
+ 
