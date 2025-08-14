@@ -414,10 +414,14 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
       }
       
       // Now create the submission
+      console.log(`=== CREATING SUBMISSION ===`);
+      console.log(`jobId: ${jobId}, candidateId: ${candidateData.id}, recruiterId: ${recruiterId}`);
+      console.log(`recruiterId type: ${typeof recruiterId}`);
+      
       createSubmission({
         jobId,
         candidateId: candidateData.id,
-        recruiterId,
+        recruiterId: Number(recruiterId), // Ensure it's a number
         status: "New",
         agreedRate: values.agreedRate,
         matchScore: values.matchResults?.score || null,

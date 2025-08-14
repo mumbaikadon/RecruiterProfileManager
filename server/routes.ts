@@ -1057,10 +1057,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Ensure recruiterId is always valid
+      let recruiterId = submissionData.recruiterId;
+      if (!recruiterId || isNaN(Number(recruiterId))) {
+        console.log(`⚠️  Invalid recruiterId received: ${recruiterId}, using fallback recruiter ID: 1`);
+        recruiterId = 1; // Fallback to admin user
+      }
+
       const submissionPayload = {
         jobId: submissionData.jobId,
         candidateId: candidateId,
-        recruiterId: submissionData.recruiterId,
+        recruiterId: Number(recruiterId), // Ensure it's a number
         status: submissionData.status || "New",  // Use proper default status
         matchScore: submissionData.matchScore || 65,  // Default match score
         agreedRate: submissionData.agreedRate || 0,   // Default agreed rate
