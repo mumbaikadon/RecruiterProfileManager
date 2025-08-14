@@ -79,7 +79,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
   // Handle resume download
   const handleDownloadResume = async (candidateId: number, candidateName: string) => {
     try {
-      const response = await fetch(`/api/candidates/resume/${candidateId}`);
+      const response = await fetch(`/api/candidates/${candidateId}/resume/download`);
       
       if (!response.ok) {
         if (response.status === 404) {

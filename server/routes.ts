@@ -1471,6 +1471,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Resume download endpoint
+  app.get("/api/candidates/:id/resume/download", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const candidateId = parseInt(req.params.id);
+      if (isNaN(candidateId)) {
+        return res.status(400).json({ message: "Invalid candidate ID" });
+      }
+
+      // Get the resume file data
+      const resumeFile = await storage.getResumeFile(candidateId);
+      
+      if (!resumeFile) {
+        return res.status(404).json({ message: "Resume file not found for this candidate" });
+      }
+
+      // Set headers for file download
+      res.setHeader('Content-Type', resumeFile.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${resumeFile.fileName}"`);
+      res.setHeader('Content-Length', resumeFile.fileContent.length);
+
+      // Send the file content
+      res.send(resumeFile.fileContent);
+    } catch (error) {
+      console.error("Error downloading resume:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   // Candidate validation endpoint
   // Add endpoint to check for similar employment histories
   app.post("/api/candidates/check-similar-employment", requireAuth, async (req: Request, res: Response) => {
