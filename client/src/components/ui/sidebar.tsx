@@ -9,7 +9,8 @@ import {
   BarChart4,
   PlusCircle,
   Zap,
-  ChevronRight
+  ChevronRight,
+  House
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -90,10 +91,17 @@ const Sidebar = () => {
           <SidebarSection title="Main" />
           <nav className="flex-1 px-2 py-2 space-y-1">
             <SidebarLink 
-              href="/" 
+              href="/dashboard" 
               icon={<Home />} 
-              isActive={location === "/"}>
+              isActive={location === "/dashboard"}>
               Dashboard
+            </SidebarLink>
+
+            <SidebarLink 
+              href="/" 
+              icon={<House />} 
+              isActive={location === "/"}>
+              Home
             </SidebarLink>
 
             <SidebarLink 
