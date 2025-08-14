@@ -129,6 +129,12 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
     try {
       setSubmissionError(null);
       
+      // Log recruiter assignment for debugging
+      console.log(`=== RECRUITER ASSIGNMENT DEBUG ===`);
+      console.log(`Job ID: ${jobId}, Job Title: ${jobTitle}`);
+      console.log(`Using recruiter ID: ${recruiterId}`);
+      console.log(`=====================================`);
+      
       // First create candidate with resumeData
       // Check if resume data is too large (greater than 40MB)
       const resumeDataSize = JSON.stringify(values.resumeData || {}).length;

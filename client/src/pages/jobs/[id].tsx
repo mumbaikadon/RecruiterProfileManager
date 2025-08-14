@@ -326,15 +326,27 @@ const JobDetailPage: React.FC = () => {
                 <h4 className="text-sm font-medium text-muted-foreground">Assigned Recruiters</h4>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {job.assignedRecruiters && job.assignedRecruiters.length > 0 ? (
-                    job.assignedRecruiters.map((recruiter) => (
-                      <Badge key={recruiter.id} variant="outline">
+                    job.assignedRecruiters.map((recruiter, index) => (
+                      <Badge 
+                        key={recruiter.id} 
+                        variant={index === 0 ? "default" : "outline"}
+                        className={index === 0 ? "bg-green-100 text-green-800 border-green-200" : ""}
+                      >
                         {recruiter.name}
+                        {index === 0 && (
+                          <span className="ml-1 text-xs opacity-75">(default for submissions)</span>
+                        )}
                       </Badge>
                     ))
                   ) : (
                     <p className="text-sm text-muted-foreground">No recruiters assigned</p>
                   )}
                 </div>
+                {job.assignedRecruiters && job.assignedRecruiters.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    New submissions will be assigned to: {job.assignedRecruiters[0].name}
+                  </p>
+                )}
               </div>
               
               <div>
@@ -461,7 +473,12 @@ const JobDetailPage: React.FC = () => {
           jobId={numericId}
           jobTitle={job.title}
           jobDescription={sanitizeHtml(job.description)}
-          recruiterId={user?.id || 1} // Use current user ID, fallback to 1
+          recruiterId={
+            // Use the first assigned recruiter for this job, fallback to current user, then to 1
+            job.assignedRecruiters && job.assignedRecruiters.length > 0 
+              ? job.assignedRecruiters[0].id
+              : user?.id || 1
+          }
           isOpen={isSubmissionDialogOpen}
           onClose={handleCloseSubmissionDialog}
           onSuccess={() => {
