@@ -2937,8 +2937,20 @@ Generated on: ${new Date().toLocaleString()}
         
         // Extract text from resume file
         try {
-          const { extractTextFromBuffer } = await import("./document-parser");
-          resumeContent = await extractTextFromBuffer(resumeFile.buffer, resumeFile.mimetype);
+          const { extractTextFromDocument } = await import("./document-parser");
+          // Convert MIME type to file extension
+          let fileType = 'txt';
+          if (resumeFile.mimetype === 'application/pdf') {
+            fileType = 'pdf';
+          } else if (resumeFile.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            fileType = 'docx';
+          } else if (resumeFile.originalname.toLowerCase().endsWith('.pdf')) {
+            fileType = 'pdf';
+          } else if (resumeFile.originalname.toLowerCase().endsWith('.docx')) {
+            fileType = 'docx';
+          }
+          
+          resumeContent = await extractTextFromDocument(resumeFile.buffer, fileType);
         } catch (extractError) {
           console.error("Resume extraction failed:", extractError);
           // Continue without resume content
