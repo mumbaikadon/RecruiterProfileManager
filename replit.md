@@ -1,6 +1,17 @@
 # Overview
 
-RecruiterTracker is a modern AI-powered recruitment management platform built with React/TypeScript frontend and Node.js/Express backend. The system streamlines the recruitment process by allowing recruiters to manage jobs, candidates, and submissions while integrating OpenAI for resume analysis and matching capabilities. Key features include duplicate candidate prevention, intelligent resume processing, and comprehensive tracking of the recruitment pipeline from initial submission to final hiring decisions.
+RecruiterTracker is a modern AI-powered recruitment management platform built with React/TypeScript frontend and Node.js/Express backend. The system streamlines the recruitment process by allowing recruiters to manage jobs, candidates, and submissions while integrating OpenAI for resume analysis and matching capabilities. Key features include duplicate candidate prevention, intelligent resume processing, comprehensive tracking of the recruitment pipeline from initial submission to final hiring decisions, and robust analytics with success/rejection rate calculations.
+
+## Recent Changes (August 14, 2025)
+
+**Comprehensive Test Suite Implementation**
+- Added complete Jest-based testing framework with TypeScript support
+- Created 8 comprehensive test files covering all major services
+- Implemented both success and failure scenario testing
+- Added proper mocking for external dependencies (OpenAI, database)
+- Enhanced analytics calculations with success rate (Approved/Total × 100) and rejected rate (Rejected/Total × 100)
+- Added rejected rate column to reports with color-coded badges (Green ≤30%, Yellow 31-50%, Red >50%)
+- Updated CSV export to include both success and rejected rate metrics
 
 # User Preferences
 
