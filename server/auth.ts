@@ -19,9 +19,9 @@ function hashPassword(password: string): string {
 }
 
 // Simple password comparison that doesn't use crypto
-function comparePasswords(supplied: string, stored: string): boolean {
+async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
   // For hardcoded users or plain text passwords
-  if (!stored.includes('.')) {
+  if (!stored.includes('.') && !stored.includes('=')) {
     return supplied === stored;
   }
   
@@ -82,7 +82,14 @@ export function setupAuth(app: Express) {
         // Fallback to database users if not hardcoded
         try {
           const user = await storage.getUserByUsername(username);
-          if (!user || !(await comparePasswords(password, user.password))) {
+          
+          if (!user) {
+            return done(null, false);
+          }
+          
+          const passwordMatch = await comparePasswords(password, user.password);
+          
+          if (!passwordMatch) {
             return done(null, false);
           }
           

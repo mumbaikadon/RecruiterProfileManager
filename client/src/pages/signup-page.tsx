@@ -45,10 +45,7 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       const { confirmPassword, ...submitData } = values;
-      await apiRequest("/api/register", {
-        method: "POST",
-        body: JSON.stringify(submitData),
-      });
+      await apiRequest("POST", "/api/register", submitData);
 
       setIsSuccess(true);
       toast({
