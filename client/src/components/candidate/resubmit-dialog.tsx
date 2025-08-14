@@ -101,7 +101,15 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       suspiciousSeverity?: string | null;
       skipComparison?: boolean; // Flag to skip comparison if already done
     }) => {
+      console.log("==== RESUBMIT MUTATION TRIGGERED ====");
+      console.log("Data received:", data);
+      console.log("Has resume file:", !!data.resumeFile);
+      console.log("Skip comparison:", data.skipComparison);
+      console.log("Candidate details available:", !!candidateDetails);
+      console.log("Candidate resume data available:", !!candidateDetails?.resumeData);
+      
       if (data.resumeFile && !data.skipComparison) {
+        console.log("Starting resume comparison workflow...");
         // Parse the new resume first
         const formData = new FormData();
         formData.append("file", data.resumeFile);
@@ -131,6 +139,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
 
         // Compare with existing resume data if available
         if (candidateDetails?.resumeData) {
+          console.log("Found existing resume data, performing comparison...");
           const existingData = {
             clientNames: candidateDetails.resumeData.clientNames || [],
             jobTitles: candidateDetails.resumeData.jobTitles || [],
@@ -138,10 +147,14 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
             skills: candidateDetails.resumeData.skills || [],
             education: candidateDetails.resumeData.education || []
           };
+          console.log("Existing resume data:", existingData);
+          console.log("New resume data:", newData);
 
           const comparison = compareResumeData(existingData, newData);
+          console.log("Comparison result:", comparison);
 
           if (comparison.hasChanges && comparison.significantChanges) {
+            console.log("Significant changes detected, showing changes dialog...");
             // Store data for the changes dialog
             setExistingResumeData(existingData);
             setNewResumeData(newData);

@@ -509,8 +509,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Check for resume data differences requiring validation
         const existingResumeData = await storage.getResumeData(existingCandidate.id);
+        console.log("=== DETAILED RESUME DATA CHECK ===");
+        console.log("Existing candidate ID:", existingCandidate.id);
+        console.log("Raw req.body.resumeData:", JSON.stringify(req.body.resumeData, null, 2));
+        
         const hasNewResumeData = req.body.resumeData && 
           (req.body.resumeData.clientNames?.length > 0 || req.body.resumeData.jobTitles?.length > 0);
+        
+        console.log("hasNewResumeData calculation:");
+        console.log("- req.body.resumeData exists:", !!req.body.resumeData);
+        console.log("- clientNames length:", req.body.resumeData?.clientNames?.length || 0);
+        console.log("- jobTitles length:", req.body.resumeData?.jobTitles?.length || 0);
+        console.log("- Final hasNewResumeData:", hasNewResumeData);
         
         console.log(`Validation check: hasExistingData=${!!existingResumeData}, hasNewData=${hasNewResumeData}`);
         console.log("Existing resume data:", existingResumeData ? {
@@ -540,9 +550,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           relevantDates: req.body.resumeData?.relevantDates || []
         };
         
+        console.log("=== VALIDATION CHECK DEBUG ===");
+        console.log("existingResumeData exists:", !!existingResumeData);
+        console.log("hasNewResumeData:", hasNewResumeData);
+        console.log("Condition result:", !!(existingResumeData && hasNewResumeData));
+        
         if (existingResumeData && hasNewResumeData) {
           // This candidate exists and has both existing and new resume data - needs validation
-          console.log("Candidate requires employment history validation, returning 202");
+          console.log("✅ Candidate requires employment history validation, returning 202");
           
           const validationResponse = {
             message: "This candidate exists in our system. Employment history validation required.",
