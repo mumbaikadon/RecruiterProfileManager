@@ -77,6 +77,8 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
     isSuspicious?: boolean;
     suspiciousReason?: string;
     suspiciousSeverity?: "LOW" | "MEDIUM" | "HIGH";
+    // Add agreed rate field
+    agreedRate?: number;
   } | null>(null);
 
   // State for rate change dialog
@@ -139,11 +141,13 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
     try {
       setSubmissionError(null);
       
-      // Log recruiter assignment for debugging
-      console.log(`=== RECRUITER ASSIGNMENT DEBUG ===`);
+      // Log submission details for debugging
+      console.log(`=== SUBMISSION DEBUG ===`);
       console.log(`Job ID: ${jobId}, Job Title: ${jobTitle}`);
       console.log(`Using recruiter ID: ${recruiterId}`);
-      console.log(`=====================================`);
+      console.log(`Form values:`, values);
+      console.log(`Agreed rate from form: ${values.agreedRate} (type: ${typeof values.agreedRate})`);
+      console.log(`========================`);
       
       // First create candidate with resumeData
       // Check if resume data is too large (greater than 40MB)
@@ -246,18 +250,30 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             previousSubmissions: previousSubmissions
           });
 
-          // Check for rate changes before proceeding with validation
+          // Debug logging for rate change detection
           const currentRate = parseFloat(String(values.agreedRate || '0'));
+          console.log(`=== RATE CHANGE DETECTION DEBUG ===`);
+          console.log(`Candidate: ${candidateName} (ID: ${data.candidateId})`);
+          console.log(`Current rate from form: ${currentRate}`);
+          console.log(`Previous submissions count: ${previousSubmissions.length}`);
+          console.log(`Previous submissions:`, previousSubmissions);
+          
           const hasRateHistory = previousSubmissions.some(sub => sub.agreedRate !== undefined && sub.agreedRate !== null && sub.agreedRate !== 0);
+          console.log(`Has rate history: ${hasRateHistory}`);
           
           if (hasRateHistory) {
             const mostRecentRate = previousSubmissions
               .filter(sub => sub.agreedRate !== undefined && sub.agreedRate !== null && sub.agreedRate !== 0)
               .sort((a, b) => new Date(b.submittedDate || 0).getTime() - new Date(a.submittedDate || 0).getTime())[0]?.agreedRate || 0;
             
+            console.log(`Most recent rate: ${mostRecentRate}`);
+            
             // If rate has changed by more than $0.50/hr, show rate change dialog
             const rateDifference = Math.abs(currentRate - mostRecentRate);
-            if (rateDifference >= 0.5) {
+            console.log(`Rate difference: ${rateDifference}`);
+            
+            if (rateDifference >= 0.5 && currentRate > 0) {
+              console.log(`Rate change detected! Showing rate change dialog`);
               setRateChangeData({
                 candidateName,
                 currentRate,
@@ -271,8 +287,13 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
               });
               setRateChangeDialogOpen(true);
               return;
+            } else {
+              console.log(`No significant rate change or current rate is 0`);
             }
+          } else {
+            console.log(`No previous rate history found`);
           }
+          console.log(`=== END RATE CHANGE DETECTION DEBUG ===`);
           
           // Always open validation dialog for duplicate candidates
           // First prepare the existing and new resume data
@@ -305,7 +326,9 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             // Add any suspicious flags if they exist
             isSuspicious: data.isSuspicious || false,
             suspiciousReason: data.suspiciousReason,
-            suspiciousSeverity: data.suspiciousSeverity
+            suspiciousSeverity: data.suspiciousSeverity,
+            // Add the agreed rate from the form
+            agreedRate: parseFloat(String(values.agreedRate || '0'))
           });
           setValidationDialogOpen(true);
           return;
@@ -520,6 +543,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           resumeFileName: values.resumeData?.fileName || "Resume",
           existingResumeData: existingData,
           newResumeData: newData,
+          agreedRate: rateChangeData.currentRate, // Pass the agreed rate
         });
         setValidationDialogOpen(true);
       }
@@ -625,7 +649,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
                       candidateId: data.candidateId,
                       recruiterId,
                       status: "New",
-                      agreedRate: 0, // For now, using a placeholder value
+                      agreedRate: validationData?.agreedRate || 0, // Use the actual agreed rate
                       matchScore: null,
                       notes: "",
                       // Pass suspicious flags if they exist in validation data
