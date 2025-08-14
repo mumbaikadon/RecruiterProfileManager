@@ -17,7 +17,8 @@ import {
   AlertTriangle, 
   UploadCloud, 
   XCircle, 
-  CheckCircle 
+  CheckCircle,
+  Download
 } from "lucide-react";
 import ActionsDropdown from "@/components/ui/actions-dropdown";
 import QuickSubmitDialog from "./quick-submit-dialog";
@@ -76,6 +77,34 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
     e.stopPropagation();
     setSelectedCandidate({ id, name, isUnreal, unrealReason });
     setIsUnrealDialogOpen(true);
+  };
+
+  const handleDownloadDetails = async (candidate: Candidate) => {
+    try {
+      const response = await fetch(`/api/candidates/${candidate.id}/details/download`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to download candidate details');
+      }
+
+      // Get the filename from the response headers or create a default one
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const fileName = contentDisposition?.match(/filename="(.+)"/)?.[1] || 
+                      `${candidate.firstName}_${candidate.lastName}_Details.txt`;
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading candidate details:', error);
+    }
   };
 
   const getWorkAuthorizationDisplay = (auth: string) => {
@@ -220,6 +249,11 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
                         label: "View",
                         icon: <Eye className="h-4 w-4" />,
                         onClick: () => handleViewCandidate(candidate.id)
+                      },
+                      {
+                        label: "Download Details",
+                        icon: <Download className="h-4 w-4" />,
+                        onClick: () => handleDownloadDetails(candidate)
                       },
                       {
                         label: "Resubmit", 

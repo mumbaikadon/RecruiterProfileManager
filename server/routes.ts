@@ -1503,6 +1503,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Candidate details download endpoint
+  app.get("/api/candidates/:id/details/download", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const candidateId = parseInt(req.params.id);
+      
+      if (isNaN(candidateId)) {
+        return res.status(400).json({ message: "Invalid candidate ID" });
+      }
+      
+      const candidate = await storage.getCandidate(candidateId);
+      
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      // Format candidate details
+      const details = `Candidate Details
+==================
+
+First Name: ${candidate.firstName}
+Last Name: ${candidate.lastName}
+LinkedIn URL: ${candidate.linkedIn || 'Not provided'}
+Email: ${candidate.email}
+Phone Number: ${candidate.phone}
+Rate: ${candidate.rate ? `$${candidate.rate}` : 'Not specified'}
+Location: ${candidate.location}
+Work Authorization: ${candidate.workAuthorization}
+
+Additional Information:
+- Date of Birth: ${candidate.dobMonth}/${candidate.dobDay}
+- Created: ${candidate.createdAt?.toLocaleDateString()}
+${candidate.middleName ? `- Middle Name: ${candidate.middleName}` : ''}
+${candidate.otherAuthorization ? `- Other Authorization: ${candidate.otherAuthorization}` : ''}
+
+Generated on: ${new Date().toLocaleString()}
+`;
+
+      const fileName = `${candidate.firstName}_${candidate.lastName}_Details.txt`;
+      
+      // Set headers for file download
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Length', Buffer.byteLength(details, 'utf8'));
+
+      res.send(details);
+    } catch (error) {
+      console.error("Candidate details download error:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   // Candidate validation endpoint
   // Add endpoint to check for similar employment histories
   app.post("/api/candidates/check-similar-employment", requireAuth, async (req: Request, res: Response) => {

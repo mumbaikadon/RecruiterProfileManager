@@ -17,7 +17,7 @@ import SuspiciousBadge from "@/components/submission/suspicious-badge";
 import ResubmitDialog from "@/components/candidate/resubmit-dialog";
 import QuickSubmitDialog from "@/components/candidate/quick-submit-dialog";
 import ActionsDropdown from "@/components/ui/actions-dropdown";
-import { Eye, RefreshCw, Download } from "lucide-react";
+import { Eye, RefreshCw, Download, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SubmissionTableProps {
@@ -74,6 +74,36 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
   const handleCloseQuickSubmitDialog = () => {
     setQuickSubmitDialogOpen(false);
     setSelectedCandidate(null);
+  };
+
+  // Handle candidate details download
+  const handleDownloadDetails = async (candidateId: number, candidateName: string) => {
+    try {
+      const response = await fetch(`/api/candidates/${candidateId}/details/download`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to download candidate details');
+      }
+
+      // Get the filename from the response headers or create a default one
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const fileName = contentDisposition?.match(/filename="(.+)"/)?.[1] || 
+                      `${candidateName.replace(/\s+/g, '_')}_Details.txt`;
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading candidate details:', error);
+      alert('Failed to download candidate details. Please try again.');
+    }
   };
 
   // Handle resume download
@@ -220,6 +250,18 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                           icon: <Eye className="h-4 w-4" />,
                           onClick: () => setLocation(`/submissions/${submission.id}`)
                         },
+                        ...(submission.candidate ? [{
+                          label: "Download Details",
+                          icon: <FileText className="h-4 w-4" />,
+                          onClick: () => {
+                            if (submission.candidate) {
+                              handleDownloadDetails(
+                                submission.candidate.id, 
+                                `${submission.candidate.firstName} ${submission.candidate.lastName}`
+                              );
+                            }
+                          }
+                        }] : []),
                         ...(submission.candidate ? [{
                           label: "Download Resume",
                           icon: <Download className="h-4 w-4" />,
