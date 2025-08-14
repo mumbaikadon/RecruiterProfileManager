@@ -18,7 +18,24 @@ import fs from "fs";
 import multer from "multer";
 
 // Configure multer for file uploads 
-const multerStorage = multer.memoryStorage();
+const multerStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = './uploads';
+    // Create uploads directory if it doesn't exist
+    const fs = require('fs');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename with timestamp and random string
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(2, 15);
+    const ext = require('path').extname(file.originalname);
+    cb(null, `${timestamp}_${randomString}${ext}`);
+  }
+});
 const fileUpload = multer({ storage: multerStorage });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -991,6 +1008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       submissionData.resumeData.extractedText,
                     ).substring(0, 30000)
                   : "",
+                fileName: submissionData.resumeData.fileName || null,
               };
 
               await storage.createResumeData(resumeDataPayload);
@@ -1762,9 +1780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Fixed document parsing endpoint using reusable multer setup
-  const multerStorage = multer.memoryStorage();
-  const fileUpload = multer({ storage: multerStorage });
+  // Document parsing endpoint using same disk storage configuration
   
   app.post("/api/parse-document", requireAuth, fileUpload.single('file'), async (req: Request, res: Response) => {
     console.log("Document parsing request received");
@@ -1780,8 +1796,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`File received: ${req.file.originalname}, ${Math.round(req.file.size / 1024)}KB`);
+      console.log(`File saved as: ${req.file.filename}`);
       
-      const fileBuffer = req.file.buffer;
+      // Read the saved file from disk
+      const fs = require('fs').promises;
+      const path = require('path');
+      const filePath = path.join('./uploads', req.file.filename);
+      const fileBuffer = await fs.readFile(filePath);
+      
       const fileName = req.file.originalname.toLowerCase();
       const fileType = fileName.endsWith('.pdf') ? 'pdf' : 
                      fileName.endsWith('.docx') ? 'docx' : 
@@ -2402,12 +2424,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let resumeFileName = "";
       
       if (resumeFile) {
-        resumeFileName = resumeFile.originalname;
+        resumeFileName = resumeFile.filename; // Use the saved filename, not original
         
-        // Extract text from resume file
+        // Extract text from saved resume file
         try {
+          const fs = require('fs').promises;
+          const path = require('path');
+          const filePath = path.join('./uploads', resumeFile.filename);
+          const fileBuffer = await fs.readFile(filePath);
           const { extractTextFromBuffer } = await import("./document-parser");
-          resumeContent = await extractTextFromBuffer(resumeFile.buffer, resumeFile.mimetype);
+          resumeContent = await extractTextFromBuffer(fileBuffer, resumeFile.mimetype);
         } catch (extractError) {
           console.error("Resume extraction failed:", extractError);
           // Continue without resume content
