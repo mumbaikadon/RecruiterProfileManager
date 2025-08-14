@@ -172,7 +172,7 @@ export default function OrganizationPage() {
   const filteredUsers = Array.isArray(users) 
     ? (selectedTab === "pending" 
         ? users.filter((user: OrganizationUser) => user.status === "pending")
-        : users)
+        : users.filter((user: OrganizationUser) => user.status === "approved"))
     : [];
 
   return (

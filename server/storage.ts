@@ -252,6 +252,7 @@ export class DatabaseStorage implements IStorage {
     return db
       .select()
       .from(users)
+      .where(eq(users.status, "approved"))
       .orderBy(desc(users.createdAt));
   }
 
