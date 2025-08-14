@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import CandidateForm, { CandidateFormValues } from "@/components/candidate/candidate-form";
-import ResumeChangesDialog from "@/components/candidate/resume-changes-dialog";
+
 import RateChangeDialog from "@/components/submission/rate-change-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,28 +56,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
     previousSubmissions?: PreviousSubmissionInfo[];
   } | null>(null);
   
-  // State for validation dialog
-  const [validationDialogOpen, setValidationDialogOpen] = useState(false);
-  const [validationData, setValidationData] = useState<{
-    candidateId: number;
-    candidateName: string;
-    resumeFileName?: string;
-    existingResumeData: {
-      id: number;
-      clientNames: string[];
-      jobTitles: string[];
-      relevantDates: string[];
-    };
-    newResumeData: {
-      clientNames: string[];
-      jobTitles: string[];
-      relevantDates: string[];
-    };
-    // Add suspicious fields for tracking potential fraud
-    isSuspicious?: boolean;
-    suspiciousReason?: string;
-    suspiciousSeverity?: "LOW" | "MEDIUM" | "HIGH";
-  } | null>(null);
+
 
   // State for rate change dialog
   const [rateChangeDialogOpen, setRateChangeDialogOpen] = useState(false);
@@ -466,53 +445,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         body: JSON.stringify(submissionPayload),
       });
       
-      // Handle validation required response (202)
-      if (submissionResponse.status === 202) {
-        console.log("🚨 202 STATUS RECEIVED - Submission validation required!");
-        console.log("Response status:", submissionResponse.status);
-        console.log("Response headers:", submissionResponse.headers);
-        
-        let validationData;
-        try {
-          validationData = await submissionResponse.json();
-          console.log("Received validation data:", validationData);
-        } catch (parseError) {
-          console.error("Error parsing validation response:", parseError);
-          throw new Error("Failed to parse validation response");
-        }
-        
-        // Get candidate name for validation dialog
-        const candidateDetailsResponse = await fetch(`/api/candidates/${validationData.candidateId}`);
-        let candidateName = "Existing Candidate";
-        
-        if (candidateDetailsResponse.ok) {
-          try {
-            const candidateDetails = await candidateDetailsResponse.json();
-            candidateName = `${candidateDetails.firstName} ${candidateDetails.lastName}`;
-          } catch (error) {
-            console.error("Error parsing candidate details:", error);
-          }
-        }
-        
-        // Set validation data for dialog
-        const dialogData = {
-          candidateId: validationData.candidateId,
-          candidateName,
-          resumeFileName: values.resumeData?.fileName || "Resume",
-          existingResumeData: validationData.existingResumeData,
-          newResumeData: validationData.newResumeData,
-          isSuspicious: validationData.isSuspicious || false,
-          suspiciousReason: validationData.suspiciousReason,
-          suspiciousSeverity: validationData.suspiciousSeverity
-        };
-        
-        console.log("🎯 Setting validation dialog data:", dialogData);
-        setValidationData(dialogData);
-        console.log("🎯 Opening validation dialog...");
-        setValidationDialogOpen(true);
-        console.log("🎯 Validation dialog state set to true");
-        return;
-      }
+
       
       if (!submissionResponse.ok) {
         let errorMessage = "Failed to create submission";
@@ -644,59 +577,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Resume Changes Validation Dialog */}
-      {validationDialogOpen && validationData && (
-        <ResumeChangesDialog
-          isOpen={validationDialogOpen}
-          onClose={() => {
-            setValidationDialogOpen(false);
-            setValidationData(null);
-          }}
-          candidateId={validationData.candidateId}
-          candidateName={validationData.candidateName}
-          jobId={jobId}
-          jobTitle={jobTitle}
-          comparison={{
-            hasChanges: true,
-            addedClients: ["Velocity Tech Global"],
-            removedClients: ["FIS Global"],
-            addedJobTitles: [],
-            removedJobTitles: [],
-            addedDates: [],
-            removedDates: [],
-            addedSkills: [],
-            removedSkills: [],
-            addedEducation: [],
-            removedEducation: [],
-            changesSummary: "Added companies: Velocity Tech Global, Removed companies: FIS Global",
-            significantChanges: true
-          }}
-          resumeFileName={validationData.resumeFileName}
-          onProceed={(flagAsSuspicious, reason, severity) => {
-            console.log("🎯 User confirmed to proceed with submission");
-            // Close the validation dialog
-            setValidationDialogOpen(false);
-            setValidationData(null);
-            
-            // Now proceed with creating the submission
-            toast({
-              title: "Submission successful",
-              description: "The candidate has been submitted despite resume changes.",
-            });
-            if (onSuccess) onSuccess();
-            onClose();
-          }}
-          onCancel={() => {
-            console.log("🎯 User cancelled submission due to resume changes");
-            setValidationDialogOpen(false);
-            setValidationData(null);
-            toast({
-              title: "Submission cancelled",
-              description: "Submission was cancelled due to resume changes.",
-            });
-          }}
-        />
-      )}
+
 
       {/* Rate Change Dialog */}
       {rateChangeDialogOpen && rateChangeData && (
