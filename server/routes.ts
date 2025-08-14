@@ -2291,6 +2291,32 @@ Generated on: ${new Date().toLocaleString()}
     try {
       const { resumeText, jobDescription } = req.body;
 
+      console.log('\n🎯 ===== MATCH-RESUME REQUEST DEBUG =====');
+      console.log(`📝 Request Details:`);
+      console.log(`   - Resume text length: ${resumeText?.length || 0}`);
+      console.log(`   - Job description length: ${jobDescription?.length || 0}`);
+      
+      if (resumeText && resumeText.length < 100) {
+        console.log('\n🔍 ===== PDF PARSING ISSUE DETECTED =====');
+        console.log(`⚠️  Resume text is very short (${resumeText.length} chars)`);
+        console.log('📄 Text type analysis:');
+        console.log(`   - Text type: ${typeof resumeText}`);
+        console.log(`   - Is string: ${typeof resumeText === 'string'}`);
+        console.log(`   - Text constructor: ${resumeText?.constructor?.name || 'Unknown'}`);
+        console.log('🔤 Text content analysis:');
+        console.log(`   - Starts with: "${resumeText?.substring(0, 10) || ''}"`);
+        console.log(`   - Contains "Error": ${resumeText?.includes('Error') || false}`);
+        console.log(`   - Contains "PDF": ${resumeText?.includes('PDF') || false}`);
+        console.log(`   - Contains "analyzing": ${resumeText?.includes('analyzing') || false}`);
+        if (resumeText?.includes('Maximum call stack size exceeded')) {
+          console.log('🚨 FOUND THE CACHED ERROR! This is coming from previous failed PDF processing');
+          console.log('🚨 This is NOT a fresh PDF upload - it is cached error text');
+        }
+        console.log('🔍 ===== PDF PARSING ISSUE DEBUG END =====');
+      }
+      
+      console.log('🎯 ===== MATCH-RESUME REQUEST DEBUG END =====\n');
+
       if (!resumeText || typeof resumeText !== "string") {
         return res.status(200).json({
           message: "Resume text is required",
@@ -2849,6 +2875,18 @@ Generated on: ${new Date().toLocaleString()}
 
   // Store resume file for existing candidate
   app.post("/api/submissions/store-resume", requireAuth, fileUpload.single('file'), async (req: Request, res: Response) => {
+    console.log('\n🔥 ===== STORE-RESUME FILE UPLOAD =====');
+    console.log(`📁 Upload Details:`);
+    console.log(`   - Endpoint: /api/submissions/store-resume`);
+    console.log(`   - Time: ${new Date().toISOString()}`);
+    console.log(`   - Request has file: ${!!req.file}`);
+    if (req.file) {
+      console.log(`   - Original filename: ${req.file.originalname}`);
+      console.log(`   - File size: ${req.file.size} bytes (${Math.round(req.file.size / 1024)}KB)`);
+      console.log(`   - MIME type: ${req.file.mimetype}`);
+    }
+    console.log('🔥 ===== STORE-RESUME DEBUG END =====\n');
+    
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -2998,6 +3036,18 @@ Generated on: ${new Date().toLocaleString()}
 
   // Submit a public job application (with automatic candidate creation)
   app.post("/api/public/apply", fileUpload.single('resume'), async (req: Request, res: Response) => {
+    console.log('\n🔥 ===== PUBLIC-APPLY FILE UPLOAD =====');
+    console.log(`📁 Upload Details:`);
+    console.log(`   - Endpoint: /api/public/apply`);
+    console.log(`   - Time: ${new Date().toISOString()}`);
+    console.log(`   - Request has file: ${!!req.file}`);
+    if (req.file) {
+      console.log(`   - Original filename: ${req.file.originalname}`);
+      console.log(`   - File size: ${req.file.size} bytes (${Math.round(req.file.size / 1024)}KB)`);
+      console.log(`   - MIME type: ${req.file.mimetype}`);
+    }
+    console.log('🔥 ===== PUBLIC-APPLY DEBUG END =====\n');
+    
     try {
       const applicationData = req.body;
       const resumeFile = req.file;
