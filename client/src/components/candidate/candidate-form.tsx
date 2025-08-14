@@ -925,7 +925,13 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       // Process file with resume handling
       const result = await analyzeResume(file);
       setResumeText(result.text);
-      setResumeData(result.analysis);
+      
+      // Include file data in the resume analysis
+      const resumeDataWithFile = {
+        ...result.analysis,
+        ...(result.fileData || {})
+      };
+      setResumeData(resumeDataWithFile);
 
       try {
         // Use OpenAI to match resume against job description

@@ -144,9 +144,26 @@ export async function matchResumeToJob(
 export async function analyzeResume(file: File, candidateId?: number): Promise<{
   analysis: ResumeAnalysisResult;
   text: string;
+  fileData?: {
+    fileName: string;
+    fileContent: string;
+    fileSize: number;
+    mimeType: string;
+  };
 }> {
   try {
     console.log(`Processing resume file: ${file.name} (${Math.round(file.size / 1024)} KB)`);
+    
+    // Store file data for later use
+    const fileBuffer = await file.arrayBuffer();
+    const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
+    
+    const fileData = {
+      fileName: file.name,
+      fileContent: base64Content,
+      fileSize: file.size,
+      mimeType: file.type || 'application/octet-stream'
+    };
     
     // Use our document utils to extract text - this will handle different file types
     // and fall back to server extraction when needed
@@ -159,8 +176,7 @@ export async function analyzeResume(file: File, candidateId?: number): Promise<{
       console.warn("Extracted text is very short, parsing may be incomplete");
     }
     
-    // Return the extracted text along with basic analysis structure
-    // The actual analysis of the resume content will be done when matching against job description
+    // Return the extracted text along with basic analysis structure and file data
     return {
       analysis: {
         clientNames: [],
@@ -171,7 +187,8 @@ export async function analyzeResume(file: File, candidateId?: number): Promise<{
         extractedText: extractedText,
         fileName: file.name
       },
-      text: extractedText
+      text: extractedText,
+      fileData: fileData
     };
   } catch (error) {
     console.error("Error processing resume file:", error);

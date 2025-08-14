@@ -643,6 +643,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   30000,
                 )
               : "",
+            // Include file data if provided
+            fileName: req.body.resumeData.fileName || null,
+            fileContent: req.body.resumeData.fileContent || null,
+            fileSize: req.body.resumeData.fileSize || null,
+            mimeType: req.body.resumeData.mimeType || null,
           };
 
           await storage.createResumeData(resumeDataPayload);
