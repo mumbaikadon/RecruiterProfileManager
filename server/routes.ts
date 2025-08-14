@@ -10,7 +10,11 @@ import {
   insertActivitySchema,
   insertPublicApplicationSchema,
   insertUserSchema,
+  type InsertResumeData,
+  resumeData,
 } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
 import { parseJobRequirements } from "./job-parser";
@@ -986,20 +990,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Now prepare the submission data
+      // Handle resume data update if provided (for existing candidates)
+      if (submissionData.resumeData && candidateId) {
+        try {
+          console.log(`Updating resume data for existing candidate ${candidateId}`);
+          
+          // Check if resume data already exists
+          const existingResumeData = await storage.getResumeData(candidateId);
+          
+          const resumeDataPayload: InsertResumeData = {
+            candidateId: candidateId,
+            clientNames: submissionData.resumeData.clientNames || [],
+            jobTitles: submissionData.resumeData.jobTitles || [],
+            relevantDates: submissionData.resumeData.relevantDates || [],
+            skills: submissionData.resumeData.skills || [],
+            education: submissionData.resumeData.education || [],
+            extractedText: submissionData.resumeData.extractedText || "",
+          };
+
+          if (existingResumeData) {
+            // Update existing resume data
+            await db
+              .update(resumeData)
+              .set(resumeDataPayload)
+              .where(eq(resumeData.candidateId, candidateId));
+            console.log(`Resume data updated for candidate ${candidateId}`);
+          } else {
+            // Create new resume data
+            await storage.createResumeData(resumeDataPayload);
+            console.log(`New resume data created for candidate ${candidateId}`);
+          }
+        } catch (resumeError) {
+          console.error(`Failed to update resume data for candidate ${candidateId}:`, resumeError);
+          // Continue with submission even if resume data update fails
+        }
+      }
+
+      // Prepare ONLY submission-related fields (exclude resume data)
       const submissionPayload = {
         jobId: submissionData.jobId,
         candidateId: candidateId,
         recruiterId: submissionData.recruiterId,
-        status: submissionData.status || "submitted",
-        matchScore: submissionData.matchScore,
-        agreedRate: submissionData.agreedRate,
+        status: submissionData.status || "New",  // Use proper default status
+        matchScore: submissionData.matchScore || 65,  // Default match score
+        agreedRate: submissionData.agreedRate || 0,   // Default agreed rate
         notes: submissionData.notes || "",
-        isSuspicious: !!submissionData.isSuspicious,
+        isSuspicious: Boolean(submissionData.isSuspicious),
         suspiciousReason: submissionData.suspiciousReason || null,
         suspiciousSeverity: submissionData.suspiciousSeverity || null,
       };
 
+      // Validate only submission data (without resume fields)
       const validatedData = insertSubmissionSchema.parse(submissionPayload);
 
       // Check if the candidate has already been submitted for this job
