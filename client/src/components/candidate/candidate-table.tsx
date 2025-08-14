@@ -18,7 +18,8 @@ import {
   UploadCloud, 
   XCircle, 
   CheckCircle,
-  Download
+  Download,
+  RefreshCw
 } from "lucide-react";
 import ActionsDropdown from "@/components/ui/actions-dropdown";
 import QuickSubmitDialog from "./quick-submit-dialog";
@@ -26,6 +27,8 @@ import { cn } from "@/lib/utils";
 import ResubmitDialog from "./resubmit-dialog";
 import CandidateUnrealDialog from "./candidate-unreal-dialog";
 import SuspiciousBadge from "../submission/suspicious-badge";
+import { PdfReprocessButton } from "./pdf-reprocess-button";
+import { toast } from "@/hooks/use-toast";
 import {
   Tooltip,
   TooltipContent,
@@ -62,6 +65,37 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
     setIsResubmitDialogOpen(true);
   };
   
+  const handleReprocessPdf = async (candidateId: number, candidateName: string) => {
+    try {
+      const response = await fetch(`/api/reprocess-pdf/${candidateId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast({
+          title: "PDF Reprocessed Successfully",
+          description: `Extracted ${result.textLength} characters from ${candidateName}'s resume`
+        });
+      } else {
+        toast({
+          title: "Reprocessing Failed",
+          description: result.message || "Failed to reprocess PDF",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("PDF reprocessing error:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred while reprocessing the PDF",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleQuickSubmit = (id: number, name: string) => {
     setSelectedCandidate({ id, name });
     setIsQuickSubmitDialogOpen(true);
@@ -254,6 +288,12 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
                         label: "Download Details",
                         icon: <Download className="h-4 w-4" />,
                         onClick: () => handleDownloadDetails(candidate)
+                      },
+                      {
+                        label: "Reprocess PDF",
+                        icon: <RefreshCw className="h-4 w-4" />,
+                        onClick: () => handleReprocessPdf(candidate.id, `${candidate.firstName} ${candidate.lastName}`),
+                        variant: "secondary"
                       },
                       {
                         label: "Resubmit", 

@@ -40,21 +40,11 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
       return;
     }
 
-    console.log('\n🔥 FRONTEND: UPLOAD BUTTON CLICKED');
-    console.log(`📁 File being uploaded:`);
-    console.log(`   - Name: ${file.name}`);
-    console.log(`   - Size: ${file.size} bytes`);
-    console.log(`   - Type: ${file.type}`);
-    console.log(`   - Last modified: ${new Date(file.lastModified).toISOString()}`);
-    console.log('🔥 FRONTEND: STARTING ANALYSIS PROCESS\n');
-
     setIsUploading(true);
 
     try {
       // Process the resume file
-      console.log('📤 FRONTEND: Calling analyzeResume function...');
       const result = await analyzeResume(file);
-      console.log('📥 FRONTEND: analyzeResume completed with result:', result);
       
       // Job description must be provided
       if (!jobDescription || jobDescription.trim().length < 10) {

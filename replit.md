@@ -4,24 +4,14 @@ RecruiterTracker is a modern AI-powered recruitment management platform built wi
 
 ## Recent Changes (August 14, 2025)
 
-**PDF Parser Comprehensive Debugger (Latest)**
-- Added detailed PDF parsing debugger with step-by-step diagnostics
-- PDF header validation checks for valid %PDF signature before processing  
-- Library loading diagnostics with multiple import strategy fallbacks
-- Complete parsing process timing and detailed result logging
-- Enhanced error handling with specific diagnosis suggestions
-- Added safe text processing to prevent "Maximum call stack size exceeded" errors in PDF analysis
-- Enhanced PDF issue detection for short text extractions (< 100 characters)
-- Safe substring operations with error handling throughout text processing
-- Fixed root cause of 56-character error messages by adding safe handling in OpenAI analysis error cases
-- Enhanced PDF upload debugging at document parsing stage to identify stack overflow errors at source
-- Added comprehensive error diagnostics for PDF extraction failures with specific diagnosis suggestions
-- Cleared all cached PDF files and database entries to prevent stale error data
-- Enhanced debugging to trigger immediately at file upload and document processing start
-- Added comprehensive file upload debugging at route level to catch all PDF uploads
-- DOCX parsing remains untouched and working perfectly
-- Successfully tested with real PDF files: Drew Corrigan (8,101 chars) and Sanjeev Chapagain (20,130 chars)
-- PDF parsing debugger shows detailed logs during file upload process
+**Critical PDF Analysis Fix (Latest)**
+- Fixed "Maximum call stack size exceeded" error that was corrupting resume analysis
+- Identified incorrect function call `extractTextFromBuffer` instead of `extractTextFromDocument` in server routes
+- Improved PDF parsing with proper options to prevent stack overflow on large files
+- Enhanced error handling in document parser to return user-friendly messages instead of throwing
+- Fixed client-side error handling to prevent recursive errors from being stored as extractedText
+- Modified openai.ts to store clean error messages instead of raw stack traces
+- Added proper MIME type detection and file handling in public application routes
 
 **Security Enhancement: Optional Sensitive Fields**
 - Made Birth Month, Birth Day, and Last 4 of SSN optional fields for enhanced security and privacy

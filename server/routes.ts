@@ -2127,19 +2127,61 @@ Generated on: ${new Date().toLocaleString()}
   const multerStorage = multer.memoryStorage();
   const fileUpload = multer({ storage: multerStorage });
   
-  app.post("/api/parse-document", requireAuth, fileUpload.single('file'), async (req: Request, res: Response) => {
-    console.log('\n🔥 ===== FILE UPLOAD RECEIVED =====');
-    console.log('📁 Upload Details:');
-    console.log(`   - Endpoint: /api/parse-document`);
-    console.log(`   - Time: ${new Date().toISOString()}`);
-    console.log(`   - Request has file: ${!!req.file}`);
-    if (req.file) {
-      console.log(`   - Original filename: ${req.file.originalname}`);
-      console.log(`   - File size: ${req.file.size} bytes (${Math.round(req.file.size / 1024)}KB)`);
-      console.log(`   - MIME type: ${req.file.mimetype}`);
-      console.log(`   - File extension: ${req.file.originalname.split('.').pop()?.toLowerCase()}`);
+  // Add endpoint to reprocess existing PDF files
+  app.post("/api/reprocess-pdf/:candidateId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const candidateId = parseInt(req.params.candidateId);
+      if (isNaN(candidateId)) {
+        return res.status(400).json({ message: "Invalid candidate ID" });
+      }
+
+      // Get the resume file from database
+      const resumeFile = await storage.getResumeFile(candidateId);
+      if (!resumeFile) {
+        return res.status(404).json({ message: "No resume file found for this candidate" });
+      }
+
+      console.log(`Reprocessing PDF for candidate ${candidateId}: ${resumeFile.fileName}`);
+
+      // Only process PDF files
+      if (!resumeFile.fileName.toLowerCase().endsWith('.pdf')) {
+        return res.status(400).json({ message: "Only PDF files can be reprocessed" });
+      }
+
+      // Extract text using improved parser
+      const { extractTextFromDocument } = await import('./document-parser');
+      const extractedText = await extractTextFromDocument(resumeFile.fileContent, 'pdf');
+
+      if (extractedText && extractedText.length > 50) {
+        // Update the database with the new extracted text
+        await storage.updateResumeText(candidateId, extractedText);
+        
+        console.log(`Successfully reprocessed PDF: ${extractedText.length} characters extracted`);
+        
+        return res.json({
+          success: true,
+          message: "PDF reprocessed successfully",
+          textLength: extractedText.length,
+          preview: extractedText.substring(0, 200)
+        });
+      } else {
+        return res.status(500).json({
+          success: false,
+          message: "PDF reprocessing failed - no text extracted"
+        });
+      }
+
+    } catch (error) {
+      console.error("PDF reprocessing error:", error);
+      return res.status(500).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : "Reprocessing failed"
+      });
     }
-    console.log('🔥 ===== FILE UPLOAD DEBUG END =====\n');
+  });
+
+  app.post("/api/parse-document", requireAuth, fileUpload.single('file'), async (req: Request, res: Response) => {
+    console.log("Document parsing request received");
     
     try {
       if (!req.file) {
@@ -2168,40 +2210,11 @@ Generated on: ${new Date().toLocaleString()}
         // Import the document parser
         const { extractTextFromDocument } = await import('./document-parser');
         
-        // Add special debugging for PDF files at upload stage
-        if (fileType === 'pdf') {
-          console.log('\n🔍 ===== PDF UPLOAD DEBUG START =====');
-          console.log(`📁 File Details:`);
-          console.log(`   - Original name: ${req.file.originalname}`);
-          console.log(`   - File size: ${req.file.size} bytes (${Math.round(req.file.size / 1024)}KB)`);
-          console.log(`   - Buffer length: ${fileBuffer.length} bytes`);
-          console.log(`   - Buffer is valid: ${Buffer.isBuffer(fileBuffer)}`);
-          console.log('🔍 ===== PDF UPLOAD DEBUG END =====\n');
-        }
-        
         // Extract text based on file type
         console.log(`Processing ${fileType.toUpperCase()} document using document-parser`);
         extractedText = await extractTextFromDocument(fileBuffer, fileType);
       } catch (extractionError) {
         console.error(`${fileType.toUpperCase()} extraction error:`, extractionError);
-        
-        // For PDF files, provide specific error diagnostics
-        if (fileType === 'pdf') {
-          console.log('\n🚨 ===== PDF EXTRACTION ERROR DETAILS =====');
-          console.log(`   - Error type: ${extractionError?.constructor?.name || 'Unknown'}`);
-          console.log(`   - Error message: ${extractionError?.message || String(extractionError)}`);
-          console.log(`   - Stack trace preview: ${extractionError?.stack?.substring(0, 300) || 'No stack'}`);
-          
-          if (extractionError?.message?.includes('Maximum call stack size exceeded')) {
-            console.log('   - Diagnosis: Stack overflow during PDF parsing - likely corrupted or complex PDF structure');
-            console.log('   - Suggestion: Try converting PDF to a simpler format or recreating it');
-          } else if (extractionError?.message?.includes('Invalid PDF')) {
-            console.log('   - Diagnosis: PDF file appears to be corrupted or not a valid PDF');
-            console.log('   - Suggestion: Check if file is actually a PDF and not corrupted');
-          }
-          console.log('🚨 ===== PDF EXTRACTION ERROR END =====\n');
-        }
-        
         return res.status(500).json({
           success: false,
           error: `${fileType.toUpperCase()} parsing failed`,
@@ -2221,16 +2234,7 @@ Generated on: ${new Date().toLocaleString()}
       
       // Log the extraction results
       console.log(`Successfully extracted ${extractedText.length} characters from ${fileType.toUpperCase()}`);
-      
-      // Safe text preview creation (particularly important for PDF files)
-      let textPreview;
-      try {
-        textPreview = extractedText.substring(0, 200) + "...";
-      } catch (previewError) {
-        console.log('⚠️  PDF Preview Error:', previewError?.message || String(previewError));
-        textPreview = `[Preview error: ${previewError?.message || 'Unable to create preview'}]`;
-      }
-      console.log("Text preview:", textPreview);
+      console.log("Text preview:", extractedText.substring(0, 200) + "...");
       
       // Store resume file in database if candidateId is provided
       const candidateId = req.body.candidateId ? parseInt(req.body.candidateId) : null;
@@ -2291,32 +2295,6 @@ Generated on: ${new Date().toLocaleString()}
     try {
       const { resumeText, jobDescription } = req.body;
 
-      console.log('\n🎯 ===== MATCH-RESUME REQUEST DEBUG =====');
-      console.log(`📝 Request Details:`);
-      console.log(`   - Resume text length: ${resumeText?.length || 0}`);
-      console.log(`   - Job description length: ${jobDescription?.length || 0}`);
-      
-      if (resumeText && resumeText.length < 100) {
-        console.log('\n🔍 ===== PDF PARSING ISSUE DETECTED =====');
-        console.log(`⚠️  Resume text is very short (${resumeText.length} chars)`);
-        console.log('📄 Text type analysis:');
-        console.log(`   - Text type: ${typeof resumeText}`);
-        console.log(`   - Is string: ${typeof resumeText === 'string'}`);
-        console.log(`   - Text constructor: ${resumeText?.constructor?.name || 'Unknown'}`);
-        console.log('🔤 Text content analysis:');
-        console.log(`   - Starts with: "${resumeText?.substring(0, 10) || ''}"`);
-        console.log(`   - Contains "Error": ${resumeText?.includes('Error') || false}`);
-        console.log(`   - Contains "PDF": ${resumeText?.includes('PDF') || false}`);
-        console.log(`   - Contains "analyzing": ${resumeText?.includes('analyzing') || false}`);
-        if (resumeText?.includes('Maximum call stack size exceeded')) {
-          console.log('🚨 FOUND THE CACHED ERROR! This is coming from previous failed PDF processing');
-          console.log('🚨 This is NOT a fresh PDF upload - it is cached error text');
-        }
-        console.log('🔍 ===== PDF PARSING ISSUE DEBUG END =====');
-      }
-      
-      console.log('🎯 ===== MATCH-RESUME REQUEST DEBUG END =====\n');
-
       if (!resumeText || typeof resumeText !== "string") {
         return res.status(200).json({
           message: "Resume text is required",
@@ -2348,28 +2326,6 @@ Generated on: ${new Date().toLocaleString()}
       console.log("- Resume text length:", sanitizedResumeText.length);
       console.log("- Job description length:", sanitizedJobDescription.length);
 
-      // Add PDF-specific debugging for short text lengths
-      if (sanitizedResumeText.length < 100) {
-        console.log('\n🔍 ===== PDF PARSING ISSUE DETECTED =====');
-        console.log(`⚠️  Resume text is very short (${sanitizedResumeText.length} chars)`);
-        console.log('📄 Text type analysis:');
-        console.log(`   - Text type: ${typeof sanitizedResumeText}`);
-        console.log(`   - Is string: ${typeof sanitizedResumeText === 'string'}`);
-        console.log(`   - Text constructor: ${sanitizedResumeText.constructor?.name || 'unknown'}`);
-        
-        // Safe text analysis
-        try {
-          console.log('🔤 Text content analysis:');
-          console.log(`   - Starts with: "${sanitizedResumeText.substring(0, 10)}"`);
-          console.log(`   - Contains "Error": ${sanitizedResumeText.includes('Error')}`);
-          console.log(`   - Contains "PDF": ${sanitizedResumeText.includes('PDF')}`);
-          console.log(`   - Contains "analyzing": ${sanitizedResumeText.includes('analyzing')}`);
-        } catch (textError) {
-          console.log('❌ Error analyzing text content:', textError?.message || String(textError));
-        }
-        console.log('🔍 ===== PDF PARSING ISSUE DEBUG END =====\n');
-      }
-
       console.log("Analyzing resume match...");
       
       // Use OpenAI directly to extract employment history
@@ -2383,14 +2339,8 @@ Generated on: ${new Date().toLocaleString()}
         console.log("Starting resume analysis with OpenAI...");
         console.log(`Sending OpenAI request with resume length: ${sanitizedResumeText.length} and job description length: ${sanitizedJobDescription.length}`);
         
-        // Safely create resume preview with error handling
-        let resumePreview;
-        try {
-          resumePreview = sanitizedResumeText.substring(0, 300);
-        } catch (previewError) {
-          console.log('❌ Error creating resume preview:', previewError?.message || String(previewError));
-          resumePreview = `Error creating preview: ${previewError?.message || String(previewError)}`;
-        }
+        // Log first 300 chars of resume for debugging
+        const resumePreview = sanitizedResumeText.substring(0, 300);
         console.log("Resume text preview for analysis:", resumePreview);
         
         // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
@@ -2875,18 +2825,6 @@ Generated on: ${new Date().toLocaleString()}
 
   // Store resume file for existing candidate
   app.post("/api/submissions/store-resume", requireAuth, fileUpload.single('file'), async (req: Request, res: Response) => {
-    console.log('\n🔥 ===== STORE-RESUME FILE UPLOAD =====');
-    console.log(`📁 Upload Details:`);
-    console.log(`   - Endpoint: /api/submissions/store-resume`);
-    console.log(`   - Time: ${new Date().toISOString()}`);
-    console.log(`   - Request has file: ${!!req.file}`);
-    if (req.file) {
-      console.log(`   - Original filename: ${req.file.originalname}`);
-      console.log(`   - File size: ${req.file.size} bytes (${Math.round(req.file.size / 1024)}KB)`);
-      console.log(`   - MIME type: ${req.file.mimetype}`);
-    }
-    console.log('🔥 ===== STORE-RESUME DEBUG END =====\n');
-    
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -3036,18 +2974,6 @@ Generated on: ${new Date().toLocaleString()}
 
   // Submit a public job application (with automatic candidate creation)
   app.post("/api/public/apply", fileUpload.single('resume'), async (req: Request, res: Response) => {
-    console.log('\n🔥 ===== PUBLIC-APPLY FILE UPLOAD =====');
-    console.log(`📁 Upload Details:`);
-    console.log(`   - Endpoint: /api/public/apply`);
-    console.log(`   - Time: ${new Date().toISOString()}`);
-    console.log(`   - Request has file: ${!!req.file}`);
-    if (req.file) {
-      console.log(`   - Original filename: ${req.file.originalname}`);
-      console.log(`   - File size: ${req.file.size} bytes (${Math.round(req.file.size / 1024)}KB)`);
-      console.log(`   - MIME type: ${req.file.mimetype}`);
-    }
-    console.log('🔥 ===== PUBLIC-APPLY DEBUG END =====\n');
-    
     try {
       const applicationData = req.body;
       const resumeFile = req.file;
@@ -3064,18 +2990,22 @@ Generated on: ${new Date().toLocaleString()}
         
         // Extract text from resume file
         try {
-          console.log('\n🚀 Starting PDF/Document parsing from public application...');
-          console.log(`   - Original filename: ${resumeFile.originalname}`);
-          console.log(`   - MIME type: ${resumeFile.mimetype}`);
-          console.log(`   - File size: ${resumeFile.buffer.length} bytes`);
+          const { extractTextFromDocument } = await import("./document-parser");
+          // Convert MIME type to file extension
+          let fileType = 'txt';
+          if (resumeFile.mimetype === 'application/pdf') {
+            fileType = 'pdf';
+          } else if (resumeFile.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            fileType = 'docx';
+          } else if (resumeFile.originalname.toLowerCase().endsWith('.pdf')) {
+            fileType = 'pdf';
+          } else if (resumeFile.originalname.toLowerCase().endsWith('.docx')) {
+            fileType = 'docx';
+          }
           
-          const { extractTextFromBuffer } = await import("./document-parser");
-          resumeContent = await extractTextFromBuffer(resumeFile.buffer, resumeFile.mimetype);
-          
-          console.log(`\n✅ Document parsing completed successfully`);
-          console.log(`   - Extracted content length: ${resumeContent.length} characters`);
+          resumeContent = await extractTextFromDocument(resumeFile.buffer, fileType);
         } catch (extractError) {
-          console.error("\n❌ Resume extraction failed in public application:", extractError);
+          console.error("Resume extraction failed:", extractError);
           // Continue without resume content
         }
       }

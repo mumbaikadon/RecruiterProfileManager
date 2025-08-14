@@ -122,15 +122,6 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
     const responseContent = response.choices[0].message.content || '{}';
     const analysisResult = JSON.parse(responseContent);
     
-    // Safe handling of resume text for DB storage (particularly for PDF parsing issues)
-    let safeExtractedText;
-    try {
-      safeExtractedText = resumeText.substring(0, 4000); // Limit to 4000 chars for DB storage
-    } catch (substringError) {
-      console.error("Error creating extracted text substring:", substringError);
-      safeExtractedText = "Error processing resume text content";
-    }
-    
     // Sanitize and return the result
     return {
       clientNames: Array.isArray(analysisResult.clientNames) ? analysisResult.clientNames : [],
@@ -138,24 +129,10 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       relevantDates: Array.isArray(analysisResult.relevantDates) ? analysisResult.relevantDates : [],
       skills: Array.isArray(analysisResult.skills) ? analysisResult.skills : [],
       education: Array.isArray(analysisResult.education) ? analysisResult.education : [],
-      extractedText: safeExtractedText
+      extractedText: resumeText.substring(0, 4000) // Limit to 4000 chars for DB storage
     };
   } catch (error) {
     console.error("Error analyzing resume text:", error);
-    
-    // Safe handling of resume text in error case (particularly for PDF parsing issues)
-    let safeExtractedText;
-    try {
-      safeExtractedText = resumeText.substring(0, 4000);
-    } catch (substringError) {
-      console.error("Additional error creating substring:", substringError);
-      safeExtractedText = `Error analyzing resume: ${error instanceof Error ? error.message : String(error)}`;
-    }
-    
-    console.log('🚨 SERVER: ERROR IN RESUME ANALYSIS - RETURNING ERROR MESSAGE');
-    console.log(`🚨 SERVER: Error message length: ${safeExtractedText.length} characters`);
-    console.log(`🚨 SERVER: Error preview: "${safeExtractedText}"`);
-    console.log('🚨 SERVER: This error will be cached and cause persistent issues');
     
     // If there's an error, return empty fields rather than failing completely
     return {
@@ -164,7 +141,7 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       relevantDates: [],
       skills: [],
       education: [],
-      extractedText: safeExtractedText
+      extractedText: resumeText.substring(0, 4000)
     };
   }
 }
