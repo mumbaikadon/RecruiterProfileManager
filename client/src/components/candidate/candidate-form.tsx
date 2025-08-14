@@ -104,7 +104,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       lastName: "",
       dobMonth: undefined,
       dobDay: undefined,
-      ssn4: "",
+      ssn4: undefined,
       location: "",
       email: "",
       phone: "",

@@ -465,9 +465,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if candidate already exists (only if identifying information is provided)
       const existingCandidate = await storage.getCandidateByIdentity(
-        validatedData.dobMonth,
-        validatedData.dobDay,
-        validatedData.ssn4,
+        validatedData.dobMonth ?? undefined,
+        validatedData.dobDay ?? undefined,
+        validatedData.ssn4 ?? undefined,
       );
 
       // If candidate exists, check for validation requirements
@@ -839,9 +839,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Check if candidate already exists
         const existingCandidate = await storage.getCandidateByIdentity(
-          validatedCandidateData.dobMonth,
-          validatedCandidateData.dobDay,
-          validatedCandidateData.ssn4,
+          validatedCandidateData.dobMonth ?? undefined,
+          validatedCandidateData.dobDay ?? undefined,
+          validatedCandidateData.ssn4 ?? undefined,
         );
 
         // Check if this candidate has already been submitted for this specific job

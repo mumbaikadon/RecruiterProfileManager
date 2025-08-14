@@ -4,7 +4,17 @@ RecruiterTracker is a modern AI-powered recruitment management platform built wi
 
 ## Recent Changes (August 14, 2025)
 
-**Resume File Storage Fix (Latest)**
+**Security Enhancement: Optional Sensitive Fields (Latest)**
+- Made Birth Month, Birth Day, and Last 4 of SSN optional fields for enhanced security and privacy
+- Updated database schema to allow nullable values for dobMonth, dobDay, and ssn4 columns
+- Modified frontend form validation to accept empty values for these sensitive fields
+- Enhanced backend identity checking logic to work with partial identifying information
+- Added clear "(Optional)" labels in UI to indicate fields are not required
+- Implemented proper null handling in API routes using null coalescing operator
+- Maintains candidate uniqueness checking functionality where identifying information is available
+- Reduces collection of sensitive personal data while preserving system functionality
+
+**Resume File Storage Fix**
 - Fixed critical timing issue where files weren't stored during initial candidate creation
 - Modified analyzeResume function to capture actual file content as base64 data
 - Enhanced candidate creation flow to store file data after candidateId is available
