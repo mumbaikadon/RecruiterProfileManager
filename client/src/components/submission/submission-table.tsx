@@ -15,6 +15,7 @@ import StatusBadge from "@/components/submission/status-badge";
 import StatusSelect from "@/components/submission/status-select";
 import SuspiciousBadge from "@/components/submission/suspicious-badge";
 import ResubmitDialog from "@/components/candidate/resubmit-dialog";
+import QuickSubmitDialog from "@/components/candidate/quick-submit-dialog";
 import { Eye, RefreshCw, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
 }) => {
   const [_, setLocation] = useLocation();
   const [resubmitDialogOpen, setResubmitDialogOpen] = useState(false);
+  const [quickSubmitDialogOpen, setQuickSubmitDialogOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<{ id: number, name: string } | null>(null);
 
   if (isLoading) {
@@ -65,6 +67,11 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
   // Handle closing the resubmit dialog
   const handleCloseResubmitDialog = () => {
     setResubmitDialogOpen(false);
+    setSelectedCandidate(null);
+  };
+
+  const handleCloseQuickSubmitDialog = () => {
+    setQuickSubmitDialogOpen(false);
     setSelectedCandidate(null);
   };
 
@@ -250,24 +257,47 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                     )}
                     
                     {submission.candidate && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-primary hover:text-primary/80 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (submission.candidate) {
-                            setSelectedCandidate({
-                              id: submission.candidate.id,
-                              name: `${submission.candidate.firstName} ${submission.candidate.lastName}`
-                            });
-                            setResubmitDialogOpen(true);
-                          }
-                        }}
-                      >
-                        <RefreshCw className="h-4 w-4 mr-1" />
-                        <span className="hidden sm:inline">Resubmit</span>
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary hover:text-primary/80 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (submission.candidate) {
+                              setSelectedCandidate({
+                                id: submission.candidate.id,
+                                name: `${submission.candidate.firstName} ${submission.candidate.lastName}`
+                              });
+                              setResubmitDialogOpen(true);
+                            }
+                          }}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-1" />
+                          <span className="hidden sm:inline">Resubmit</span>
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-green-600 hover:text-green-700 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (submission.candidate) {
+                              setSelectedCandidate({
+                                id: submission.candidate.id,
+                                name: `${submission.candidate.firstName} ${submission.candidate.lastName}`
+                              });
+                              setQuickSubmitDialogOpen(true);
+                            }
+                          }}
+                        >
+                          <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                          <span className="hidden sm:inline">Quick Submit</span>
+                        </Button>
+                      </>
                     )}
                   </div>
                 </TableCell>
@@ -282,6 +312,16 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
         <ResubmitDialog
           isOpen={resubmitDialogOpen}
           onClose={handleCloseResubmitDialog}
+          candidateId={selectedCandidate.id}
+          candidateName={selectedCandidate.name}
+        />
+      )}
+
+      {/* Quick Submit Dialog */}
+      {selectedCandidate && (
+        <QuickSubmitDialog
+          isOpen={quickSubmitDialogOpen}
+          onClose={handleCloseQuickSubmitDialog}
           candidateId={selectedCandidate.id}
           candidateName={selectedCandidate.name}
         />

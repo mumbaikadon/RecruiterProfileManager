@@ -1010,10 +1010,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
               message: "Either candidateData or candidateId must be provided",
             });
         }
+
+        // Check if this is a quick submit - bypass resume processing
+        if (submissionData.quickSubmit) {
+          console.log("🚀 QUICK SUBMIT detected - bypassing resume validation and AI processing");
+          
+          // Just check for duplicate submission
+          const existingSubmission = await storage.getSubmissionByJobAndCandidate(
+            jobId,
+            candidateId
+          );
+
+          if (existingSubmission) {
+            return res.status(409).json({
+              message: "This candidate is already in our past submitted list for this job",
+              candidateId: candidateId,
+              submissionId: existingSubmission.id,
+            });
+          }
+
+          // Skip all resume processing and validation - go directly to submission creation
+          console.log("✅ Quick submit validation passed - proceeding directly to submission");
+        }
       }
 
       // Handle resume data update if provided (for existing candidates)
-      if (submissionData.resumeData && candidateId) {
+      // Skip resume processing for quick submit
+      if (submissionData.resumeData && candidateId && !submissionData.quickSubmit) {
         try {
           console.log(`Updating resume data for existing candidate ${candidateId}`);
           
