@@ -147,6 +147,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
       console.log(`Using recruiter ID: ${recruiterId}`);
       console.log(`Form values:`, values);
       console.log(`Agreed rate from form: ${values.agreedRate} (type: ${typeof values.agreedRate})`);
+      console.log(`Raw agreedRate value:`, JSON.stringify(values.agreedRate));
       console.log(`========================`);
       
       // First create candidate with resumeData
@@ -478,13 +479,17 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
       console.log(`=== CREATING SUBMISSION ===`);
       console.log(`jobId: ${jobId}, candidateId: ${candidateData.id}, recruiterId: ${recruiterId}`);
       console.log(`recruiterId type: ${typeof recruiterId}`);
+      console.log(`agreedRate from values: ${values.agreedRate} (type: ${typeof values.agreedRate})`);
+      
+      const agreedRateNumber = parseFloat(String(values.agreedRate || '0'));
+      console.log(`agreedRate converted to number: ${agreedRateNumber}`);
       
       createSubmission({
         jobId,
         candidateId: candidateData.id,
         recruiterId: Number(recruiterId), // Ensure it's a number
         status: "New",
-        agreedRate: values.agreedRate,
+        agreedRate: agreedRateNumber,
         matchScore: values.matchResults?.score || null,
         notes: "",
       }, {
@@ -644,12 +649,16 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
                 onSuccess: () => {
                   // If validation was successful and candidate is matching, create a submission
                   if (data.validationResult === "matching") {
+                    const submissionRate = validationData?.agreedRate || parseFloat(String(values.agreedRate || '0'));
+                    console.log(`=== VALIDATION DIALOG SUBMISSION ===`);
+                    console.log(`Using rate: ${submissionRate}`);
+                    
                     createSubmission({
                       jobId,
                       candidateId: data.candidateId,
                       recruiterId,
                       status: "New",
-                      agreedRate: validationData?.agreedRate || 0, // Use the actual agreed rate
+                      agreedRate: submissionRate,
                       matchScore: null,
                       notes: "",
                       // Pass suspicious flags if they exist in validation data
