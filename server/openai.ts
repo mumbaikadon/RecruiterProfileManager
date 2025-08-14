@@ -122,6 +122,15 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
     const responseContent = response.choices[0].message.content || '{}';
     const analysisResult = JSON.parse(responseContent);
     
+    // Safe handling of resume text for DB storage (particularly for PDF parsing issues)
+    let safeExtractedText;
+    try {
+      safeExtractedText = resumeText.substring(0, 4000); // Limit to 4000 chars for DB storage
+    } catch (substringError) {
+      console.error("Error creating extracted text substring:", substringError);
+      safeExtractedText = "Error processing resume text content";
+    }
+    
     // Sanitize and return the result
     return {
       clientNames: Array.isArray(analysisResult.clientNames) ? analysisResult.clientNames : [],
@@ -129,10 +138,19 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       relevantDates: Array.isArray(analysisResult.relevantDates) ? analysisResult.relevantDates : [],
       skills: Array.isArray(analysisResult.skills) ? analysisResult.skills : [],
       education: Array.isArray(analysisResult.education) ? analysisResult.education : [],
-      extractedText: resumeText.substring(0, 4000) // Limit to 4000 chars for DB storage
+      extractedText: safeExtractedText
     };
   } catch (error) {
     console.error("Error analyzing resume text:", error);
+    
+    // Safe handling of resume text in error case (particularly for PDF parsing issues)
+    let safeExtractedText;
+    try {
+      safeExtractedText = resumeText.substring(0, 4000);
+    } catch (substringError) {
+      console.error("Additional error creating substring:", substringError);
+      safeExtractedText = `Error analyzing resume: ${error instanceof Error ? error.message : String(error)}`;
+    }
     
     // If there's an error, return empty fields rather than failing completely
     return {
@@ -141,7 +159,7 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       relevantDates: [],
       skills: [],
       education: [],
-      extractedText: resumeText.substring(0, 4000)
+      extractedText: safeExtractedText
     };
   }
 }
