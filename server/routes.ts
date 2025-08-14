@@ -10,6 +10,7 @@ import {
   insertActivitySchema,
   insertPublicApplicationSchema,
   insertUserSchema,
+  insertCandidateValidationSchema,
   type InsertResumeData,
   resumeData,
 } from "@shared/schema";
@@ -1250,6 +1251,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors });
       }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Candidate validations routes
+  app.post("/api/candidate-validations", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertCandidateValidationSchema.parse(req.body);
+      
+      // Add the validating user (from session)
+      const validationData = {
+        ...validatedData,
+        validatedBy: (req as any).user.id
+      };
+      
+      const validation = await storage.createCandidateValidation(validationData);
+      
+      // Create an activity for the validation
+      await storage.createActivity({
+        type: "candidate_validated",
+        userId: (req as any).user.id,
+        candidateId: validatedData.candidateId,
+        jobId: validatedData.jobId || null,
+        message: `Candidate profile changes validated: ${validatedData.validationResult}`
+      });
+      
+      res.status(201).json(validation);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.get("/api/candidate-validations/:candidateId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const candidateId = parseInt(req.params.candidateId);
+      if (isNaN(candidateId)) {
+        return res.status(400).json({ message: "Invalid candidate ID" });
+      }
+      
+      const validations = await storage.getCandidateValidations(candidateId);
+      res.json(validations);
+    } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
   });
