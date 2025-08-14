@@ -34,18 +34,10 @@ function Router() {
         <PublicJobs />
       </Route>
       
-      {/* Public home route for non-authenticated users */}
-      <Route path="/public" component={PublicHome} />
+      {/* Public home route */}
+      <Route path="/" component={PublicHome} />
       
       {/* Protected admin/recruiter routes */}
-      <ProtectedRoute 
-        path="/" 
-        component={() => (
-          <Layout>
-            <Dashboard />
-          </Layout>
-        )} 
-      />
       <ProtectedRoute 
         path="/dashboard" 
         component={() => (
