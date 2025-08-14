@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import CandidateForm, { CandidateFormValues } from "@/components/candidate/candidate-form";
-import CandidateValidationDialog from "@/components/candidate/candidate-validation-dialog";
+import ResumeChangesDialog from "@/components/candidate/resume-changes-dialog";
 import RateChangeDialog from "@/components/submission/rate-change-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -501,6 +501,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           resumeFileName: values.resumeData?.fileName || "Resume",
           existingResumeData: validationData.existingResumeData,
           newResumeData: validationData.newResumeData,
+          changes: validationData.comparison?.changes || [],
           isSuspicious: validationData.isSuspicious || false,
           suspiciousReason: validationData.suspiciousReason,
           suspiciousSeverity: validationData.suspiciousSeverity
@@ -644,85 +645,53 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Validation Dialog */}
+      {/* Resume Changes Validation Dialog */}
       {validationDialogOpen && validationData && (
-        <CandidateValidationDialog
+        <ResumeChangesDialog
           isOpen={validationDialogOpen}
           onClose={() => {
             setValidationDialogOpen(false);
-            // No need to create a submission here - the validateCandidate function takes care of it
+            setValidationData(null);
           }}
           candidateId={validationData.candidateId}
           candidateName={validationData.candidateName}
           jobId={jobId}
           jobTitle={jobTitle}
-          existingResumeData={validationData.existingResumeData}
-          newResumeData={validationData.newResumeData}
-          validationType="resubmission"
+          comparison={{
+            hasChanges: true,
+            significantChanges: true,
+            changes: validationData.changes || [],
+            addedCompanies: [],
+            removedCompanies: [],
+            addedJobTitles: [],
+            removedJobTitles: [],
+            addedDates: [],
+            removedDates: []
+          }}
           resumeFileName={validationData.resumeFileName}
-          // Pass suspicious flags from validation data
-          isSuspicious={validationData.isSuspicious}
-          suspiciousReason={validationData.suspiciousReason}
-          suspiciousSeverity={validationData.suspiciousSeverity}
-          validateCandidate={(data) => {
-            return new Promise((resolve, reject) => {
-              validateCandidate({...data, validatedBy: recruiterId}, {
-                onSuccess: () => {
-                  // If validation was successful and candidate is matching, create a submission
-                  if (data.validationResult === "matching") {
-                    createSubmission({
-                      jobId,
-                      candidateId: data.candidateId,
-                      recruiterId,
-                      status: "New",
-                      agreedRate: 0, // For now, using a placeholder value
-                      matchScore: null,
-                      notes: "",
-                      // Pass suspicious flags if they exist in validation data
-                      isSuspicious: !!data.isSuspicious,
-                      suspiciousReason: data.suspiciousReason || null,
-                      suspiciousSeverity: data.suspiciousSeverity || null,
-                    }, {
-                      onSuccess: () => {
-                        toast({
-                          title: "Submission successful",
-                          description: `${data.candidateId ? "Candidate" : ""} was validated and submitted for ${jobTitle}`,
-                        });
-                        if (onSuccess) onSuccess();
-                        resolve(true);
-                      },
-                      onError: (error) => {
-                        setSubmissionError(error.message);
-                        toast({
-                          title: "Submission failed",
-                          description: error.message,
-                          variant: "destructive",
-                        });
-                        reject(error);
-                      }
-                    });
-                  } else {
-                    // Just show a toast for unreal candidates
-                    toast({
-                      title: "Candidate marked as unreal",
-                      description: "The candidate has been flagged as potentially fraudulent in the system.",
-                    });
-                    resolve(true);
-                  }
-                },
-                onError: (error) => {
-                  setSubmissionError(error.message);
-                  toast({
-                    title: "Validation failed",
-                    description: error.message,
-                    variant: "destructive",
-                  });
-                  reject(error);
-                }
-              });
+          onProceed={(flagAsSuspicious, reason, severity) => {
+            console.log("🎯 User confirmed to proceed with submission");
+            // Close the validation dialog
+            setValidationDialogOpen(false);
+            setValidationData(null);
+            
+            // Now proceed with creating the submission
+            toast({
+              title: "Submission successful",
+              description: "The candidate has been submitted despite resume changes.",
+            });
+            if (onSuccess) onSuccess();
+            onClose();
+          }}
+          onCancel={() => {
+            console.log("🎯 User cancelled submission due to resume changes");
+            setValidationDialogOpen(false);
+            setValidationData(null);
+            toast({
+              title: "Submission cancelled",
+              description: "Submission was cancelled due to resume changes.",
             });
           }}
-          validatedBy={recruiterId}
         />
       )}
 
