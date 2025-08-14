@@ -28,16 +28,22 @@ export default function OrganizationPage() {
   const queryClient = useQueryClient();
 
   // Fetch users based on selected tab
-  const { data: users = [], isLoading } = useQuery({
+  const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["/api/organization/users", selectedTab === "pending" ? "pending" : "all"],
     queryFn: () => apiRequest(`/api/organization/users${selectedTab === "pending" ? "?status=pending" : ""}`),
+    retry: false,
   });
 
   // Approve user mutation
   const approveMutation = useMutation({
     mutationFn: (userId: number) => 
-      apiRequest(`/api/organization/users/${userId}/approve`, { method: "PUT" }),
-    onSuccess: (data) => {
+      apiRequest(`/api/organization/users/${userId}/approve`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }),
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization/users"] });
       toast({
         title: "User Approved",
@@ -56,8 +62,13 @@ export default function OrganizationPage() {
   // Reject user mutation
   const rejectMutation = useMutation({
     mutationFn: (userId: number) => 
-      apiRequest(`/api/organization/users/${userId}/reject`, { method: "PUT" }),
-    onSuccess: (data) => {
+      apiRequest(`/api/organization/users/${userId}/reject`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }),
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization/users"] });
       toast({
         title: "User Rejected",
@@ -78,9 +89,12 @@ export default function OrganizationPage() {
     mutationFn: ({ userId, role }: { userId: number; role: string }) => 
       apiRequest(`/api/organization/users/${userId}/role`, {
         method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ role }),
       }),
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization/users"] });
       toast({
         title: "Role Updated",
@@ -124,9 +138,11 @@ export default function OrganizationPage() {
     }
   };
 
-  const filteredUsers = selectedTab === "pending" 
-    ? users.filter((user: OrganizationUser) => user.status === "pending")
-    : users;
+  const filteredUsers = Array.isArray(users) 
+    ? (selectedTab === "pending" 
+        ? users.filter((user: OrganizationUser) => user.status === "pending")
+        : users)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -144,7 +160,7 @@ export default function OrganizationPage() {
           <TabsTrigger value="pending" className="flex items-center gap-2">
             <UserCheck className="w-4 h-4" />
             Pending Approvals
-            {users.filter((user: OrganizationUser) => user.status === "pending").length > 0 && (
+            {Array.isArray(users) && users.filter((user: OrganizationUser) => user.status === "pending").length > 0 && (
               <Badge variant="secondary" className="ml-1">
                 {users.filter((user: OrganizationUser) => user.status === "pending").length}
               </Badge>
@@ -170,6 +186,10 @@ export default function OrganizationPage() {
             <CardContent>
               {isLoading ? (
                 <div className="text-center py-8">Loading pending users...</div>
+              ) : error ? (
+                <div className="text-center py-8 text-red-500">
+                  Error loading users: {error instanceof Error ? error.message : 'Unknown error'}
+                </div>
               ) : filteredUsers.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No pending user approvals
@@ -243,7 +263,11 @@ export default function OrganizationPage() {
             <CardContent>
               {isLoading ? (
                 <div className="text-center py-8">Loading users...</div>
-              ) : users.length === 0 ? (
+              ) : error ? (
+                <div className="text-center py-8 text-red-500">
+                  Error loading users: {error instanceof Error ? error.message : 'Unknown error'}
+                </div>
+              ) : !Array.isArray(users) || users.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No users found
                 </div>
