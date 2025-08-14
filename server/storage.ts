@@ -66,6 +66,10 @@ export interface IStorage {
     clientNames: string[];
     relevantDates: string[];
   }>>;
+  // Resume file storage operations
+  storeResumeFile(candidateId: number, fileName: string, fileContent: Buffer, mimeType: string): Promise<ResumeData>;
+  getResumeFile(candidateId: number): Promise<{fileName: string, fileContent: Buffer, mimeType: string} | null>;
+  deleteResumeFiles(candidateIds: number[]): Promise<void>;
 
   // Candidate validation operations
   createCandidateValidation(validation: InsertCandidateValidation): Promise<CandidateValidation>;
@@ -950,6 +954,78 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return application;
+  }
+
+  // Resume file storage methods
+  async storeResumeFile(candidateId: number, fileName: string, fileContent: Buffer, mimeType: string): Promise<ResumeData> {
+    // Convert buffer to base64 for database storage
+    const base64Content = fileContent.toString('base64');
+    
+    // Get existing resume data or create new record
+    const existingResumeData = await this.getResumeData(candidateId);
+    
+    if (existingResumeData) {
+      // Update existing record with file data
+      const [updated] = await db
+        .update(resumeData)
+        .set({
+          fileName,
+          fileContent: base64Content,
+          fileSize: fileContent.length,
+          mimeType
+        })
+        .where(eq(resumeData.candidateId, candidateId))
+        .returning();
+      
+      return updated;
+    } else {
+      // Create new record with file data
+      const [created] = await db
+        .insert(resumeData)
+        .values({
+          candidateId,
+          fileName,
+          fileContent: base64Content,
+          fileSize: fileContent.length,
+          mimeType
+        })
+        .returning();
+      
+      return created;
+    }
+  }
+
+  async getResumeFile(candidateId: number): Promise<{fileName: string, fileContent: Buffer, mimeType: string} | null> {
+    const data = await this.getResumeData(candidateId);
+    
+    if (!data || !data.fileContent || !data.fileName || !data.mimeType) {
+      return null;
+    }
+    
+    // Convert base64 back to buffer
+    const fileContent = Buffer.from(data.fileContent, 'base64');
+    
+    return {
+      fileName: data.fileName,
+      fileContent,
+      mimeType: data.mimeType
+    };
+  }
+
+  async deleteResumeFiles(candidateIds: number[]): Promise<void> {
+    if (candidateIds.length === 0) {
+      return;
+    }
+    
+    // Clear file content fields for the specified candidates
+    await db
+      .update(resumeData)
+      .set({
+        fileContent: null,
+        fileSize: null,
+        mimeType: null
+      })
+      .where(sql`${resumeData.candidateId} = ANY(${candidateIds})`);
   }
 }
 

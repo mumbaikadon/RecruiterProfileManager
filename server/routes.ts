@@ -306,19 +306,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createActivity({
           type: "job_closed",
           jobId: id,
-          message: `Job ${job.title} (${job.jobId}) status changed from ${prevStatus} to ${status}. ${submissions.length} candidate submissions affected.`,
+          message: `Job ${job.title} (${job.jobId}) status changed from ${prevStatus} to ${status}. ${submissions.length} candidate submissions affected. Resume files deleted.`,
         });
 
-        // Process each submission to ensure resume data is preserved
-        for (const submission of submissions) {
-          console.log(
-            `Processing submission ID ${submission.id} for candidate ID ${submission.candidateId}`,
-          );
-
-          // We don't need to do anything special here since the data model
-          // already preserves candidate resume data independently of job status
-          // The API will automatically filter out the actual resume file when
-          // responding to requests for closed jobs
+        // Delete resume files for all candidates submitted to this job
+        if (submissions.length > 0) {
+          const candidateIds = submissions.map(submission => submission.candidateId);
+          await storage.deleteResumeFiles(candidateIds);
+          console.log(`Deleted resume files for ${candidateIds.length} candidates submitted to closed job ${job.jobId}`);
         }
       }
 
@@ -1797,6 +1792,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Successfully extracted ${extractedText.length} characters from ${fileType.toUpperCase()}`);
       console.log("Text preview:", extractedText.substring(0, 200) + "...");
       
+      // Store resume file in database if candidateId is provided
+      const candidateId = req.body.candidateId ? parseInt(req.body.candidateId) : null;
+      if (candidateId && !isNaN(candidateId)) {
+        try {
+          console.log(`Storing resume file for candidate ${candidateId}`);
+          
+          // Determine MIME type based on file extension
+          let mimeType = 'application/octet-stream';
+          if (fileType === 'pdf') {
+            mimeType = 'application/pdf';
+          } else if (fileType === 'docx') {
+            mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          } else if (fileType === 'txt') {
+            mimeType = 'text/plain';
+          }
+          
+          // Store the resume file in the database
+          await storage.storeResumeFile(candidateId, req.file.originalname, fileBuffer, mimeType);
+          console.log(`Resume file successfully stored for candidate ${candidateId}`);
+          
+        } catch (storageError) {
+          console.error(`Failed to store resume file for candidate ${candidateId}:`, storageError);
+          // Don't fail the whole request if file storage fails, just log it
+        }
+      }
+
       // Return success response
       return res.json({
         success: true,
@@ -2349,6 +2370,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Store resume file for existing candidate
+  app.post("/api/submissions/store-resume", requireAuth, fileUpload.single('file'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const candidateId = parseInt(req.body.candidateId);
+      if (isNaN(candidateId)) {
+        return res.status(400).json({ message: "Invalid candidate ID" });
+      }
+
+      // Verify candidate exists
+      const candidate = await storage.getCandidate(candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      // Determine MIME type based on file extension
+      const fileName = req.file.originalname.toLowerCase();
+      let mimeType = 'application/octet-stream';
+      if (fileName.endsWith('.pdf')) {
+        mimeType = 'application/pdf';
+      } else if (fileName.endsWith('.docx')) {
+        mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      } else if (fileName.endsWith('.doc')) {
+        mimeType = 'application/msword';
+      } else if (fileName.endsWith('.txt')) {
+        mimeType = 'text/plain';
+      }
+
+      // Store the resume file in the database
+      await storage.storeResumeFile(candidateId, req.file.originalname, req.file.buffer, mimeType);
+
+      console.log(`Resume file successfully stored for candidate ${candidateId}: ${req.file.originalname}`);
+
+      res.json({ 
+        message: "Resume file stored successfully",
+        fileName: req.file.originalname,
+        candidateId 
+      });
+
+    } catch (error) {
+      console.error("Error storing resume file:", error);
+      res.status(500).json({ message: "Failed to store resume file" });
+    }
+  });
+
   // Download resume file
   app.get("/api/candidates/resume/:candidateId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -2358,52 +2427,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid candidate ID" });
       }
 
-      // Get candidate and resume data
+      // Get candidate and resume file from database
       const candidate = await storage.getCandidate(candidateId);
       if (!candidate) {
         return res.status(404).json({ message: "Candidate not found" });
       }
 
-      const resumeData = await storage.getResumeData(candidateId);
-      if (!resumeData || !resumeData.fileName) {
+      // Get resume file from database storage
+      const resumeFile = await storage.getResumeFile(candidateId);
+      if (!resumeFile) {
         return res.status(404).json({ message: "Resume file not found" });
       }
 
-      const fs = await import("fs").then(m => m.promises);
-      const path = await import("path");
+      // Set headers for file download
+      res.setHeader('Content-Type', resumeFile.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${resumeFile.fileName}"`);
+      res.setHeader('Content-Length', resumeFile.fileContent.length);
       
-      // Construct the file path
-      const filePath = path.join(process.cwd(), "uploads", resumeData.fileName);
-      
-      try {
-        // Check if file exists
-        await fs.access(filePath);
-        
-        // Set headers for file download
-        const ext = path.extname(resumeData.fileName).toLowerCase();
-        let contentType = 'application/octet-stream';
-        
-        if (ext === '.pdf') {
-          contentType = 'application/pdf';
-        } else if (ext === '.docx') {
-          contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        } else if (ext === '.doc') {
-          contentType = 'application/msword';
-        } else if (ext === '.txt') {
-          contentType = 'text/plain';
-        }
-        
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Content-Disposition', `attachment; filename="${resumeData.fileName}"`);
-        
-        // Stream the file
-        const fileStream = await import("fs").then(m => m.createReadStream(filePath));
-        fileStream.pipe(res);
-        
-      } catch (fileError) {
-        console.error("File access error:", fileError);
-        return res.status(404).json({ message: "Resume file not found on disk" });
-      }
+      // Send the file content directly from database
+      res.send(resumeFile.fileContent);
       
     } catch (error) {
       console.error("Error downloading resume:", error);

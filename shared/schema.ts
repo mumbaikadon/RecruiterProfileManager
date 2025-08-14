@@ -97,6 +97,9 @@ export const resumeData = pgTable("resume_data", {
   education: text("education").array(),
   extractedText: text("extracted_text"),
   fileName: text("file_name"),  // Name of the original resume file
+  fileContent: text("file_content"),  // Base64 encoded file content - for storing actual resume files
+  fileSize: integer("file_size"),  // File size in bytes
+  mimeType: text("mime_type"),  // MIME type of the file (e.g., application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document)
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 
