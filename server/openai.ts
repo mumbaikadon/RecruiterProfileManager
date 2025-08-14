@@ -152,6 +152,11 @@ export async function analyzeResumeText(resumeText: string): Promise<ResumeAnaly
       safeExtractedText = `Error analyzing resume: ${error instanceof Error ? error.message : String(error)}`;
     }
     
+    console.log('🚨 SERVER: ERROR IN RESUME ANALYSIS - RETURNING ERROR MESSAGE');
+    console.log(`🚨 SERVER: Error message length: ${safeExtractedText.length} characters`);
+    console.log(`🚨 SERVER: Error preview: "${safeExtractedText}"`);
+    console.log('🚨 SERVER: This error will be cached and cause persistent issues');
+    
     // If there's an error, return empty fields rather than failing completely
     return {
       clientNames: [],

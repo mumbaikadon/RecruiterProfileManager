@@ -152,6 +152,13 @@ export async function analyzeResume(file: File, candidateId?: number): Promise<{
   };
 }> {
   try {
+    console.log('\n🔍 FRONTEND: analyzeResume function called');
+    console.log(`📁 File details:`);
+    console.log(`   - Name: ${file.name}`);
+    console.log(`   - Size: ${file.size} bytes`);
+    console.log(`   - Type: ${file.type}`);
+    console.log(`   - Candidate ID: ${candidateId || 'none'}`);
+    
     // Store file data for database storage
     const fileBuffer = await file.arrayBuffer();
     const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
@@ -164,7 +171,17 @@ export async function analyzeResume(file: File, candidateId?: number): Promise<{
     };
     
     // Extract text content from the file
+    console.log('📤 FRONTEND: Calling extractDocumentText...');
     const extractedText = await extractDocumentText(file, candidateId);
+    console.log(`📥 FRONTEND: extractDocumentText returned ${extractedText.length} characters`);
+    console.log(`📝 FRONTEND: Text preview: "${extractedText.substring(0, 100)}..."`);
+    
+    // Check for cached error in extracted text
+    if (extractedText.includes('Error analyzing resume') || extractedText.length < 100) {
+      console.log('🚨 FRONTEND: DETECTED CACHED ERROR OR SHORT TEXT!');
+      console.log('🚨 FRONTEND: This indicates cached error data, throwing to force fresh processing');
+      throw new Error('Cached error detected or text too short, forcing fresh extraction');
+    }
     
     if (extractedText.length < 100) {
       console.warn("Extracted text is very short, parsing may be incomplete");
