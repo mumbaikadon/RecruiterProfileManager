@@ -643,7 +643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   30000,
                 )
               : "",
-            // Include file data if provided
+            // File storage data
             fileName: req.body.resumeData.fileName || null,
             fileContent: req.body.resumeData.fileContent || null,
             fileSize: req.body.resumeData.fileSize || null,
@@ -1480,44 +1480,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/candidates/:id/resume/download", requireAuth, async (req: Request, res: Response) => {
     try {
       const candidateId = parseInt(req.params.id);
-      console.log(`🔽 DOWNLOAD REQUEST for candidate ${candidateId}`);
       
       if (isNaN(candidateId)) {
-        console.log(`❌ Invalid candidate ID: ${req.params.id}`);
         return res.status(400).json({ message: "Invalid candidate ID" });
       }
-
-      console.log(`🔍 Looking for resume file for candidate ${candidateId}...`);
       
-      // Get the resume file data
       const resumeFile = await storage.getResumeFile(candidateId);
       
       if (!resumeFile) {
-        console.log(`❌ No resume file found for candidate ${candidateId}`);
-        
-        // Also check if resume data exists at all
-        const resumeData = await storage.getResumeData(candidateId);
-        if (resumeData) {
-          console.log(`ℹ️ Resume data exists but no file content: ID ${resumeData.id}, hasFileContent: ${!!resumeData.fileContent}, fileName: ${resumeData.fileName}`);
-        } else {
-          console.log(`ℹ️ No resume data found at all for candidate ${candidateId}`);
-        }
-        
         return res.status(404).json({ message: "Resume file not found for this candidate" });
       }
-
-      console.log(`✅ Resume file found! Filename: ${resumeFile.fileName}, Size: ${resumeFile.fileContent.length} bytes`);
-      console.log(`✅ MIME type: ${resumeFile.mimeType}`);
 
       // Set headers for file download
       res.setHeader('Content-Type', resumeFile.mimeType);
       res.setHeader('Content-Disposition', `attachment; filename="${resumeFile.fileName}"`);
       res.setHeader('Content-Length', resumeFile.fileContent.length);
 
-      // Send the file content
       res.send(resumeFile.fileContent);
     } catch (error) {
-      console.error("❌ Resume download error:", error);
+      console.error("Resume download error:", error);
       res.status(500).json({ message: (error as Error).message });
     }
   });

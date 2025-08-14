@@ -934,18 +934,12 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       setResumeData(resumeDataWithFile);
 
       try {
-        // Use OpenAI to match resume against job description
-        console.log("Starting resume matching with OpenAI...");
-        
-        // For new candidates, we don't have an ID yet
-        // No candidateId for a new submission
+        // Match resume against job description using OpenAI
         const matchResult = await matchResumeToJob(
           result.text, 
           jobDescription,
           undefined
         );
-        
-        console.log("Resume match results:", matchResult);
         
         // Set the real analysis results
         setMatchResults(matchResult);
@@ -958,18 +952,11 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           relevantDates: matchResult.relevantDates || prevData.relevantDates
         }));
         
-        // Log the updated data for debugging
-        console.log("Updated resume data with employment history:", {
-          clientNames: matchResult.clientNames || [],
-          jobTitles: matchResult.jobTitles || [],
-          relevantDates: matchResult.relevantDates || []
-        });
+
         
         // Early validation - check for suspicious employment history patterns
-        try {
-          if (matchResult.clientNames && matchResult.clientNames.length > 0) {
-            console.log("Performing early resume validation...");
-            
+        if (matchResult.clientNames && matchResult.clientNames.length > 0) {
+          try {
             const validationResponse = await fetch("/api/validate-resume", {
               method: "POST",
               headers: {
@@ -984,40 +971,30 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             if (validationResponse.ok) {
               const validationResult = await validationResponse.json();
               
-              console.log("Early resume validation result:", validationResult);
-              
-              if (!validationResult.isValid) {
-                // Suspicious pattern detected
-                if (validationResult.suspiciousPatterns?.length > 0) {
-                  const firstPattern = validationResult.suspiciousPatterns[0];
-                  
-                  // Show warning to the user
-                  toast({
-                    title: "⚠️ Suspicious Resume Pattern Detected",
-                    description: firstPattern.message,
-                    variant: "destructive",
-                    duration: 10000, // Show for longer
-                  });
-                  
-                  // Set validation warning state to display prominently
-                  setValidationWarning({
-                    title: firstPattern.type === "IDENTICAL_CHRONOLOGY" ? 
-                      "DUPLICATE EMPLOYMENT HISTORY DETECTED" : 
-                      "SUSPICIOUS RESUME PATTERN DETECTED",
-                    message: firstPattern.message,
-                    detail: firstPattern.detail,
-                    severity: firstPattern.severity,
-                    matchedCandidates: firstPattern.matchedCandidates
-                  });
-                  
-                  // No longer setting form error since we have the prominent warning banner
-                  // The form error creates the redundant warning message below the form fields
-                }
+              if (!validationResult.isValid && validationResult.suspiciousPatterns?.length > 0) {
+                const firstPattern = validationResult.suspiciousPatterns[0];
+                
+                toast({
+                  title: "Suspicious Resume Pattern Detected",
+                  description: firstPattern.message,
+                  variant: "destructive",
+                  duration: 10000,
+                });
+                
+                setValidationWarning({
+                  title: firstPattern.type === "IDENTICAL_CHRONOLOGY" ? 
+                    "DUPLICATE EMPLOYMENT HISTORY DETECTED" : 
+                    "SUSPICIOUS RESUME PATTERN DETECTED",
+                  message: firstPattern.message,
+                  detail: firstPattern.detail,
+                  severity: firstPattern.severity,
+                  matchedCandidates: firstPattern.matchedCandidates
+                });
               }
             }
+          } catch (validationError) {
+            console.error("Error during early resume validation:", validationError);
           }
-        } catch (validationError) {
-          console.error("Error during early resume validation:", validationError);
         }
         
         toast({

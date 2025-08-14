@@ -152,9 +152,7 @@ export async function analyzeResume(file: File, candidateId?: number): Promise<{
   };
 }> {
   try {
-    console.log(`Processing resume file: ${file.name} (${Math.round(file.size / 1024)} KB)`);
-    
-    // Store file data for later use
+    // Store file data for database storage
     const fileBuffer = await file.arrayBuffer();
     const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
     
@@ -165,18 +163,13 @@ export async function analyzeResume(file: File, candidateId?: number): Promise<{
       mimeType: file.type || 'application/octet-stream'
     };
     
-    // Use our document utils to extract text - this will handle different file types
-    // and fall back to server extraction when needed
+    // Extract text content from the file
     const extractedText = await extractDocumentText(file, candidateId);
-    
-    console.log(`Successfully extracted ${extractedText.length} characters from ${file.name}`);
-    console.log("First 200 characters of resume:", extractedText.substring(0, 200));
     
     if (extractedText.length < 100) {
       console.warn("Extracted text is very short, parsing may be incomplete");
     }
     
-    // Return the extracted text along with basic analysis structure and file data
     return {
       analysis: {
         clientNames: [],
@@ -193,7 +186,6 @@ export async function analyzeResume(file: File, candidateId?: number): Promise<{
   } catch (error) {
     console.error("Error processing resume file:", error);
     
-    // Return minimal data structure if there's an error
     return {
       analysis: {
         clientNames: [],
