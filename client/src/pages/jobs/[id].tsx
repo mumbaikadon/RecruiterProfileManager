@@ -6,6 +6,7 @@ import { useRecruiters } from "@/hooks/use-recruiters";
 import { useUpdateJobStatus } from "@/hooks/use-jobs";
 import { useAssignRecruiters } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { formatDate } from "@/lib/date-utils";
 import { sanitizeHtml } from "@/lib/utils";
 
@@ -53,6 +54,7 @@ const JobDetailPage: React.FC = () => {
   const numericId = parseInt(id);
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [isSubmissionDialogOpen, setIsSubmissionDialogOpen] = useState(false);
   const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
@@ -459,7 +461,7 @@ const JobDetailPage: React.FC = () => {
           jobId={numericId}
           jobTitle={job.title}
           jobDescription={sanitizeHtml(job.description)}
-          recruiterId={1} // This would be the current user's ID in a real app
+          recruiterId={user?.id || 1} // Use current user ID, fallback to 1
           isOpen={isSubmissionDialogOpen}
           onClose={handleCloseSubmissionDialog}
           onSuccess={() => {
