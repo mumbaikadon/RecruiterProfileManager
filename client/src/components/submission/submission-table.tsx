@@ -224,14 +224,14 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                         size="sm"
                         className={cn(
                           "transition-colors",
-                          submission.job?.status === "Active" 
+                          submission.job?.status?.toLowerCase() === "active" 
                             ? "text-green-600 hover:text-green-700" 
                             : "text-gray-400 cursor-not-allowed"
                         )}
-                        disabled={submission.job?.status !== "Active"}
+                        disabled={submission.job?.status?.toLowerCase() !== "active"}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (submission.candidate && submission.job?.status === "Active") {
+                          if (submission.candidate && submission.job?.status?.toLowerCase() === "active") {
                             handleDownloadResume(
                               submission.candidate.id, 
                               `${submission.candidate.firstName} ${submission.candidate.lastName}`
@@ -239,7 +239,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                           }
                         }}
                         title={
-                          submission.job?.status !== "Active" 
+                          submission.job?.status?.toLowerCase() !== "active" 
                             ? "Download is only available for Active jobs" 
                             : "Download resume"
                         }
