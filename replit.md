@@ -4,6 +4,14 @@ RecruiterTracker is a modern AI-powered recruitment management platform built wi
 
 ## Recent Changes (August 14, 2025)
 
+**Dropdown Actions Menu Implementation (Latest)**
+- Replaced individual action buttons with clean dropdown menus across all tables
+- Created reusable ActionsDropdown component for consistent UI patterns
+- Candidate table now uses dropdown with View, Resubmit, Quick Submit, and UNREAL options
+- Submission table uses dropdown with View, Download Resume, Resubmit, and Quick Submit options
+- Improved responsive design by consolidating multiple buttons into single dropdown trigger
+- Maintained all existing functionality while reducing UI clutter and improving space efficiency
+
 **Resume Comparison Validation System (Latest)**
 - Implemented complete resume comparison validation in submissions workflow
 - Added server-side resume comparison logic in `/api/submissions` endpoint

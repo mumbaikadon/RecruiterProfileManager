@@ -19,6 +19,8 @@ import {
   XCircle, 
   CheckCircle 
 } from "lucide-react";
+import ActionsDropdown from "@/components/ui/actions-dropdown";
+import QuickSubmitDialog from "./quick-submit-dialog";
 import { cn } from "@/lib/utils";
 import ResubmitDialog from "./resubmit-dialog";
 import CandidateUnrealDialog from "./candidate-unreal-dialog";
@@ -42,6 +44,7 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
   const [_, setLocation] = useLocation();
   const [isResubmitDialogOpen, setIsResubmitDialogOpen] = useState(false);
   const [isUnrealDialogOpen, setIsUnrealDialogOpen] = useState(false);
+  const [isQuickSubmitDialogOpen, setIsQuickSubmitDialogOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<{
     id: number, 
     name: string, 
@@ -56,6 +59,11 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
   const handleResubmitCandidate = (id: number, name: string) => {
     setSelectedCandidate({ id, name });
     setIsResubmitDialogOpen(true);
+  };
+  
+  const handleQuickSubmit = (id: number, name: string) => {
+    setSelectedCandidate({ id, name });
+    setIsQuickSubmitDialogOpen(true);
   };
   
   const handleToggleUnreal = (
@@ -205,61 +213,91 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
               </TableCell>
               <TableCell className="hidden sm:table-cell">{formatDate(candidate.createdAt)}</TableCell>
               <TableCell className="text-right">
-                <div className="flex justify-end space-x-1">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-primary hover:text-primary/80 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewCandidate(candidate.id);
-                    }}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">View</span>
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-green-600 hover:text-green-700 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleResubmitCandidate(candidate.id, `${candidate.firstName} ${candidate.lastName}`);
-                    }}
-                  >
-                    <UploadCloud className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">Resubmit</span>
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className={candidate.isUnreal 
-                      ? "text-green-600 hover:text-green-700 transition-colors" 
-                      : "text-red-600 hover:text-red-700 transition-colors"
-                    }
-                    onClick={(e) => handleToggleUnreal(
-                      e, 
-                      candidate.id, 
-                      `${candidate.firstName} ${candidate.lastName}`,
-                      !!candidate.isUnreal,
-                      candidate.unrealReason
-                    )}
-                  >
-                    {candidate.isUnreal 
-                      ? <CheckCircle className="h-4 w-4 mr-1" /> 
-                      : <XCircle className="h-4 w-4 mr-1" />
-                    }
-                    <span className="hidden sm:inline">
-                      {candidate.isUnreal ? "Validate" : "UNREAL"}
-                    </span>
-                  </Button>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ActionsDropdown
+                    actions={[
+                      {
+                        label: "View",
+                        icon: <Eye className="h-4 w-4" />,
+                        onClick: () => handleViewCandidate(candidate.id)
+                      },
+                      {
+                        label: "Resubmit", 
+                        icon: <UploadCloud className="h-4 w-4" />,
+                        onClick: () => handleResubmitCandidate(candidate.id, `${candidate.firstName} ${candidate.lastName}`),
+                        variant: "success"
+                      },
+                      {
+                        label: "Quick Submit",
+                        icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>,
+                        onClick: () => handleQuickSubmit(candidate.id, `${candidate.firstName} ${candidate.lastName}`),
+                        variant: "success"
+                      },
+                      {
+                        label: candidate.isUnreal ? "Validate" : "UNREAL",
+                        icon: candidate.isUnreal 
+                          ? <CheckCircle className="h-4 w-4" /> 
+                          : <XCircle className="h-4 w-4" />,
+                        onClick: () => handleToggleUnreal(
+                          { stopPropagation: () => {} } as React.MouseEvent, 
+                          candidate.id, 
+                          `${candidate.firstName} ${candidate.lastName}`,
+                          !!candidate.isUnreal,
+                          candidate.unrealReason
+                        ),
+                        variant: candidate.isUnreal ? "success" : "destructive"
+                      }
+                    ]}
+                  />
                 </div>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      {/* Resubmit Dialog */}
+      {selectedCandidate && (
+        <ResubmitDialog
+          isOpen={isResubmitDialogOpen}
+          onClose={() => {
+            setIsResubmitDialogOpen(false);
+            setSelectedCandidate(null);
+          }}
+          candidateId={selectedCandidate.id}
+          candidateName={selectedCandidate.name}
+        />
+      )}
+
+      {/* Quick Submit Dialog */}
+      {selectedCandidate && (
+        <QuickSubmitDialog
+          isOpen={isQuickSubmitDialogOpen}
+          onClose={() => {
+            setIsQuickSubmitDialogOpen(false);
+            setSelectedCandidate(null);
+          }}
+          candidateId={selectedCandidate.id}
+          candidateName={selectedCandidate.name}
+        />
+      )}
+
+      {/* Unreal Dialog */}
+      {selectedCandidate && (
+        <CandidateUnrealDialog
+          isOpen={isUnrealDialogOpen}
+          onClose={() => {
+            setIsUnrealDialogOpen(false);
+            setSelectedCandidate(null);
+          }}
+          candidateId={selectedCandidate.id}
+          candidateName={selectedCandidate.name}
+          isCurrentlyUnreal={selectedCandidate.isUnreal || false}
+          currentUnrealReason={selectedCandidate.unrealReason || null}
+        />
+      )}
     </div>
   );
 };

@@ -16,6 +16,7 @@ import StatusSelect from "@/components/submission/status-select";
 import SuspiciousBadge from "@/components/submission/suspicious-badge";
 import ResubmitDialog from "@/components/candidate/resubmit-dialog";
 import QuickSubmitDialog from "@/components/candidate/quick-submit-dialog";
+import ActionsDropdown from "@/components/ui/actions-dropdown";
 import { Eye, RefreshCw, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -210,60 +211,36 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                     />
                   </div>
                 </TableCell>
-                <TableCell className="text-right min-w-[280px]">
-                  <div className="flex justify-end gap-1 flex-nowrap">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-primary hover:text-primary/80 transition-colors px-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLocation(`/submissions/${submission.id}`);
-                      }}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      <span className="text-xs">View</span>
-                    </Button>
-
-                    {submission.candidate && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                          "transition-colors px-2",
-                          submission.job?.status?.toLowerCase() === "active" 
-                            ? "text-green-600 hover:text-green-700" 
-                            : "text-gray-400 cursor-not-allowed"
-                        )}
-                        disabled={submission.job?.status?.toLowerCase() !== "active"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (submission.candidate && submission.job?.status?.toLowerCase() === "active") {
-                            handleDownloadResume(
-                              submission.candidate.id, 
-                              `${submission.candidate.firstName} ${submission.candidate.lastName}`
-                            );
-                          }
-                        }}
-                        title={
-                          submission.job?.status?.toLowerCase() !== "active" 
+                <TableCell className="text-right">
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <ActionsDropdown
+                      actions={[
+                        {
+                          label: "View",
+                          icon: <Eye className="h-4 w-4" />,
+                          onClick: () => setLocation(`/submissions/${submission.id}`)
+                        },
+                        ...(submission.candidate ? [{
+                          label: "Download Resume",
+                          icon: <Download className="h-4 w-4" />,
+                          onClick: () => {
+                            if (submission.candidate) {
+                              handleDownloadResume(
+                                submission.candidate.id, 
+                                `${submission.candidate.firstName} ${submission.candidate.lastName}`
+                              );
+                            }
+                          },
+                          disabled: submission.job?.status?.toLowerCase() !== "active",
+                          title: submission.job?.status?.toLowerCase() !== "active" 
                             ? "Download is only available for Active jobs" 
-                            : "Download resume"
-                        }
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        <span className="text-xs">Download</span>
-                      </Button>
-                    )}
-                    
-                    {submission.candidate && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-primary hover:text-primary/80 transition-colors whitespace-nowrap px-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
+                            : "Download resume",
+                          variant: "success" as const
+                        }] : []),
+                        ...(submission.candidate ? [{
+                          label: "Resubmit",
+                          icon: <RefreshCw className="h-4 w-4" />,
+                          onClick: () => {
                             if (submission.candidate) {
                               setSelectedCandidate({
                                 id: submission.candidate.id,
@@ -271,18 +248,15 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                               });
                               setResubmitDialogOpen(true);
                             }
-                          }}
-                        >
-                          <RefreshCw className="h-4 w-4 mr-1" />
-                          <span className="text-xs">Resubmit</span>
-                        </Button>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-green-600 hover:text-green-700 transition-colors whitespace-nowrap px-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          },
+                          variant: "success" as const
+                        }] : []),
+                        ...(submission.candidate ? [{
+                          label: "Quick Submit",
+                          icon: <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>,
+                          onClick: () => {
                             if (submission.candidate) {
                               setSelectedCandidate({
                                 id: submission.candidate.id,
@@ -290,15 +264,11 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                               });
                               setQuickSubmitDialogOpen(true);
                             }
-                          }}
-                        >
-                          <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                          <span className="text-xs">Quick Submit</span>
-                        </Button>
-                      </>
-                    )}
+                          },
+                          variant: "success" as const
+                        }] : [])
+                      ]}
+                    />
                   </div>
                 </TableCell>
               </TableRow>
