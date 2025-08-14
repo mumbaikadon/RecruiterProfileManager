@@ -1020,6 +1020,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Check if resume data already exists
           const existingResumeData = await storage.getResumeData(candidateId);
           
+          // === RESUME VALIDATION LOGIC ===
+          // If candidate has existing resume data AND new resume data, validate changes
+          if (existingResumeData && 
+              (submissionData.resumeData.clientNames?.length > 0 || 
+               submissionData.resumeData.jobTitles?.length > 0)) {
+            
+            console.log("🔍 RESUME COMPARISON TRIGGERED");
+            console.log("Existing resume data:", {
+              clientNames: existingResumeData.clientNames?.length || 0,
+              jobTitles: existingResumeData.jobTitles?.length || 0,
+              relevantDates: existingResumeData.relevantDates?.length || 0
+            });
+            console.log("New resume data:", {
+              clientNames: submissionData.resumeData.clientNames?.length || 0,
+              jobTitles: submissionData.resumeData.jobTitles?.length || 0,
+              relevantDates: submissionData.resumeData.relevantDates?.length || 0
+            });
+            
+            // Resume comparison logic (server-side version)
+            const compareResumeData = (existing: any, newData: any) => {
+              const changes: string[] = [];
+              let significantChanges = false;
+              
+              // Compare client names
+              const addedClients = newData.clientNames.filter((client: string) => 
+                !existing.clientNames.includes(client));
+              const removedClients = existing.clientNames.filter((client: string) => 
+                !newData.clientNames.includes(client));
+              
+              if (addedClients.length > 0) {
+                changes.push(`Added companies: ${addedClients.join(", ")}`);
+                significantChanges = true;
+              }
+              if (removedClients.length > 0) {
+                changes.push(`Removed companies: ${removedClients.join(", ")}`);
+                significantChanges = true;
+              }
+              
+              // Compare job titles
+              const addedTitles = newData.jobTitles.filter((title: string) => 
+                !existing.jobTitles.includes(title));
+              const removedTitles = existing.jobTitles.filter((title: string) => 
+                !newData.jobTitles.includes(title));
+              
+              if (addedTitles.length > 0) {
+                changes.push(`Added job titles: ${addedTitles.join(", ")}`);
+                significantChanges = true;
+              }
+              if (removedTitles.length > 0) {
+                changes.push(`Removed job titles: ${removedTitles.join(", ")}`);
+                significantChanges = true;
+              }
+              
+              return {
+                hasChanges: changes.length > 0,
+                significantChanges,
+                changes
+              };
+            };
+            
+            const existingData = {
+              clientNames: existingResumeData.clientNames || [],
+              jobTitles: existingResumeData.jobTitles || [],
+              relevantDates: existingResumeData.relevantDates || [],
+              skills: existingResumeData.skills || [],
+              education: existingResumeData.education || []
+            };
+            
+            const newData = {
+              clientNames: submissionData.resumeData.clientNames || [],
+              jobTitles: submissionData.resumeData.jobTitles || [],
+              relevantDates: submissionData.resumeData.relevantDates || [],
+              skills: submissionData.resumeData.skills || [],
+              education: submissionData.resumeData.education || []
+            };
+            
+            const comparison = compareResumeData(existingData, newData);
+            console.log("Resume comparison result:", comparison);
+            
+            if (comparison.hasChanges && comparison.significantChanges) {
+              console.log("⚠️  SIGNIFICANT RESUME CHANGES DETECTED - Requiring validation");
+              
+              // Return 202 status to trigger frontend validation dialog
+              return res.status(202).json({
+                message: "Resume changes detected - validation required",
+                candidateId: candidateId,
+                existingResumeData: {
+                  id: existingResumeData.id,
+                  clientNames: existingResumeData.clientNames || [],
+                  jobTitles: existingResumeData.jobTitles || [],
+                  relevantDates: existingResumeData.relevantDates || []
+                },
+                newResumeData: {
+                  clientNames: submissionData.resumeData.clientNames || [],
+                  jobTitles: submissionData.resumeData.jobTitles || [],
+                  relevantDates: submissionData.resumeData.relevantDates || []
+                },
+                changes: comparison.changes,
+                requiresValidation: true,
+                validationType: "resubmission_with_changes"
+              });
+            } else {
+              console.log("✅ Resume changes are minor - proceeding with submission");
+            }
+          }
+          
           const resumeDataPayload: InsertResumeData = {
             candidateId: candidateId,
             clientNames: submissionData.resumeData.clientNames || [],

@@ -441,37 +441,90 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         throw new Error("Failed to parse candidate data. The response may contain invalid characters.");
       }
       
-      // Now create the submission
+      // Now create the submission with validation support
       console.log(`=== CREATING SUBMISSION ===`);
       console.log(`jobId: ${jobId}, candidateId: ${candidateData.id}, recruiterId: ${recruiterId}`);
       console.log(`recruiterId type: ${typeof recruiterId}`);
       
-      createSubmission({
+      const submissionPayload = {
         jobId,
         candidateId: candidateData.id,
-        recruiterId: Number(recruiterId), // Ensure it's a number
+        recruiterId: Number(recruiterId),
         status: "New",
         agreedRate: values.agreedRate,
         matchScore: values.matchResults?.score || null,
         notes: "",
-      }, {
-        onSuccess: () => {
-          toast({
-            title: "Submission successful",
-            description: "The candidate has been submitted for this job.",
-          });
-          if (onSuccess) onSuccess();
-          onClose();
+        // Include resume data for validation if available
+        resumeData: values.resumeData
+      };
+      
+      const submissionResponse = await fetch("/api/submissions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        onError: (error) => {
-          setSubmissionError(error.message);
-          toast({
-            title: "Submission failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        },
+        body: JSON.stringify(submissionPayload),
       });
+      
+      // Handle validation required response (202)
+      if (submissionResponse.status === 202) {
+        console.log("Submission validation required - parsing response");
+        
+        let validationData;
+        try {
+          validationData = await submissionResponse.json();
+          console.log("Received validation data:", validationData);
+        } catch (parseError) {
+          console.error("Error parsing validation response:", parseError);
+          throw new Error("Failed to parse validation response");
+        }
+        
+        // Get candidate name for validation dialog
+        const candidateDetailsResponse = await fetch(`/api/candidates/${validationData.candidateId}`);
+        let candidateName = "Existing Candidate";
+        
+        if (candidateDetailsResponse.ok) {
+          try {
+            const candidateDetails = await candidateDetailsResponse.json();
+            candidateName = `${candidateDetails.firstName} ${candidateDetails.lastName}`;
+          } catch (error) {
+            console.error("Error parsing candidate details:", error);
+          }
+        }
+        
+        // Set validation data for dialog
+        setValidationData({
+          candidateId: validationData.candidateId,
+          candidateName,
+          resumeFileName: values.resumeData?.fileName || "Resume",
+          existingResumeData: validationData.existingResumeData,
+          newResumeData: validationData.newResumeData,
+          isSuspicious: validationData.isSuspicious || false,
+          suspiciousReason: validationData.suspiciousReason,
+          suspiciousSeverity: validationData.suspiciousSeverity
+        });
+        setValidationDialogOpen(true);
+        return;
+      }
+      
+      if (!submissionResponse.ok) {
+        let errorMessage = "Failed to create submission";
+        try {
+          const errorData = await submissionResponse.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error("Error parsing submission error:", parseError);
+        }
+        throw new Error(errorMessage);
+      }
+      
+      // Submission successful
+      toast({
+        title: "Submission successful",
+        description: "The candidate has been submitted for this job.",
+      });
+      if (onSuccess) onSuccess();
+      onClose();
     } catch (error) {
       const message = error instanceof Error ? error.message : "An unknown error occurred";
       setSubmissionError(message);
