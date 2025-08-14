@@ -426,8 +426,10 @@ const JobDetailPage: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              <div className="prose dark:prose-invert max-w-none">
-                <p className="whitespace-pre-line text-foreground">{sanitizeHtml(job.description)}</p>
+              <div className="max-h-64 overflow-y-auto border rounded-md p-4 bg-muted/20">
+                <div className="prose dark:prose-invert max-w-none prose-sm">
+                  <p className="whitespace-pre-line text-foreground text-sm leading-relaxed">{sanitizeHtml(job.description)}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
