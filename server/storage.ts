@@ -1002,14 +1002,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getResumeFile(candidateId: number): Promise<{fileName: string, fileContent: Buffer, mimeType: string} | null> {
+    console.log(`🔍 getResumeFile: Looking for candidate ${candidateId}`);
     const data = await this.getResumeData(candidateId);
     
-    if (!data || !data.fileContent || !data.fileName || !data.mimeType) {
+    if (!data) {
+      console.log(`📄 No resume data found for candidate ${candidateId}`);
+      return null;
+    }
+    
+    console.log(`📄 Resume data found: ID ${data.id}, hasFileContent: ${!!data.fileContent}, fileName: ${data.fileName}, mimeType: ${data.mimeType}`);
+    
+    if (!data.fileContent || !data.fileName || !data.mimeType) {
+      console.log(`📄 Missing file components: fileContent: ${!!data.fileContent}, fileName: ${!!data.fileName}, mimeType: ${!!data.mimeType}`);
       return null;
     }
     
     // Convert base64 back to buffer
     const fileContent = Buffer.from(data.fileContent, 'base64');
+    console.log(`📄 Converted file content: ${fileContent.length} bytes`);
     
     return {
       fileName: data.fileName,

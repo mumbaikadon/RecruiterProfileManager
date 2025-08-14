@@ -1475,16 +1475,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/candidates/:id/resume/download", requireAuth, async (req: Request, res: Response) => {
     try {
       const candidateId = parseInt(req.params.id);
+      console.log(`🔽 DOWNLOAD REQUEST for candidate ${candidateId}`);
+      
       if (isNaN(candidateId)) {
+        console.log(`❌ Invalid candidate ID: ${req.params.id}`);
         return res.status(400).json({ message: "Invalid candidate ID" });
       }
 
+      console.log(`🔍 Looking for resume file for candidate ${candidateId}...`);
+      
       // Get the resume file data
       const resumeFile = await storage.getResumeFile(candidateId);
       
       if (!resumeFile) {
+        console.log(`❌ No resume file found for candidate ${candidateId}`);
+        
+        // Also check if resume data exists at all
+        const resumeData = await storage.getResumeData(candidateId);
+        if (resumeData) {
+          console.log(`ℹ️ Resume data exists but no file content: ID ${resumeData.id}, hasFileContent: ${!!resumeData.fileContent}, fileName: ${resumeData.fileName}`);
+        } else {
+          console.log(`ℹ️ No resume data found at all for candidate ${candidateId}`);
+        }
+        
         return res.status(404).json({ message: "Resume file not found for this candidate" });
       }
+
+      console.log(`✅ Resume file found! Filename: ${resumeFile.fileName}, Size: ${resumeFile.fileContent.length} bytes`);
+      console.log(`✅ MIME type: ${resumeFile.mimeType}`);
 
       // Set headers for file download
       res.setHeader('Content-Type', resumeFile.mimeType);
@@ -1494,7 +1512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send the file content
       res.send(resumeFile.fileContent);
     } catch (error) {
-      console.error("Error downloading resume:", error);
+      console.error("❌ Resume download error:", error);
       res.status(500).json({ message: (error as Error).message });
     }
   });
@@ -2130,9 +2148,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Store resume file in database if candidateId is provided
       const candidateId = req.body.candidateId ? parseInt(req.body.candidateId) : null;
+      console.log(`🔍 DEBUG: candidateId from request body: "${req.body.candidateId}" (parsed: ${candidateId})`);
+      console.log(`🔍 DEBUG: candidateId check: ${candidateId && !isNaN(candidateId)}`);
+      
       if (candidateId && !isNaN(candidateId)) {
         try {
-          console.log(`Storing resume file for candidate ${candidateId}`);
+          console.log(`🔄 STORING resume file for candidate ${candidateId}`);
+          console.log(`🔄 File details: ${req.file.originalname}, size: ${fileBuffer.length} bytes`);
           
           // Determine MIME type based on file extension
           let mimeType = 'application/octet-stream';
@@ -2144,14 +2166,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             mimeType = 'text/plain';
           }
           
+          console.log(`🔄 Storing with mimeType: ${mimeType}`);
+          
           // Store the resume file in the database
-          await storage.storeResumeFile(candidateId, req.file.originalname, fileBuffer, mimeType);
-          console.log(`Resume file successfully stored for candidate ${candidateId}`);
+          const storedData = await storage.storeResumeFile(candidateId, req.file.originalname, fileBuffer, mimeType);
+          console.log(`✅ Resume file successfully stored for candidate ${candidateId}!`);
+          console.log(`✅ Stored data ID: ${storedData.id}, filename: ${storedData.fileName}`);
           
         } catch (storageError) {
-          console.error(`Failed to store resume file for candidate ${candidateId}:`, storageError);
+          console.error(`❌ Failed to store resume file for candidate ${candidateId}:`, storageError);
           // Don't fail the whole request if file storage fails, just log it
         }
+      } else {
+        console.log(`⚠️ SKIPPING file storage - candidateId not provided or invalid`);
       }
 
       // Return success response
