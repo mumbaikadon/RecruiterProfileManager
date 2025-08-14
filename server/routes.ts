@@ -2181,7 +2181,16 @@ Generated on: ${new Date().toLocaleString()}
       
       // Log the extraction results
       console.log(`Successfully extracted ${extractedText.length} characters from ${fileType.toUpperCase()}`);
-      console.log("Text preview:", extractedText.substring(0, 200) + "...");
+      
+      // Safe text preview creation (particularly important for PDF files)
+      let textPreview;
+      try {
+        textPreview = extractedText.substring(0, 200) + "...";
+      } catch (previewError) {
+        console.log('⚠️  PDF Preview Error:', previewError?.message || String(previewError));
+        textPreview = `[Preview error: ${previewError?.message || 'Unable to create preview'}]`;
+      }
+      console.log("Text preview:", textPreview);
       
       // Store resume file in database if candidateId is provided
       const candidateId = req.body.candidateId ? parseInt(req.body.candidateId) : null;
@@ -2273,6 +2282,28 @@ Generated on: ${new Date().toLocaleString()}
       console.log("- Resume text length:", sanitizedResumeText.length);
       console.log("- Job description length:", sanitizedJobDescription.length);
 
+      // Add PDF-specific debugging for short text lengths
+      if (sanitizedResumeText.length < 100) {
+        console.log('\n🔍 ===== PDF PARSING ISSUE DETECTED =====');
+        console.log(`⚠️  Resume text is very short (${sanitizedResumeText.length} chars)`);
+        console.log('📄 Text type analysis:');
+        console.log(`   - Text type: ${typeof sanitizedResumeText}`);
+        console.log(`   - Is string: ${typeof sanitizedResumeText === 'string'}`);
+        console.log(`   - Text constructor: ${sanitizedResumeText.constructor?.name || 'unknown'}`);
+        
+        // Safe text analysis
+        try {
+          console.log('🔤 Text content analysis:');
+          console.log(`   - Starts with: "${sanitizedResumeText.substring(0, 10)}"`);
+          console.log(`   - Contains "Error": ${sanitizedResumeText.includes('Error')}`);
+          console.log(`   - Contains "PDF": ${sanitizedResumeText.includes('PDF')}`);
+          console.log(`   - Contains "analyzing": ${sanitizedResumeText.includes('analyzing')}`);
+        } catch (textError) {
+          console.log('❌ Error analyzing text content:', textError?.message || String(textError));
+        }
+        console.log('🔍 ===== PDF PARSING ISSUE DEBUG END =====\n');
+      }
+
       console.log("Analyzing resume match...");
       
       // Use OpenAI directly to extract employment history
@@ -2286,8 +2317,14 @@ Generated on: ${new Date().toLocaleString()}
         console.log("Starting resume analysis with OpenAI...");
         console.log(`Sending OpenAI request with resume length: ${sanitizedResumeText.length} and job description length: ${sanitizedJobDescription.length}`);
         
-        // Log first 300 chars of resume for debugging
-        const resumePreview = sanitizedResumeText.substring(0, 300);
+        // Safely create resume preview with error handling
+        let resumePreview;
+        try {
+          resumePreview = sanitizedResumeText.substring(0, 300);
+        } catch (previewError) {
+          console.log('❌ Error creating resume preview:', previewError?.message || String(previewError));
+          resumePreview = `Error creating preview: ${previewError?.message || String(previewError)}`;
+        }
         console.log("Resume text preview for analysis:", resumePreview);
         
         // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
