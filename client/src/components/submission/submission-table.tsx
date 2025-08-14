@@ -130,7 +130,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
               <TableHead className="hidden lg:table-cell">Rate</TableHead>
               <TableHead className="hidden lg:table-cell">Match Score</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right min-w-[280px]">Actions</TableHead>
+              <TableHead className="text-right w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -211,7 +211,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                     />
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right w-[80px]">
                   <div onClick={(e) => e.stopPropagation()}>
                     <ActionsDropdown
                       actions={[
