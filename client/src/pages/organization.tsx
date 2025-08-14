@@ -30,19 +30,38 @@ export default function OrganizationPage() {
   // Fetch users based on selected tab
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["/api/organization/users", selectedTab === "pending" ? "pending" : "all"],
-    queryFn: () => apiRequest(`/api/organization/users${selectedTab === "pending" ? "?status=pending" : ""}`),
+    queryFn: () => {
+      const url = `/api/organization/users${selectedTab === "pending" ? "?status=pending" : ""}`;
+      return fetch(url, { 
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error(`${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+      });
+    },
     retry: false,
   });
 
   // Approve user mutation
   const approveMutation = useMutation({
-    mutationFn: (userId: number) => 
-      apiRequest(`/api/organization/users/${userId}/approve`, {
+    mutationFn: async (userId: number) => {
+      const response = await fetch(`/api/organization/users/${userId}/approve`, {
         method: "PUT",
+        credentials: 'include',
         headers: {
           "Content-Type": "application/json",
         },
-      }),
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization/users"] });
       toast({
@@ -61,13 +80,19 @@ export default function OrganizationPage() {
 
   // Reject user mutation
   const rejectMutation = useMutation({
-    mutationFn: (userId: number) => 
-      apiRequest(`/api/organization/users/${userId}/reject`, {
+    mutationFn: async (userId: number) => {
+      const response = await fetch(`/api/organization/users/${userId}/reject`, {
         method: "PUT",
+        credentials: 'include',
         headers: {
           "Content-Type": "application/json",
         },
-      }),
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization/users"] });
       toast({
@@ -86,14 +111,20 @@ export default function OrganizationPage() {
 
   // Update role mutation
   const updateRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: number; role: string }) => 
-      apiRequest(`/api/organization/users/${userId}/role`, {
+    mutationFn: async ({ userId, role }: { userId: number; role: string }) => {
+      const response = await fetch(`/api/organization/users/${userId}/role`, {
         method: "PUT",
+        credentials: 'include',
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ role }),
-      }),
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization/users"] });
       toast({
