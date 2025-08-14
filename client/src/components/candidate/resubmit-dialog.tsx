@@ -18,9 +18,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FileUpload } from "@/components/ui/file-upload";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Job, apiRequest } from "@/lib/api";
-import { Loader2 } from "lucide-react";
-import { formatDate, isOlderThanTwoWeeks } from "@/lib/date-utils";
+import { Loader2, DollarSign } from "lucide-react";
+import { formatDate, isOlderThanTwoWeeks, formatRate } from "@/lib/date-utils";
 
 interface ResubmitDialogProps {
   isOpen: boolean;
@@ -38,6 +40,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [requiresNewResume, setRequiresNewResume] = useState(false);
+  const [agreedRate, setAgreedRate] = useState<string>("");
   const [suspiciousFlags, setSuspiciousFlags] = useState<{
     isSuspicious: boolean;
     suspiciousReason: string | null;
@@ -71,6 +74,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     mutationFn: async (data: {
       jobId: number;
       candidateId: number;
+      agreedRate: number;
       resumeFile?: File;
       isSuspicious?: boolean;
       suspiciousReason?: string | null;
@@ -107,6 +111,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
           body: JSON.stringify({
             jobId: data.jobId,
             candidateId: data.candidateId,
+            agreedRate: data.agreedRate,
             resumeFileName: data.resumeFile.name,
             matchScore: matchResult.score,
             matchStrengths: matchResult.strengths,
@@ -127,6 +132,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
           body: JSON.stringify({
             jobId: data.jobId,
             candidateId: data.candidateId,
+            agreedRate: data.agreedRate,
             // Include suspicious flags if they exist
             ...(data.isSuspicious ? {
               isSuspicious: data.isSuspicious,
@@ -144,7 +150,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       });
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-      onClose();
+      handleClose();
     },
     onError: (error: Error) => {
       toast({
@@ -201,6 +207,15 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       return;
     }
 
+    if (!agreedRate || parseFloat(agreedRate) <= 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid agreed rate",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (requiresNewResume && !file) {
       toast({
         title: "Error",
@@ -214,6 +229,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     submitMutation.mutate({
       jobId: selectedJobId,
       candidateId,
+      agreedRate: parseFloat(agreedRate),
       resumeFile: file || undefined,
       ...suspiciousFlags ? {
         isSuspicious: suspiciousFlags.isSuspicious,
@@ -225,8 +241,18 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
 
   const isLoading = isJobsLoading || isSubmissionsLoading || submitMutation.isPending;
 
+  const handleClose = () => {
+    // Reset form state when dialog closes
+    setSelectedJobId(null);
+    setFile(null);
+    setAgreedRate("");
+    setRequiresNewResume(false);
+    setSuspiciousFlags(null);
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Resubmit Candidate</DialogTitle>
@@ -257,6 +283,52 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
             </Select>
           </div>
 
+          {/* Agreed Rate Input - Always show when job is selected */}
+          {selectedJobId && (
+            <div className="space-y-2">
+              <Label htmlFor="agreedRate" className="text-sm font-medium flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Agreed Rate (per hour)
+              </Label>
+              <Input
+                id="agreedRate"
+                type="number"
+                placeholder="e.g., 65.00"
+                value={agreedRate}
+                onChange={(e) => setAgreedRate(e.target.value)}
+                disabled={isLoading}
+                className="w-full"
+                step="0.01"
+                min="0"
+              />
+              
+              {/* Show previous submission rates for context */}
+              {submissions && submissions.length > 0 && (
+                <div className="text-sm text-muted-foreground p-3 bg-blue-50 rounded-md">
+                  <p className="font-medium text-blue-900 mb-2">Previous submission rates:</p>
+                  <div className="space-y-1">
+                    {submissions
+                      .filter((s: any) => s.agreedRate && s.agreedRate > 0)
+                      .slice(0, 3)
+                      .map((submission: any, index: number) => (
+                        <div key={index} className="flex justify-between items-center">
+                          <span className="text-blue-700">
+                            {jobs?.find(j => j.id === submission.jobId)?.title || 'Unknown Job'}
+                          </span>
+                          <span className="font-medium text-blue-900">
+                            {formatRate(submission.agreedRate)}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                  <p className="text-xs text-blue-600 mt-2">
+                    Consider similar rates for this new role
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {requiresNewResume && selectedJobId && (
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -277,7 +349,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+          <Button variant="outline" onClick={handleClose} disabled={isLoading}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
