@@ -795,9 +795,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/submissions", requireAuth, async (req: Request, res: Response) => {
     try {
+      console.log("\n=== SUBMISSION DEBUG START ===");
       const submissionData = req.body;
+      console.log("Full request body received:", JSON.stringify(submissionData, null, 2));
+      console.log("Request body keys:", Object.keys(submissionData));
+      console.log("Request body types:", Object.keys(submissionData).map(key => `${key}: ${typeof submissionData[key]}`));
+      
       let candidateId: number;
       const jobId = submissionData.jobId;
+      console.log("Extracted jobId:", jobId, "type:", typeof jobId);
 
       if (!jobId) {
         return res.status(400).json({ message: "Job ID is required" });
@@ -1027,6 +1033,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prepare ONLY submission-related fields (exclude resume data)
+      console.log("\n=== CREATING SUBMISSION PAYLOAD ===");
+      console.log("candidateId for submission:", candidateId, "type:", typeof candidateId);
+      console.log("Raw submission data fields:");
+      console.log("- jobId:", submissionData.jobId, "type:", typeof submissionData.jobId);
+      console.log("- candidateId:", submissionData.candidateId, "type:", typeof submissionData.candidateId);
+      console.log("- recruiterId:", submissionData.recruiterId, "type:", typeof submissionData.recruiterId);
+      console.log("- status:", submissionData.status, "type:", typeof submissionData.status);
+      console.log("- matchScore:", submissionData.matchScore, "type:", typeof submissionData.matchScore);
+      console.log("- agreedRate:", submissionData.agreedRate, "type:", typeof submissionData.agreedRate);
+      console.log("- notes:", submissionData.notes, "type:", typeof submissionData.notes);
+      console.log("- isSuspicious:", submissionData.isSuspicious, "type:", typeof submissionData.isSuspicious);
+      console.log("- suspiciousReason:", submissionData.suspiciousReason, "type:", typeof submissionData.suspiciousReason);
+      console.log("- suspiciousSeverity:", submissionData.suspiciousSeverity, "type:", typeof submissionData.suspiciousSeverity);
+      
+      // Check for unexpected fields that might cause validation issues
+      const expectedFields = ['jobId', 'candidateId', 'candidateData', 'recruiterId', 'status', 'matchScore', 'agreedRate', 'notes', 'isSuspicious', 'suspiciousReason', 'suspiciousSeverity', 'resumeData'];
+      const unexpectedFields = Object.keys(submissionData).filter(key => !expectedFields.includes(key));
+      if (unexpectedFields.length > 0) {
+        console.log("⚠️  UNEXPECTED FIELDS DETECTED:", unexpectedFields);
+        unexpectedFields.forEach(field => {
+          console.log(`   - ${field}:`, JSON.stringify(submissionData[field]), "type:", typeof submissionData[field]);
+        });
+      }
+
       const submissionPayload = {
         jobId: submissionData.jobId,
         candidateId: candidateId,
@@ -1040,8 +1070,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         suspiciousSeverity: submissionData.suspiciousSeverity || null,
       };
 
+      console.log("\n=== FINAL SUBMISSION PAYLOAD ===");
+      console.log("Submission payload:", JSON.stringify(submissionPayload, null, 2));
+      console.log("Submission payload keys:", Object.keys(submissionPayload));
+      console.log("Submission payload field types:", Object.keys(submissionPayload).map(key => `${key}: ${typeof submissionPayload[key]}`));
+
       // Validate only submission data (without resume fields)
-      const validatedData = insertSubmissionSchema.parse(submissionPayload);
+      console.log("\n=== STARTING VALIDATION ===");
+      console.log("About to validate with insertSubmissionSchema...");
+      
+      let validatedData;
+      try {
+        validatedData = insertSubmissionSchema.parse(submissionPayload);
+        console.log("✅ Validation successful!", "Validated data keys:", Object.keys(validatedData));
+      } catch (validationError) {
+        console.log("❌ VALIDATION FAILED!");
+        console.log("Validation error:", validationError);
+        if (validationError instanceof z.ZodError) {
+          console.log("Zod validation issues:");
+          validationError.issues.forEach((issue, index) => {
+            console.log(`  ${index + 1}. Path: [${issue.path.join(', ')}], Code: ${issue.code}, Message: ${issue.message}`);
+            if (issue.received !== undefined) console.log(`     Received: ${JSON.stringify(issue.received)}`);
+            if (issue.expected !== undefined) console.log(`     Expected: ${issue.expected}`);
+          });
+        }
+        
+        // Return detailed error response for debugging
+        return res.status(400).json({ 
+          message: validationError instanceof z.ZodError ? validationError.issues : validationError.message,
+          debugInfo: {
+            receivedPayload: submissionPayload,
+            payloadKeys: Object.keys(submissionPayload),
+            payloadTypes: Object.keys(submissionPayload).map(key => `${key}: ${typeof submissionPayload[key]}`)
+          }
+        });
+      }
 
       // Check if the candidate has already been submitted for this job
       const existingSubmission = await storage.getSubmissionByJobAndCandidate(
