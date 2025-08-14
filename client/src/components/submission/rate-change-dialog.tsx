@@ -67,11 +67,11 @@ const RateChangeDialog: React.FC<RateChangeDialogProps> = ({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-600" />
-            Rate Change Detected
+            <AlertTriangle className="h-5 w-5 text-blue-600" />
+            Confirm Rate for Resubmission
           </DialogTitle>
           <DialogDescription>
-            This candidate has been submitted before with a different rate.
+            This candidate has been submitted before. Please confirm the rate for this new role.
           </DialogDescription>
         </DialogHeader>
 
@@ -114,7 +114,10 @@ const RateChangeDialog: React.FC<RateChangeDialogProps> = ({
                       {percentageChange !== 0 && ` (${rateDifference >= 0 ? '+' : ''}${percentageChange}%)`}
                     </span>
                   </div>
-                  {getRateChangeBadge()}
+                  <div className="flex flex-col items-end gap-1">
+                    {getRateChangeBadge()}
+                    <span className="text-xs text-gray-500">vs previous role</span>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -145,10 +148,10 @@ const RateChangeDialog: React.FC<RateChangeDialogProps> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            Cancel Submission
           </Button>
           <Button onClick={onContinue}>
-            Continue with New Rate
+            Confirm Rate & Continue
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -246,33 +246,23 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             previousSubmissions: previousSubmissions
           });
 
-          // Check for rate changes before proceeding with validation
+          // Always ask for rate confirmation when resubmitting existing candidates
           const currentRate = parseFloat(String(values.agreedRate || '0'));
-          const hasRateHistory = previousSubmissions.some(sub => sub.agreedRate !== undefined && sub.agreedRate !== null && sub.agreedRate !== 0);
           
-          if (hasRateHistory) {
-            const mostRecentRate = previousSubmissions
-              .filter(sub => sub.agreedRate !== undefined && sub.agreedRate !== null && sub.agreedRate !== 0)
-              .sort((a, b) => new Date(b.submittedDate || 0).getTime() - new Date(a.submittedDate || 0).getTime())[0]?.agreedRate || 0;
-            
-            // If rate has changed by more than $0.50/hr, show rate change dialog
-            const rateDifference = Math.abs(currentRate - mostRecentRate);
-            if (rateDifference >= 0.5) {
-              setRateChangeData({
-                candidateName,
-                currentRate,
-                previousSubmissions,
-                pendingSubmissionData: {
-                  candidateId: data.candidateId,
-                  values,
-                  existingResumeData,
-                  validationRequired: true
-                }
-              });
-              setRateChangeDialogOpen(true);
-              return;
+          // Show rate confirmation dialog for any existing candidate resubmission
+          setRateChangeData({
+            candidateName,
+            currentRate,
+            previousSubmissions,
+            pendingSubmissionData: {
+              candidateId: data.candidateId,
+              values,
+              existingResumeData,
+              validationRequired: true
             }
-          }
+          });
+          setRateChangeDialogOpen(true);
+          return;
           
           // Always open validation dialog for duplicate candidates
           // First prepare the existing and new resume data
