@@ -222,16 +222,27 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-green-600 hover:text-green-700 transition-colors"
+                        className={cn(
+                          "transition-colors",
+                          submission.job?.status === "Active" 
+                            ? "text-green-600 hover:text-green-700" 
+                            : "text-gray-400 cursor-not-allowed"
+                        )}
+                        disabled={submission.job?.status !== "Active"}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (submission.candidate) {
+                          if (submission.candidate && submission.job?.status === "Active") {
                             handleDownloadResume(
                               submission.candidate.id, 
                               `${submission.candidate.firstName} ${submission.candidate.lastName}`
                             );
                           }
                         }}
+                        title={
+                          submission.job?.status !== "Active" 
+                            ? "Download is only available for Active jobs" 
+                            : "Download resume"
+                        }
                       >
                         <Download className="h-4 w-4 mr-1" />
                         <span className="hidden sm:inline">Download</span>
