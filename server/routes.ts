@@ -15,6 +15,7 @@ import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
 import { parseJobRequirements } from "./job-parser";
 import fs from "fs";
+import path from "path";
 import multer from "multer";
 
 // Configure multer for file uploads 
@@ -22,7 +23,6 @@ const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = './uploads';
     // Create uploads directory if it doesn't exist
-    const fs = require('fs');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -32,7 +32,7 @@ const multerStorage = multer.diskStorage({
     // Generate unique filename with timestamp and random string
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
-    const ext = require('path').extname(file.originalname);
+    const ext = path.extname(file.originalname);
     cb(null, `${timestamp}_${randomString}${ext}`);
   }
 });
