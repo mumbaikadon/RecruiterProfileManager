@@ -15,7 +15,7 @@ import StatusBadge from "@/components/submission/status-badge";
 import StatusSelect from "@/components/submission/status-select";
 import SuspiciousBadge from "@/components/submission/suspicious-badge";
 import ResubmitDialog from "@/components/candidate/resubmit-dialog";
-import { Eye, RefreshCw } from "lucide-react";
+import { Eye, RefreshCw, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SubmissionTableProps {
@@ -66,6 +66,47 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
   const handleCloseResubmitDialog = () => {
     setResubmitDialogOpen(false);
     setSelectedCandidate(null);
+  };
+
+  // Handle resume download
+  const handleDownloadResume = async (candidateId: number, candidateName: string) => {
+    try {
+      const response = await fetch(`/api/candidates/resume/${candidateId}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          alert('Resume file not found. The candidate may not have uploaded a resume.');
+          return;
+        }
+        throw new Error(`Failed to download resume: ${response.status}`);
+      }
+
+      // Get filename from response headers
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `${candidateName.replace(/\s+/g, '_')}_resume`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download resume. Please try again.');
+    }
   };
 
   return (
@@ -176,6 +217,26 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                       <Eye className="h-4 w-4 mr-1" />
                       <span className="hidden sm:inline">View</span>
                     </Button>
+
+                    {submission.candidate && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-green-600 hover:text-green-700 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (submission.candidate) {
+                            handleDownloadResume(
+                              submission.candidate.id, 
+                              `${submission.candidate.firstName} ${submission.candidate.lastName}`
+                            );
+                          }
+                        }}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        <span className="hidden sm:inline">Download</span>
+                      </Button>
+                    )}
                     
                     {submission.candidate && (
                       <Button
@@ -184,11 +245,13 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                         className="text-primary hover:text-primary/80 transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedCandidate({
-                            id: submission.candidate.id,
-                            name: `${submission.candidate.firstName} ${submission.candidate.lastName}`
-                          });
-                          setResubmitDialogOpen(true);
+                          if (submission.candidate) {
+                            setSelectedCandidate({
+                              id: submission.candidate.id,
+                              name: `${submission.candidate.firstName} ${submission.candidate.lastName}`
+                            });
+                            setResubmitDialogOpen(true);
+                          }
                         }}
                       >
                         <RefreshCw className="h-4 w-4 mr-1" />

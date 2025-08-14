@@ -2258,6 +2258,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Download resume file
+  app.get("/api/candidates/resume/:candidateId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const candidateId = parseInt(req.params.candidateId);
+      
+      if (isNaN(candidateId)) {
+        return res.status(400).json({ message: "Invalid candidate ID" });
+      }
+
+      // Get candidate and resume data
+      const candidate = await storage.getCandidate(candidateId);
+      if (!candidate) {
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      const resumeData = await storage.getResumeData(candidateId);
+      if (!resumeData || !resumeData.fileName) {
+        return res.status(404).json({ message: "Resume file not found" });
+      }
+
+      const fs = await import("fs").then(m => m.promises);
+      const path = await import("path");
+      
+      // Construct the file path
+      const filePath = path.join(process.cwd(), "uploads", resumeData.fileName);
+      
+      try {
+        // Check if file exists
+        await fs.access(filePath);
+        
+        // Set headers for file download
+        const ext = path.extname(resumeData.fileName).toLowerCase();
+        let contentType = 'application/octet-stream';
+        
+        if (ext === '.pdf') {
+          contentType = 'application/pdf';
+        } else if (ext === '.docx') {
+          contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        } else if (ext === '.doc') {
+          contentType = 'application/msword';
+        } else if (ext === '.txt') {
+          contentType = 'text/plain';
+        }
+        
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `attachment; filename="${resumeData.fileName}"`);
+        
+        // Stream the file
+        const fileStream = await import("fs").then(m => m.createReadStream(filePath));
+        fileStream.pipe(res);
+        
+      } catch (fileError) {
+        console.error("File access error:", fileError);
+        return res.status(404).json({ message: "Resume file not found on disk" });
+      }
+      
+    } catch (error) {
+      console.error("Error downloading resume:", error);
+      return res.status(500).json({ message: "Failed to download resume" });
+    }
+  });
+
   // Test route for gap analysis
   app.get("/api/test-gap-analysis", requireAuth, async (_req: Request, res: Response) => {
     try {
