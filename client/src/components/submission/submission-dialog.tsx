@@ -468,7 +468,9 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
       
       // Handle validation required response (202)
       if (submissionResponse.status === 202) {
-        console.log("Submission validation required - parsing response");
+        console.log("🚨 202 STATUS RECEIVED - Submission validation required!");
+        console.log("Response status:", submissionResponse.status);
+        console.log("Response headers:", submissionResponse.headers);
         
         let validationData;
         try {
@@ -493,7 +495,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
         }
         
         // Set validation data for dialog
-        setValidationData({
+        const dialogData = {
           candidateId: validationData.candidateId,
           candidateName,
           resumeFileName: values.resumeData?.fileName || "Resume",
@@ -502,8 +504,13 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           isSuspicious: validationData.isSuspicious || false,
           suspiciousReason: validationData.suspiciousReason,
           suspiciousSeverity: validationData.suspiciousSeverity
-        });
+        };
+        
+        console.log("🎯 Setting validation dialog data:", dialogData);
+        setValidationData(dialogData);
+        console.log("🎯 Opening validation dialog...");
         setValidationDialogOpen(true);
+        console.log("🎯 Validation dialog state set to true");
         return;
       }
       
