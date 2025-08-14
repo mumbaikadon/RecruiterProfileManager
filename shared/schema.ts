@@ -55,9 +55,9 @@ export const candidates = pgTable("candidates", {
   firstName: text("first_name").notNull(),
   middleName: text("middle_name"),
   lastName: text("last_name").notNull(),
-  dobMonth: integer("dob_month").notNull(),
-  dobDay: integer("dob_day").notNull(),
-  ssn4: text("ssn_last_four").notNull(),
+  dobMonth: integer("dob_month"), // Made optional for security reasons
+  dobDay: integer("dob_day"), // Made optional for security reasons
+  ssn4: text("ssn_last_four"), // Made optional for security reasons
   location: text("location").notNull(),
   email: text("email").notNull(),
   phone: text("phone").notNull(),
@@ -77,13 +77,6 @@ export const candidates = pgTable("candidates", {
   validatedBy: integer("validated_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").references(() => users.id),
-}, (table) => {
-  return {
-    // Create a unique index to identify candidates by DOB and last 4 SSN
-    uniqueIdx: uniqueIndex("candidate_identity_idx").on(
-      table.dobMonth, table.dobDay, table.ssn4
-    ),
-  };
 });
 
 // Resume data table (extracted metadata)

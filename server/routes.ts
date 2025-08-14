@@ -463,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertCandidateSchema.parse(req.body);
 
-      // Check if candidate already exists
+      // Check if candidate already exists (only if identifying information is provided)
       const existingCandidate = await storage.getCandidateByIdentity(
         validatedData.dobMonth,
         validatedData.dobDay,

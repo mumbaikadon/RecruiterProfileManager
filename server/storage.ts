@@ -449,17 +449,29 @@ export class DatabaseStorage implements IStorage {
     return candidate;
   }
 
-  async getCandidateByIdentity(dobMonth: number, dobDay: number, ssn4: string): Promise<Candidate | undefined> {
+  async getCandidateByIdentity(dobMonth?: number, dobDay?: number, ssn4?: string): Promise<Candidate | undefined> {
+    // Build conditions array only for provided values
+    const conditions = [];
+    
+    if (dobMonth !== undefined && dobMonth !== null) {
+      conditions.push(eq(candidates.dobMonth, dobMonth));
+    }
+    if (dobDay !== undefined && dobDay !== null) {
+      conditions.push(eq(candidates.dobDay, dobDay));
+    }
+    if (ssn4 !== undefined && ssn4 !== null && ssn4 !== '') {
+      conditions.push(eq(candidates.ssn4, ssn4));
+    }
+    
+    // If no identifying information provided, can't check for duplicates
+    if (conditions.length === 0) {
+      return undefined;
+    }
+    
     const [candidate] = await db
       .select()
       .from(candidates)
-      .where(
-        and(
-          eq(candidates.dobMonth, dobMonth),
-          eq(candidates.dobDay, dobDay),
-          eq(candidates.ssn4, ssn4)
-        )
-      );
+      .where(and(...conditions));
     
     return candidate;
   }

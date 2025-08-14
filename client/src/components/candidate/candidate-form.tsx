@@ -45,9 +45,9 @@ export const candidateFormSchema = z.object({
   firstName: z.string().min(2, "First name is required"),
   middleName: z.string().optional(),
   lastName: z.string().min(2, "Last name is required"),
-  dobMonth: z.coerce.number().min(1).max(12, "Must be a valid month (1-12)"),
-  dobDay: z.coerce.number().min(1).max(31, "Must be a valid day (1-31)"),
-  ssn4: z.string().length(4, "Must be exactly 4 digits").regex(/^\d{4}$/, "Must be 4 digits"),
+  dobMonth: z.number().min(1).max(12, "Must be a valid month (1-12)").optional(),
+  dobDay: z.number().min(1).max(31, "Must be a valid day (1-31)").optional(),
+  ssn4: z.string().length(4, "Must be exactly 4 digits").regex(/^\d{4}$/, "Must be 4 digits").optional(),
   location: z.string().min(2, "Location is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
@@ -102,8 +102,8 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       firstName: "",
       middleName: "",
       lastName: "",
-      dobMonth: 0,
-      dobDay: 0,
+      dobMonth: undefined,
+      dobDay: undefined,
       ssn4: "",
       location: "",
       email: "",
@@ -1330,7 +1330,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 name="dobMonth"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Birth Month (1-12)</FormLabel>
+                    <FormLabel>Birth Month (1-12) <span className="text-gray-500 text-sm">(Optional)</span></FormLabel>
                     <FormControl>
                       <Input {...field} type="number" min="1" max="12" placeholder="MM" />
                     </FormControl>
@@ -1346,7 +1346,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 name="dobDay"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Birth Day (1-31)</FormLabel>
+                    <FormLabel>Birth Day (1-31) <span className="text-gray-500 text-sm">(Optional)</span></FormLabel>
                     <FormControl>
                       <Input {...field} type="number" min="1" max="31" placeholder="DD" />
                     </FormControl>
@@ -1362,7 +1362,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                 name="ssn4"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last 4 of SSN</FormLabel>
+                    <FormLabel>Last 4 of SSN <span className="text-gray-500 text-sm">(Optional)</span></FormLabel>
                     <FormControl>
                       <Input {...field} maxLength={4} placeholder="1234" />
                     </FormControl>
