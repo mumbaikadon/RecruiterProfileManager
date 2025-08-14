@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Users, UserCheck, UserX, Crown, Shield, User, Briefcase } from "lucide-react";
@@ -24,6 +25,11 @@ interface OrganizationUser {
 
 export default function OrganizationPage() {
   const [selectedTab, setSelectedTab] = useState("pending");
+  const [approvalDialog, setApprovalDialog] = useState<{ open: boolean; user: OrganizationUser | null; selectedRole: string }>({
+    open: false,
+    user: null,
+    selectedRole: "recruiter"
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -47,26 +53,43 @@ export default function OrganizationPage() {
     retry: false,
   });
 
-  // Approve user mutation
+  // Approve user mutation with role assignment
   const approveMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const response = await fetch(`/api/organization/users/${userId}/approve`, {
+    mutationFn: async ({ userId, role }: { userId: number; role: string }) => {
+      // First approve the user
+      const approveResponse = await fetch(`/api/organization/users/${userId}/approve`, {
         method: "PUT",
         credentials: 'include',
         headers: {
           "Content-Type": "application/json",
         },
       });
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
+      if (!approveResponse.ok) {
+        throw new Error(`${approveResponse.status}: ${approveResponse.statusText}`);
       }
-      return response.json();
+      const approveData = await approveResponse.json();
+      
+      // Then update their role
+      const roleResponse = await fetch(`/api/organization/users/${userId}/role`, {
+        method: "PUT",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role }),
+      });
+      if (!roleResponse.ok) {
+        throw new Error(`${roleResponse.status}: ${roleResponse.statusText}`);
+      }
+      
+      return { ...approveData, role };
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization/users"] });
+      setApprovalDialog({ open: false, user: null, selectedRole: "recruiter" });
       toast({
         title: "User Approved",
-        description: `${data.name} has been successfully approved.`,
+        description: `${data.name} has been approved and assigned the ${data.role} role.`,
       });
     },
     onError: (error) => {
@@ -254,14 +277,66 @@ export default function OrganizationPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => approveMutation.mutate(user.id)}
-                          disabled={approveMutation.isPending}
+                        <Dialog 
+                          open={approvalDialog.open && approvalDialog.user?.id === user.id} 
+                          onOpenChange={(open) => {
+                            if (!open) {
+                              setApprovalDialog({ open: false, user: null, selectedRole: "recruiter" });
+                            }
+                          }}
                         >
-                          <UserCheck className="w-4 h-4 mr-1" />
-                          Approve
-                        </Button>
+                          <DialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              onClick={() => setApprovalDialog({ open: true, user, selectedRole: "recruiter" })}
+                              disabled={approveMutation.isPending}
+                            >
+                              <UserCheck className="w-4 h-4 mr-1" />
+                              Approve
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Approve User & Assign Role</DialogTitle>
+                              <DialogDescription>
+                                Approve {user.name} and assign them a role in your organization.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <label className="text-sm font-medium">Select Role</label>
+                                <Select 
+                                  value={approvalDialog.selectedRole} 
+                                  onValueChange={(value) => setApprovalDialog(prev => ({ ...prev, selectedRole: value }))}
+                                >
+                                  <SelectTrigger className="mt-1">
+                                    <SelectValue placeholder="Select a role" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="recruiter">Recruiter</SelectItem>
+                                    <SelectItem value="lead">Lead</SelectItem>
+                                    <SelectItem value="manager">Manager</SelectItem>
+                                    <SelectItem value="sub-admin">Sub-admin</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button
+                                variant="outline"
+                                onClick={() => setApprovalDialog({ open: false, user: null, selectedRole: "recruiter" })}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={() => approveMutation.mutate({ userId: user.id, role: approvalDialog.selectedRole })}
+                                disabled={approveMutation.isPending}
+                              >
+                                {approveMutation.isPending ? "Approving..." : "Approve & Assign Role"}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                         <Button
                           size="sm"
                           variant="outline"
