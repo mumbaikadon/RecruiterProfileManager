@@ -203,6 +203,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     resumeText: string,
     resumeData: any
   ) => {
+    console.log("🔥 createSubmissionWithResume called with resumeText length:", resumeText?.length);
     const jobDetails = await apiRequest<any>(`/api/jobs/${data.jobId}`);
     
     // Match resume with job description
@@ -250,7 +251,16 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
       // Set up the comparison data for the changes dialog
       setExistingResumeData(validationData.existingResumeData);
       setNewResumeData(validationData.newResumeData);
-      setPendingSubmissionData(data);
+      setPendingSubmissionData({
+        ...data,
+        resumeFile: data.resumeFile,
+        resumeText: resumeText
+      });
+      setParsedResumeText(resumeText);
+      
+      console.log("🎯 Setting validation data:");
+      console.log("- resumeText length:", resumeText?.length);
+      console.log("- pendingSubmissionData:", { ...data, resumeFile: data.resumeFile?.name });
       
       // Create a comparison result object for the changes dialog
       const comparison = {
@@ -308,7 +318,17 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     reason?: string,
     severity?: "LOW" | "MEDIUM" | "HIGH"
   ) => {
+    console.log("🎯 handleProceedAfterChanges called");
+    console.log("pendingSubmissionData:", pendingSubmissionData);
+    console.log("newResumeData:", newResumeData);
+    console.log("parsedResumeText length:", parsedResumeText?.length);
+    
     if (!pendingSubmissionData || !newResumeData || !parsedResumeText) {
+      console.error("❌ Missing data for submission:");
+      console.error("- pendingSubmissionData:", !!pendingSubmissionData);
+      console.error("- newResumeData:", !!newResumeData);
+      console.error("- parsedResumeText:", !!parsedResumeText);
+      
       toast({
         title: "Error",
         description: "Missing data for submission",
@@ -320,17 +340,33 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     try {
       setShowChangesDialog(false);
 
-      // Create the submission with the new resume data and any suspicious flags
-      const submissionData = {
-        ...pendingSubmissionData,
+      // Create the submission directly bypassing the validation
+      const submissionPayload = {
+        jobId: pendingSubmissionData.jobId,
+        candidateId: pendingSubmissionData.candidateId,
+        agreedRate: pendingSubmissionData.agreedRate,
+        resumeFileName: pendingSubmissionData.resumeFile?.name,
+        resumeData: newResumeData,
         skipComparison: true, // Skip comparison since we've already done it
         isSuspicious: flagAsSuspicious,
         suspiciousReason: reason,
         suspiciousSeverity: severity,
       };
 
-      // Create submission with the new resume data
-      await createSubmissionWithResume(submissionData, parsedResumeText, newResumeData);
+      console.log("🎯 Creating bypass submission with payload:", submissionPayload);
+
+      const response = await fetch("/api/submissions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(submissionPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create submission");
+      }
       
       // Create a validation history record
       await apiRequest("/api/candidate-validations", {

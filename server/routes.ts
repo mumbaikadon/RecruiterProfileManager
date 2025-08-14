@@ -1022,9 +1022,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // === RESUME VALIDATION LOGIC ===
           // If candidate has existing resume data AND new resume data, validate changes
+          // BUT skip validation if skipComparison flag is set (user has already approved changes)
           if (existingResumeData && 
               (submissionData.resumeData.clientNames?.length > 0 || 
-               submissionData.resumeData.jobTitles?.length > 0)) {
+               submissionData.resumeData.jobTitles?.length > 0) &&
+              !submissionData.skipComparison) {
             
             console.log("🔍 RESUME COMPARISON TRIGGERED");
             console.log("Existing resume data:", {
