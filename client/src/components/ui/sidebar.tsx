@@ -143,7 +143,7 @@ const Sidebar = () => {
           <SidebarSection title="Reports" />
           <nav className="flex-1 px-2 py-2 space-y-1">
             <SidebarLink 
-              href="/reports/analytics" 
+              href="/reports" 
               icon={<BarChart4 />} 
               isActive={location.startsWith("/reports")}>
               Analytics

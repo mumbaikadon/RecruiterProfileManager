@@ -2258,6 +2258,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Analytics endpoint for recruiter performance
+  app.get("/api/analytics/recruiters", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { dateFrom, dateTo, recruiterId } = req.query;
+      
+      // Validate dates
+      const fromDate = dateFrom ? new Date(dateFrom as string) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const toDate = dateTo ? new Date(dateTo as string) : new Date();
+      
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        return res.status(400).json({ message: "Invalid date format" });
+      }
+
+      // Get all recruiters
+      const recruiters = await storage.getRecruiters();
+      
+      // Get submissions in the date range
+      const submissions = await storage.getSubmissions();
+      
+      // Filter submissions by date range and recruiter if specified
+      const filteredSubmissions = submissions.filter(submission => {
+        const submissionDate = new Date(submission.submittedAt);
+        const inDateRange = submissionDate >= fromDate && submissionDate <= toDate;
+        const matchesRecruiter = !recruiterId || submission.recruiterId === parseInt(recruiterId as string);
+        return inDateRange && matchesRecruiter;
+      });
+
+      // Calculate recruiter stats
+      const recruiterStats = recruiters.map(recruiter => {
+        const recruiterSubmissions = filteredSubmissions.filter(s => s.recruiterId === recruiter.id);
+        
+        const totalSubmissions = recruiterSubmissions.length;
+        const activeSubmissions = recruiterSubmissions.filter(s => 
+          ['New', 'Submitted To Vendor', 'Submitted To Client', 'Interview Scheduled', 'Interview Completed'].includes(s.status)
+        ).length;
+        const approvedSubmissions = recruiterSubmissions.filter(s => 
+          ['Offer Extended', 'Offer Accepted'].includes(s.status)
+        ).length;
+        const rejectedSubmissions = recruiterSubmissions.filter(s => 
+          ['Rejected By Vendor', 'Offer Declined', 'Rejected'].includes(s.status)
+        ).length;
+        
+        const successRate = totalSubmissions > 0 ? (approvedSubmissions / totalSubmissions) * 100 : 0;
+        
+        // Get unique jobs worked on
+        const jobsWorked = new Set(recruiterSubmissions.map(s => s.jobId)).size;
+
+        return {
+          recruiterId: recruiter.id,
+          recruiterName: recruiter.name,
+          totalSubmissions,
+          activeSubmissions,
+          approvedSubmissions,
+          rejectedSubmissions,
+          successRate,
+          avgTimeToSubmit: 0, // Could calculate this if we track job assignment dates
+          jobsWorked
+        };
+      });
+
+      // Sort by total submissions descending
+      recruiterStats.sort((a, b) => b.totalSubmissions - a.totalSubmissions);
+      
+      const topPerformers = recruiterStats.slice(0, 3);
+      const totalSubmissions = await storage.getSubmissions().then(all => all.length);
+      const periodSubmissions = filteredSubmissions.length;
+
+      // Basic submission trends (could be enhanced with daily/weekly breakdown)
+      const submissionTrends = [];
+      
+      const analyticsData = {
+        recruiters: recruiterStats,
+        totalSubmissions,
+        periodSubmissions,
+        topPerformers,
+        submissionTrends
+      };
+
+      return res.status(200).json(analyticsData);
+    } catch (error) {
+      console.error("Error fetching analytics data:", error);
+      return res.status(500).json({ message: "Failed to fetch analytics data" });
+    }
+  });
+
   // Download resume file
   app.get("/api/candidates/resume/:candidateId", requireAuth, async (req: Request, res: Response) => {
     try {

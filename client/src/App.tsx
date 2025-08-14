@@ -19,6 +19,7 @@ import SubmissionDetailPage from "@/pages/submissions/[id]";
 import { PublicJobs } from "@/pages/PublicJobs";
 import SignupPage from "@/pages/signup-page";
 import OrganizationPage from "@/pages/organization";
+import ReportsPage from "@/pages/reports";
 
 function Router() {
   return (
@@ -102,6 +103,14 @@ function Router() {
         component={() => (
           <Layout>
             <OrganizationPage />
+          </Layout>
+        )} 
+      />
+      <ProtectedRoute 
+        path="/reports" 
+        component={() => (
+          <Layout>
+            <ReportsPage />
           </Layout>
         )} 
       />
