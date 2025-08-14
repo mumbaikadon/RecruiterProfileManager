@@ -156,13 +156,28 @@ export function extractTextFromTxt(buffer: Buffer): string {
  * @returns Extracted text
  */
 export async function extractTextFromDocument(buffer: Buffer, fileType: string): Promise<string> {
-  console.log('\n📄 Document Parser - Entry Point:');
+  // IMMEDIATE DEBUGGING: Log every document processing attempt
+  console.log('\n🚨 ===== DOCUMENT PROCESSING START =====');
+  console.log(`📂 File Processing Request:`);
   console.log(`   - File type: ${fileType}`);
   console.log(`   - Buffer size: ${buffer.length} bytes`);
+  console.log(`   - Buffer valid: ${Buffer.isBuffer(buffer)}`);
+  console.log(`   - Timestamp: ${new Date().toISOString()}`);
   
   // Convert file type to lowercase for consistency
   const type = fileType.toLowerCase();
   console.log(`   - Normalized type: ${type}`);
+  
+  // Special emphasis for PDF files
+  if (type === 'pdf') {
+    console.log('\n🔴 PDF FILE DETECTED - STARTING COMPREHENSIVE DEBUG:');
+    console.log(`   - This is a PDF processing attempt`);
+    console.log(`   - Buffer first 20 bytes: ${buffer.subarray(0, 20).toString('hex')}`);
+    console.log(`   - Header check: ${buffer.subarray(0, 4).toString('ascii')}`);
+    console.log(`   - Proceeding to PDF extraction function...`);
+  }
+  
+  console.log('🚨 ===== DOCUMENT PROCESSING START END =====\n');
   
   // Extract text based on file type
   switch (type) {

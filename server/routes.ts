@@ -2128,7 +2128,18 @@ Generated on: ${new Date().toLocaleString()}
   const fileUpload = multer({ storage: multerStorage });
   
   app.post("/api/parse-document", requireAuth, fileUpload.single('file'), async (req: Request, res: Response) => {
-    console.log("Document parsing request received");
+    console.log('\n🔥 ===== FILE UPLOAD RECEIVED =====');
+    console.log('📁 Upload Details:');
+    console.log(`   - Endpoint: /api/parse-document`);
+    console.log(`   - Time: ${new Date().toISOString()}`);
+    console.log(`   - Request has file: ${!!req.file}`);
+    if (req.file) {
+      console.log(`   - Original filename: ${req.file.originalname}`);
+      console.log(`   - File size: ${req.file.size} bytes (${Math.round(req.file.size / 1024)}KB)`);
+      console.log(`   - MIME type: ${req.file.mimetype}`);
+      console.log(`   - File extension: ${req.file.originalname.split('.').pop()?.toLowerCase()}`);
+    }
+    console.log('🔥 ===== FILE UPLOAD DEBUG END =====\n');
     
     try {
       if (!req.file) {
