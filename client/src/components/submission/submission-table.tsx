@@ -211,7 +211,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end space-x-1">
+                  <div className="flex justify-end space-x-1 min-w-[200px]">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -261,7 +261,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-primary hover:text-primary/80 transition-colors"
+                          className="text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (submission.candidate) {
@@ -274,13 +274,13 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                           }}
                         >
                           <RefreshCw className="h-4 w-4 mr-1" />
-                          <span className="hidden sm:inline">Resubmit</span>
+                          <span className="hidden lg:inline">Resubmit</span>
                         </Button>
                         
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-green-600 hover:text-green-700 transition-colors"
+                          className="text-green-600 hover:text-green-700 transition-colors whitespace-nowrap"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (submission.candidate) {
@@ -295,7 +295,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                           <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
-                          <span className="hidden sm:inline">Quick Submit</span>
+                          <span className="hidden lg:inline">Quick Submit</span>
                         </Button>
                       </>
                     )}
