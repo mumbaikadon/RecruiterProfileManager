@@ -28,14 +28,14 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({ actions, size = "sm" 
       <DropdownMenuTrigger asChild>
         <Button 
           variant="ghost" 
-          size={size}
-          className="h-8 w-8 p-0"
+          size="sm"
+          className="h-6 w-6 p-0 min-w-[24px] flex-shrink-0"
         >
           <span className="sr-only">Open actions menu</span>
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[160px]">
+      <DropdownMenuContent align="end" className="w-[140px]">
         {actions.map((action, index) => (
           <DropdownMenuItem
             key={index}
