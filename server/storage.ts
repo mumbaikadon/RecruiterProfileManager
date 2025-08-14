@@ -79,6 +79,7 @@ export interface IStorage {
   getSubmissions(filters?: { jobId?: number, candidateId?: number, recruiterId?: number }): Promise<Submission[]>;
   getSubmission(id: number): Promise<Submission | undefined>;
   getSubmissionByJobAndCandidate(jobId: number, candidateId: number): Promise<Submission | undefined>;
+  getSubmissionsByCandidate(candidateId: number): Promise<Submission[]>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
   updateSubmissionStatus(id: number, status: string, feedback?: string, lastUpdatedBy?: number): Promise<Submission>;
   
@@ -755,6 +756,14 @@ export class DatabaseStorage implements IStorage {
       );
     
     return submission;
+  }
+
+  async getSubmissionsByCandidate(candidateId: number): Promise<Submission[]> {
+    return db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.candidateId, candidateId))
+      .orderBy(desc(submissions.submittedAt));
   }
 
   async createSubmission(insertSubmission: InsertSubmission): Promise<Submission> {

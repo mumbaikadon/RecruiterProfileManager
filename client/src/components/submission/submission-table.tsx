@@ -117,6 +117,46 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
     }
   };
 
+  const handleDownloadProfile = async (candidateId: number, candidateName: string) => {
+    try {
+      const response = await fetch(`/api/candidates/${candidateId}/profile/download`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          alert('Candidate profile not found.');
+          return;
+        }
+        throw new Error(`Failed to download profile: ${response.status}`);
+      }
+
+      // Get filename from response headers
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `${candidateName.replace(/\s+/g, '_')}_Profile_and_Resume.txt`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download profile. Please try again.');
+    }
+  };
+
   return (
     <>
       <div className="table-container overflow-x-auto">
@@ -234,8 +274,25 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                           disabled: submission.job?.status?.toLowerCase() !== "active",
                           title: submission.job?.status?.toLowerCase() !== "active" 
                             ? "Download is only available for Active jobs" 
-                            : "Download resume",
+                            : "Download original resume file",
                           variant: "success" as const
+                        }] : []),
+                        ...(submission.candidate ? [{
+                          label: "Download Profile + Resume",
+                          icon: <Download className="h-4 w-4" />,
+                          onClick: () => {
+                            if (submission.candidate) {
+                              handleDownloadProfile(
+                                submission.candidate.id, 
+                                `${submission.candidate.firstName} ${submission.candidate.lastName}`
+                              );
+                            }
+                          },
+                          disabled: submission.job?.status?.toLowerCase() !== "active",
+                          title: submission.job?.status?.toLowerCase() !== "active" 
+                            ? "Download is only available for Active jobs" 
+                            : "Download candidate details with resume",
+                          variant: "secondary" as const
                         }] : []),
                         ...(submission.candidate ? [{
                           label: "Resubmit",
