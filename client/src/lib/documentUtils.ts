@@ -133,7 +133,13 @@ export async function extractDocumentText(file: File, candidateId?: number): Pro
  */
 async function callServerExtraction(file: File, candidateId?: number): Promise<string> {
   try {
-    console.log("Using server-side extraction for document...");
+    console.log('\n🚀 FRONTEND: SERVER EXTRACTION START');
+    console.log(`📁 File Details:`);
+    console.log(`   - Name: ${file.name}`);
+    console.log(`   - Size: ${file.size} bytes (${Math.round(file.size / 1024)}KB)`);
+    console.log(`   - Type: ${file.type}`);
+    console.log(`   - Last modified: ${new Date(file.lastModified).toISOString()}`);
+    console.log(`   - Candidate ID: ${candidateId || 'none'}`);
     
     // Create a FormData object for file upload
     const formData = new FormData();
@@ -146,11 +152,20 @@ async function callServerExtraction(file: File, candidateId?: number): Promise<s
     }
     
     // Call the server API
-    console.log("Sending file to server for extraction...");
+    console.log("📤 FRONTEND: Sending file to server for extraction...");
+    console.log(`   - Target endpoint: /api/parse-document`);
+    console.log(`   - FormData entries: ${Array.from(formData.entries()).map(([k, v]) => `${k}: ${v instanceof File ? v.name : v}`).join(', ')}`);
+    
     const response = await fetch('/api/parse-document', {
       method: 'POST',
       body: formData,
     });
+    
+    console.log(`📥 FRONTEND: Server response received`);
+    console.log(`   - Status: ${response.status} ${response.statusText}`);
+    console.log(`   - OK: ${response.ok}`);
+    console.log(`   - Content-Type: ${response.headers.get('content-type')}`);
+    console.log('🚀 FRONTEND: SERVER EXTRACTION END\n');
     
     // Get the response text first, regardless of status code
     let responseText;
