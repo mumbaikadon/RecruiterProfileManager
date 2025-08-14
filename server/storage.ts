@@ -69,7 +69,6 @@ export interface IStorage {
   // Resume file storage operations
   storeResumeFile(candidateId: number, fileName: string, fileContent: Buffer, mimeType: string): Promise<ResumeData>;
   getResumeFile(candidateId: number): Promise<{fileName: string, fileContent: Buffer, mimeType: string} | null>;
-  updateResumeText(candidateId: number, extractedText: string): Promise<void>;
   deleteResumeFiles(candidateIds: number[]): Promise<void>;
 
   // Candidate validation operations
@@ -1029,15 +1028,6 @@ export class DatabaseStorage implements IStorage {
       fileContent,
       mimeType: data.mimeType
     };
-  }
-
-  async updateResumeText(candidateId: number, extractedText: string): Promise<void> {
-    await db
-      .update(resumeData)
-      .set({ extractedText })
-      .where(eq(resumeData.candidateId, candidateId));
-    
-    console.log(`Updated extracted text for candidate ${candidateId}: ${extractedText.length} characters`);
   }
 
   async deleteResumeFiles(candidateIds: number[]): Promise<void> {

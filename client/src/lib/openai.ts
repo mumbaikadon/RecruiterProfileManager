@@ -186,7 +186,6 @@ export async function analyzeResume(file: File, candidateId?: number): Promise<{
   } catch (error) {
     console.error("Error processing resume file:", error);
     
-    // Don't store error messages in extractedText - this corrupts the data
     return {
       analysis: {
         clientNames: [],
@@ -194,10 +193,10 @@ export async function analyzeResume(file: File, candidateId?: number): Promise<{
         relevantDates: [],
         skills: [],
         education: [],
-        extractedText: "Resume text could not be extracted due to file parsing error.",
+        extractedText: `Error analyzing resume: ${error instanceof Error ? error.message : 'Unknown error'}`,
         fileName: file.name
       },
-      text: "Resume text could not be extracted due to file parsing error."
+      text: `Error analyzing resume: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
 }

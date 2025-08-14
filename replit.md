@@ -4,16 +4,7 @@ RecruiterTracker is a modern AI-powered recruitment management platform built wi
 
 ## Recent Changes (August 14, 2025)
 
-**Critical PDF Analysis Fix (Latest)**
-- Fixed "Maximum call stack size exceeded" error that was corrupting resume analysis
-- Identified incorrect function call `extractTextFromBuffer` instead of `extractTextFromDocument` in server routes
-- Improved PDF parsing with proper options to prevent stack overflow on large files
-- Enhanced error handling in document parser to return user-friendly messages instead of throwing
-- Fixed client-side error handling to prevent recursive errors from being stored as extractedText
-- Modified openai.ts to store clean error messages instead of raw stack traces
-- Added proper MIME type detection and file handling in public application routes
-
-**Security Enhancement: Optional Sensitive Fields**
+**Security Enhancement: Optional Sensitive Fields (Latest)**
 - Made Birth Month, Birth Day, and Last 4 of SSN optional fields for enhanced security and privacy
 - Updated database schema to allow nullable values for dobMonth, dobDay, and ssn4 columns
 - Modified frontend form validation to accept empty values for these sensitive fields

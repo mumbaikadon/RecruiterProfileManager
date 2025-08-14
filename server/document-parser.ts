@@ -11,67 +11,37 @@ import type { Buffer } from 'node:buffer';
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
-    console.log("Starting PDF text extraction, buffer size:", buffer.length);
+    // Try multiple import strategies for cross-platform compatibility
+    let pdfParse: any = null;
     
-    // Use direct require for pdf-parse to avoid complex import chain
-    const pdfParse = require('pdf-parse');
+    try {
+      // Try default import first
+      const pdf = await import('pdf-parse');
+      pdfParse = pdf.default || pdf;
+    } catch (importError) {
+      console.log('Default import failed, trying specific path');
+      try {
+        // Try specific path import
+        const pdf = await import('pdf-parse/lib/pdf-parse.js');
+        pdfParse = pdf.default || pdf;
+      } catch (specificError) {
+        console.log('Specific path failed, trying CommonJS require');
+        // Last resort - CommonJS require
+        const pdf = require('pdf-parse');
+        pdfParse = pdf.default || pdf;
+      }
+    }
     
     if (!pdfParse || typeof pdfParse !== 'function') {
-      throw new Error('PDF parser not available');
+      throw new Error('Could not load PDF parser');
     }
     
-    // Multiple parsing strategies for different PDF types
-    const strategies = [
-      // Strategy 1: Basic parsing with limits
-      {
-        name: 'basic',
-        options: {
-          max: 50,
-          normalizeWhitespace: false
-        }
-      },
-      // Strategy 2: Minimal options for problematic PDFs
-      {
-        name: 'minimal',
-        options: {}
-      },
-      // Strategy 3: Text-only extraction
-      {
-        name: 'text-only',
-        options: {
-          max: 25,
-          normalizeWhitespace: true
-        }
-      }
-    ];
-    
-    for (const strategy of strategies) {
-      try {
-        console.log(`Trying PDF parsing strategy: ${strategy.name}`);
-        const data = await pdfParse(buffer, strategy.options);
-        
-        const extractedText = data.text?.trim() || "";
-        
-        if (extractedText.length > 50) {
-          console.log(`PDF extraction successful with ${strategy.name} strategy: ${extractedText.length} characters`);
-          return extractedText;
-        } else if (extractedText.length > 0) {
-          console.log(`PDF extraction returned short text with ${strategy.name}: ${extractedText.length} characters`);
-          // Continue to try other strategies for better results
-        }
-      } catch (strategyError) {
-        console.log(`Strategy ${strategy.name} failed:`, strategyError.message);
-        // Continue to next strategy
-      }
-    }
-    
-    // If all strategies failed, return a helpful message
-    console.log("All PDF parsing strategies failed");
-    return "PDF content could not be extracted. The file may be image-based, password-protected, or corrupted. Please try converting to Word document format.";
-    
+    // Parse the PDF buffer
+    const data = await pdfParse(buffer);
+    return data.text || "";
   } catch (error) {
     console.error("PDF extraction error:", error);
-    return `PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try converting the PDF to a Word document or use a different PDF file.`;
+    throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -82,27 +52,32 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
  */
 export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
   try {
-    console.log("Starting DOCX text extraction, buffer size:", buffer.length);
+    // Try multiple import strategies for cross-platform compatibility
+    let mammoth: any = null;
     
-    // Use direct require for mammoth to avoid complex import chain
-    const mammoth = require('mammoth');
-    
-    if (!mammoth || typeof mammoth.extractRawText !== 'function') {
-      throw new Error('Mammoth library not available');
+    try {
+      // Try ES module import first
+      mammoth = await import('mammoth');
+    } catch (importError) {
+      console.log('ES module import failed for mammoth, trying CommonJS require');
+      try {
+        // Fallback to CommonJS require
+        mammoth = require('mammoth');
+      } catch (requireError) {
+        throw new Error('Could not load mammoth library');
+      }
     }
     
-    // Extract text from the DOCX buffer with error handling
-    console.log("Extracting text from DOCX buffer...");
+    if (!mammoth || typeof mammoth.extractRawText !== 'function') {
+      throw new Error('Mammoth library not properly loaded');
+    }
+    
+    // Extract text from the DOCX buffer
     const result = await mammoth.extractRawText({ buffer });
-    
-    const extractedText = result.value || "";
-    console.log(`DOCX extraction completed: ${extractedText.length} characters extracted`);
-    
-    return extractedText;
+    return result.value || "";
   } catch (error) {
     console.error("DOCX extraction error:", error);
-    // Return a more user-friendly error message instead of throwing
-    return `DOCX parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try saving the document as a PDF or use a different Word document.`;
+    throw new Error(`Failed to extract text from DOCX: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
