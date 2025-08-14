@@ -90,9 +90,9 @@ const Sidebar = () => {
           <SidebarSection title="Main" />
           <nav className="flex-1 px-2 py-2 space-y-1">
             <SidebarLink 
-              href="/" 
+              href="/dashboard" 
               icon={<Home />} 
-              isActive={location === "/"}>
+              isActive={location === "/dashboard"}>
               Dashboard
             </SidebarLink>
 

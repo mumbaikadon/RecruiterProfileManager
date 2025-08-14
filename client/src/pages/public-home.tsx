@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { Job } from "@shared/schema";
 import { MapPin, Clock, Briefcase, LogIn, Users, CheckCircle, Zap, Target, Shield, TrendingUp, ChevronRight, Star, Mail, Phone, Bell, Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 // Add custom animations to Tailwind
 const fadeInAnimation = `
@@ -30,6 +31,9 @@ const floatAnimation = `
 `;
 
 export default function PublicHome() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  
   const { data: jobs, isLoading } = useQuery<Job[]>({
     queryKey: ["/api/public/jobs"],
   });
@@ -37,6 +41,13 @@ export default function PublicHome() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (user) {
+      setLocation("/dashboard");
+    }
+  }, [user, setLocation]);
 
   useEffect(() => {
     // Add custom animations to the document

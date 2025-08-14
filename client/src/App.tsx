@@ -34,7 +34,7 @@ function Router() {
         <PublicJobs />
       </Route>
       
-      {/* Public home route */}
+      {/* Public home route - redirect to dashboard if logged in */}
       <Route path="/" component={PublicHome} />
       
       {/* Protected admin/recruiter routes */}
