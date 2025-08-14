@@ -214,8 +214,13 @@ function CandidateDetailPage() {
                 {submissionRates.length > 0 ? (
                   <>
                     <div>
-                      <p className="text-sm font-medium">Previously submitted on Rate</p>
-                      <p className="text-xl font-bold text-primary">$70/hr</p>
+                      <p className="text-sm font-medium">Previously submitted on Rate{submissionRates.length > 1 ? 's' : ''}</p>
+                      <p className="text-xl font-bold text-primary">
+                        {submissionRates.length === 1 
+                          ? `$${submissionRates[0]}/hr`
+                          : submissionRates.map(rate => `$${rate}/hr`).join(', ')
+                        }
+                      </p>
                     </div>
                     
                     <div>
