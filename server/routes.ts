@@ -2127,6 +2127,59 @@ Generated on: ${new Date().toLocaleString()}
   const multerStorage = multer.memoryStorage();
   const fileUpload = multer({ storage: multerStorage });
   
+  // Add endpoint to reprocess existing PDF files
+  app.post("/api/reprocess-pdf/:candidateId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const candidateId = parseInt(req.params.candidateId);
+      if (isNaN(candidateId)) {
+        return res.status(400).json({ message: "Invalid candidate ID" });
+      }
+
+      // Get the resume file from database
+      const resumeFile = await storage.getResumeFile(candidateId);
+      if (!resumeFile) {
+        return res.status(404).json({ message: "No resume file found for this candidate" });
+      }
+
+      console.log(`Reprocessing PDF for candidate ${candidateId}: ${resumeFile.fileName}`);
+
+      // Only process PDF files
+      if (!resumeFile.fileName.toLowerCase().endsWith('.pdf')) {
+        return res.status(400).json({ message: "Only PDF files can be reprocessed" });
+      }
+
+      // Extract text using improved parser
+      const { extractTextFromDocument } = await import('./document-parser');
+      const extractedText = await extractTextFromDocument(resumeFile.fileContent, 'pdf');
+
+      if (extractedText && extractedText.length > 50) {
+        // Update the database with the new extracted text
+        await storage.updateResumeText(candidateId, extractedText);
+        
+        console.log(`Successfully reprocessed PDF: ${extractedText.length} characters extracted`);
+        
+        return res.json({
+          success: true,
+          message: "PDF reprocessed successfully",
+          textLength: extractedText.length,
+          preview: extractedText.substring(0, 200)
+        });
+      } else {
+        return res.status(500).json({
+          success: false,
+          message: "PDF reprocessing failed - no text extracted"
+        });
+      }
+
+    } catch (error) {
+      console.error("PDF reprocessing error:", error);
+      return res.status(500).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : "Reprocessing failed"
+      });
+    }
+  });
+
   app.post("/api/parse-document", requireAuth, fileUpload.single('file'), async (req: Request, res: Response) => {
     console.log("Document parsing request received");
     

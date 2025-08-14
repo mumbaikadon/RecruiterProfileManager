@@ -11,7 +11,6 @@ import type { Buffer } from 'node:buffer';
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
-    // Simplified PDF parsing approach to avoid stack overflow issues
     console.log("Starting PDF text extraction, buffer size:", buffer.length);
     
     // Use direct require for pdf-parse to avoid complex import chain
@@ -21,26 +20,57 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
       throw new Error('PDF parser not available');
     }
     
-    // Add options to prevent stack overflow on large PDFs
-    const options = {
-      // Limit the number of pages to prevent stack overflow
-      max: 50,
-      // Disable font combining to reduce memory usage
-      normalizeWhitespace: false,
-      // Set version to prevent compatibility issues
-      version: 'v1.6.0'
-    };
+    // Multiple parsing strategies for different PDF types
+    const strategies = [
+      // Strategy 1: Basic parsing with limits
+      {
+        name: 'basic',
+        options: {
+          max: 50,
+          normalizeWhitespace: false
+        }
+      },
+      // Strategy 2: Minimal options for problematic PDFs
+      {
+        name: 'minimal',
+        options: {}
+      },
+      // Strategy 3: Text-only extraction
+      {
+        name: 'text-only',
+        options: {
+          max: 25,
+          normalizeWhitespace: true
+        }
+      }
+    ];
     
-    console.log("Parsing PDF with options:", options);
-    const data = await pdfParse(buffer, options);
+    for (const strategy of strategies) {
+      try {
+        console.log(`Trying PDF parsing strategy: ${strategy.name}`);
+        const data = await pdfParse(buffer, strategy.options);
+        
+        const extractedText = data.text?.trim() || "";
+        
+        if (extractedText.length > 50) {
+          console.log(`PDF extraction successful with ${strategy.name} strategy: ${extractedText.length} characters`);
+          return extractedText;
+        } else if (extractedText.length > 0) {
+          console.log(`PDF extraction returned short text with ${strategy.name}: ${extractedText.length} characters`);
+          // Continue to try other strategies for better results
+        }
+      } catch (strategyError) {
+        console.log(`Strategy ${strategy.name} failed:`, strategyError.message);
+        // Continue to next strategy
+      }
+    }
     
-    const extractedText = data.text || "";
-    console.log(`PDF extraction completed: ${extractedText.length} characters extracted`);
+    // If all strategies failed, return a helpful message
+    console.log("All PDF parsing strategies failed");
+    return "PDF content could not be extracted. The file may be image-based, password-protected, or corrupted. Please try converting to Word document format.";
     
-    return extractedText;
   } catch (error) {
     console.error("PDF extraction error:", error);
-    // Return a more user-friendly error message instead of throwing
     return `PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try converting the PDF to a Word document or use a different PDF file.`;
   }
 }
