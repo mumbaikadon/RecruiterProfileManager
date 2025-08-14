@@ -5,6 +5,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Cache buster - force browser refresh */
+.cache-clear { opacity: 0.999; }
+
 :root {
   /* HSL value components for easier manipulation - Velocity Tech Blue */
   --primary-hue: 217;

@@ -69,8 +69,23 @@ export async function matchResumeToJob(
   candidateId?: number
 ): Promise<MatchScoreResult> {
   try {
+    console.log('\n🎯 FRONTEND: matchResumeToJob called');
+    console.log(`📝 Resume text length: ${resumeText.length}`);
+    console.log(`📝 Resume text preview: "${resumeText.substring(0, 100)}..."`);
+    console.log(`📄 Job description length: ${jobDescription.length}`);
+    console.log(`👤 Candidate ID: ${candidateId || 'none'}`);
+    
+    // Check for cached error immediately
+    if (resumeText.includes('Error analyzing resume')) {
+      console.log('🚨 FRONTEND: CACHED ERROR DETECTED IN RESUME TEXT!');
+      console.log('🚨 FRONTEND: This is the 56-character cached error, not fresh resume data');
+      console.log('🚨 FRONTEND: Throwing error to prevent using cached data');
+      throw new Error('CACHED_ERROR_DETECTED: Resume text contains cached error message');
+    }
+    
     // Basic validation
     if (!resumeText || resumeText.trim().length < 50) {
+      console.log('🚨 FRONTEND: Resume text too short, length:', resumeText.length);
       throw new Error("Resume text is too short for meaningful analysis");
     }
     
