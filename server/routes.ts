@@ -2157,11 +2157,40 @@ Generated on: ${new Date().toLocaleString()}
         // Import the document parser
         const { extractTextFromDocument } = await import('./document-parser');
         
+        // Add special debugging for PDF files at upload stage
+        if (fileType === 'pdf') {
+          console.log('\n🔍 ===== PDF UPLOAD DEBUG START =====');
+          console.log(`📁 File Details:`);
+          console.log(`   - Original name: ${req.file.originalname}`);
+          console.log(`   - File size: ${req.file.size} bytes (${Math.round(req.file.size / 1024)}KB)`);
+          console.log(`   - Buffer length: ${fileBuffer.length} bytes`);
+          console.log(`   - Buffer is valid: ${Buffer.isBuffer(fileBuffer)}`);
+          console.log('🔍 ===== PDF UPLOAD DEBUG END =====\n');
+        }
+        
         // Extract text based on file type
         console.log(`Processing ${fileType.toUpperCase()} document using document-parser`);
         extractedText = await extractTextFromDocument(fileBuffer, fileType);
       } catch (extractionError) {
         console.error(`${fileType.toUpperCase()} extraction error:`, extractionError);
+        
+        // For PDF files, provide specific error diagnostics
+        if (fileType === 'pdf') {
+          console.log('\n🚨 ===== PDF EXTRACTION ERROR DETAILS =====');
+          console.log(`   - Error type: ${extractionError?.constructor?.name || 'Unknown'}`);
+          console.log(`   - Error message: ${extractionError?.message || String(extractionError)}`);
+          console.log(`   - Stack trace preview: ${extractionError?.stack?.substring(0, 300) || 'No stack'}`);
+          
+          if (extractionError?.message?.includes('Maximum call stack size exceeded')) {
+            console.log('   - Diagnosis: Stack overflow during PDF parsing - likely corrupted or complex PDF structure');
+            console.log('   - Suggestion: Try converting PDF to a simpler format or recreating it');
+          } else if (extractionError?.message?.includes('Invalid PDF')) {
+            console.log('   - Diagnosis: PDF file appears to be corrupted or not a valid PDF');
+            console.log('   - Suggestion: Check if file is actually a PDF and not corrupted');
+          }
+          console.log('🚨 ===== PDF EXTRACTION ERROR END =====\n');
+        }
+        
         return res.status(500).json({
           success: false,
           error: `${fileType.toUpperCase()} parsing failed`,

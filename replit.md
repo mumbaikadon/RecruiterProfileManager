@@ -14,6 +14,8 @@ RecruiterTracker is a modern AI-powered recruitment management platform built wi
 - Enhanced PDF issue detection for short text extractions (< 100 characters)
 - Safe substring operations with error handling throughout text processing
 - Fixed root cause of 56-character error messages by adding safe handling in OpenAI analysis error cases
+- Enhanced PDF upload debugging at document parsing stage to identify stack overflow errors at source
+- Added comprehensive error diagnostics for PDF extraction failures with specific diagnosis suggestions
 - DOCX parsing remains untouched and working perfectly
 - Successfully tested with real PDF files: Drew Corrigan (8,101 chars) and Sanjeev Chapagain (20,130 chars)
 - PDF parsing debugger shows detailed logs during file upload process
