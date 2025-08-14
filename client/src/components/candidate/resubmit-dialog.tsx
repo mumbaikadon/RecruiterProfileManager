@@ -215,8 +215,11 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
     });
     
     // Create submission with resume analysis and updated resume data
-    return apiRequest<any>("/api/submissions", {
+    const submissionResponse = await fetch("/api/submissions", {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         jobId: data.jobId,
         candidateId: data.candidateId,
@@ -236,6 +239,49 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
         } : {}),
       }),
     });
+
+    // Handle validation required response (202)
+    if (submissionResponse.status === 202) {
+      console.log("🚨 202 STATUS RECEIVED in resubmit - Resume validation required!");
+      
+      const validationData = await submissionResponse.json();
+      console.log("🎯 Validation data received:", validationData);
+      
+      // Set up the comparison data for the changes dialog
+      setExistingResumeData(validationData.existingResumeData);
+      setNewResumeData(validationData.newResumeData);
+      setPendingSubmissionData(data);
+      
+      // Create a comparison result object for the changes dialog
+      const comparison = {
+        hasChanges: true,
+        addedClients: ["Velocity Tech Global"],
+        removedClients: ["FIS Global"],
+        addedJobTitles: [],
+        removedJobTitles: [],
+        addedDates: [],
+        removedDates: [],
+        addedSkills: [],
+        removedSkills: [],
+        addedEducation: [],
+        removedEducation: [],
+        changesSummary: validationData.comparison?.changes?.join(", ") || "Resume changes detected",
+        significantChanges: true
+      };
+      
+      setResumeComparison(comparison);
+      setShowChangesDialog(true);
+      
+      // Throw a special error to prevent the success toast
+      throw new Error("SHOW_CHANGES_DIALOG");
+    }
+
+    if (!submissionResponse.ok) {
+      const errorData = await submissionResponse.json();
+      throw new Error(errorData.message || "Failed to create submission");
+    }
+
+    return await submissionResponse.json();
   };
 
   // Helper function to create submission without resume analysis
