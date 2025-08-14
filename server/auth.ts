@@ -84,9 +84,14 @@ export function setupAuth(app: Express) {
           const user = await storage.getUserByUsername(username);
           if (!user || !(await comparePasswords(password, user.password))) {
             return done(null, false);
-          } else {
-            return done(null, user);
           }
+          
+          // Check if user is approved
+          if (user.status !== "approved") {
+            return done(null, false, { message: "Account pending approval" });
+          }
+          
+          return done(null, user);
         } catch (error) {
           // If database lookup fails, still check if it's a hardcoded user
           return done(null, false);
@@ -142,19 +147,34 @@ export function setupAuth(app: Express) {
       const user = await storage.createUser({
         ...req.body,
         password: await hashPassword(req.body.password),
+        role: "recruiter", // Default role assigned by system
+        status: "pending", // New users require admin approval
       });
 
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json(user);
+      // Don't automatically log in new users - they need admin approval first
+      res.status(201).json({ 
+        message: "Registration successful. Account pending admin approval.",
+        user: { username: user.username, name: user.name, status: user.status }
       });
     } catch (error) {
       res.status(500).json({ error: "Registration failed" });
     }
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err, user, info) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(401).json({ 
+          error: info?.message || "Invalid credentials or account not approved" 
+        });
+      }
+      
+      req.logIn(user, (err) => {
+        if (err) return next(err);
+        res.status(200).json(user);
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {

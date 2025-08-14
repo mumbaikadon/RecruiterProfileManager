@@ -59,11 +59,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/register", credentials);
       return await res.json();
     },
-    onSuccess: (user: SelectUser) => {
-      queryClient.setQueryData(["/api/user"], user);
+    onSuccess: (response: any) => {
+      // Don't set user data since they need admin approval
       toast({
         title: "Registration successful",
-        description: `Welcome, ${user.name}!`,
+        description: "Your account has been created and is pending admin approval.",
       });
     },
     onError: (error: Error) => {
