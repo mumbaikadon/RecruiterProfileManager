@@ -9,8 +9,10 @@ import {
   BarChart4,
   PlusCircle,
   Zap,
-  ChevronRight
+  ChevronRight,
+  Building2
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import CreateJobDialog from "@/components/job/create-job-dialog";
@@ -69,6 +71,7 @@ const SidebarSection = ({ title }: { title: string }) => (
 
 const Sidebar = () => {
   const [location] = useLocation();
+  const { user } = useAuth();
 
   return (
     <div className="hidden md:flex md:flex-shrink-0">
@@ -121,6 +124,21 @@ const Sidebar = () => {
             </SidebarLink>
           </nav>
 
+          {/* Admin section - only show for admin users */}
+          {user?.role === "admin" && (
+            <>
+              <SidebarSection title="Administration" />
+              <nav className="flex-1 px-2 py-2 space-y-1">
+                <SidebarLink 
+                  href="/organization" 
+                  icon={<Building2 />} 
+                  isActive={location.startsWith("/organization")}>
+                  Organization
+                </SidebarLink>
+              </nav>
+            </>
+          )}
+
           {/* Reports section - can be extended later */}
           <SidebarSection title="Reports" />
           <nav className="flex-1 px-2 py-2 space-y-1">
@@ -156,8 +174,8 @@ const Sidebar = () => {
               JD
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-sidebar-foreground">John Doe</p>
-              <p className="text-xs font-medium text-sidebar-foreground/60">Recruiter Lead</p>
+              <p className="text-sm font-medium text-sidebar-foreground">{user?.name || "User"}</p>
+              <p className="text-xs font-medium text-sidebar-foreground/60 capitalize">{user?.role || "Role"}</p>
             </div>
           </div>
         </div>

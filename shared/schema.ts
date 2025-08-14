@@ -9,7 +9,10 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   email: text("email").notNull(),
-  role: text("role", { enum: ["recruiter", "lead", "admin"] }).notNull().default("recruiter"),
+  role: text("role", { enum: ["recruiter", "lead", "admin", "sub-admin", "manager"] }).notNull().default("recruiter"),
+  status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+  approvedBy: integer("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

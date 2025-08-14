@@ -9,6 +9,7 @@ import {
   insertResumeDataSchema,
   insertActivitySchema,
   insertPublicApplicationSchema,
+  insertUserSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
@@ -2461,6 +2462,201 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Initialize the HTTP server
+  // User registration endpoint (public)
+  app.post("/api/register", async (req: Request, res: Response) => {
+    try {
+      const { username, password, name, email, role } = req.body;
+      
+      // Validate required fields
+      if (!username || !password || !name || !email) {
+        return res.status(400).json({ 
+          message: "Username, password, name, and email are required" 
+        });
+      }
+
+      // Check if username or email already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(409).json({ message: "Email already exists" });
+      }
+
+      // Hash password
+      const bcrypt = await import("bcrypt");
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create user with pending status
+      const userData = {
+        username,
+        password: hashedPassword,
+        name,
+        email,
+        role: role || "recruiter",
+        status: "pending"
+      };
+
+      const validatedData = insertUserSchema.parse(userData);
+      const newUser = await storage.createUser(validatedData);
+
+      // Create activity for new user registration
+      await storage.createActivity({
+        type: "system_integration",
+        userId: newUser.id,
+        message: `New user ${name} (${username}) registered and pending approval`
+      });
+
+      res.status(201).json({ 
+        message: "Registration successful. Account pending admin approval.",
+        userId: newUser.id 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      console.error("Registration error:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Organization management routes (admin only)
+  app.get("/api/organization/users", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = (req as any).user;
+      
+      // Check if user is admin
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { status } = req.query;
+      let users;
+      
+      if (status === "pending") {
+        users = await storage.getPendingUsers();
+      } else {
+        users = await storage.getAllUsers();
+      }
+      
+      // Remove password from response
+      const safeUsers = users.map(user => {
+        const { password, ...safeUser } = user;
+        return safeUser;
+      });
+
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error fetching organization users:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.put("/api/organization/users/:id/approve", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = (req as any).user;
+      
+      // Check if user is admin
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const updatedUser = await storage.updateUserStatus(userId, "approved", currentUser.id);
+      
+      // Create activity for approval
+      await storage.createActivity({
+        type: "system_integration",
+        userId: currentUser.id,
+        message: `User ${updatedUser.name} (${updatedUser.username}) was approved by admin`
+      });
+
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Error approving user:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.put("/api/organization/users/:id/reject", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = (req as any).user;
+      
+      // Check if user is admin
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const updatedUser = await storage.updateUserStatus(userId, "rejected", currentUser.id);
+      
+      // Create activity for rejection
+      await storage.createActivity({
+        type: "system_integration",
+        userId: currentUser.id,
+        message: `User ${updatedUser.name} (${updatedUser.username}) was rejected by admin`
+      });
+
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Error rejecting user:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.put("/api/organization/users/:id/role", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = (req as any).user;
+      
+      // Check if user is admin
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const { role } = req.body;
+      const validRoles = ["recruiter", "lead", "admin", "sub-admin", "manager"];
+      
+      if (!role || !validRoles.includes(role)) {
+        return res.status(400).json({ 
+          message: "Valid role is required", 
+          validRoles 
+        });
+      }
+
+      const updatedUser = await storage.updateUserRole(userId, role, currentUser.id);
+      
+      // Create activity for role change
+      await storage.createActivity({
+        type: "system_integration",
+        userId: currentUser.id,
+        message: `User ${updatedUser.name} (${updatedUser.username}) role changed to ${role} by admin`
+      });
+
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -137,6 +137,15 @@ export default function AuthPage() {
                   {loginMutation.isPending ? "Signing in..." : "Sign In"}
                 </Button>
               </form>
+              
+              <div className="mt-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Need an account?{" "}
+                  <Link href="/signup" className="text-primary hover:underline">
+                    Sign up here
+                  </Link>
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>

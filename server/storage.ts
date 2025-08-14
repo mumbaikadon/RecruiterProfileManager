@@ -22,8 +22,13 @@ export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserStatus(id: number, status: string, approvedBy?: number): Promise<User>;
+  updateUserRole(id: number, role: string, updatedBy: number): Promise<User>;
   getRecruiters(): Promise<User[]>;
+  getPendingUsers(): Promise<User[]>;
+  getAllUsers(): Promise<User[]>;
 
   // Job operations
   getJobs(filters?: { status?: string, date?: Date, searchTerm?: string }): Promise<Job[]>;
@@ -187,10 +192,42 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async updateUserStatus(id: number, status: string, approvedBy?: number): Promise<User> {
+    const updateData: any = { 
+      status,
+      approvedAt: status === 'approved' ? new Date() : null
+    };
+    
+    if (approvedBy !== undefined) {
+      updateData.approvedBy = approvedBy;
+    }
+
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async updateUserRole(id: number, role: string, updatedBy: number): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ role })
+      .where(eq(users.id, id))
       .returning();
     return user;
   }
@@ -201,6 +238,21 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.role, "recruiter"))
       .orderBy(users.name);
+  }
+
+  async getPendingUsers(): Promise<User[]> {
+    return db
+      .select()
+      .from(users)
+      .where(eq(users.status, "pending"))
+      .orderBy(desc(users.createdAt));
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt));
   }
 
   async getJobs(filters?: { status?: string; date?: Date; searchTerm?: string }): Promise<Job[]> {

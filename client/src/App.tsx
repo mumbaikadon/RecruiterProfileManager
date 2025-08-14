@@ -17,12 +17,15 @@ import CandidateDetailPage from "@/pages/candidates/[id]";
 import SubmissionsPage from "@/pages/submissions/index";
 import SubmissionDetailPage from "@/pages/submissions/[id]";
 import { PublicJobs } from "@/pages/PublicJobs";
+import SignupPage from "@/pages/signup-page";
+import OrganizationPage from "@/pages/organization";
 
 function Router() {
   return (
     <Switch>
-      {/* Authentication route */}
+      {/* Authentication routes */}
       <Route path="/auth" component={AuthPage} />
+      <Route path="/signup" component={SignupPage} />
       
       {/* Public job application routes */}
       <Route path="/public/jobs">
@@ -91,6 +94,14 @@ function Router() {
         component={() => (
           <Layout>
             <SubmissionDetailPage />
+          </Layout>
+        )} 
+      />
+      <ProtectedRoute 
+        path="/organization" 
+        component={() => (
+          <Layout>
+            <OrganizationPage />
           </Layout>
         )} 
       />
