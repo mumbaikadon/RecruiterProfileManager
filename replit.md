@@ -4,6 +4,15 @@ RecruiterTracker is a modern AI-powered recruitment management platform built wi
 
 ## Recent Changes (August 14, 2025)
 
+**Resume Comparison Validation System (Latest)**
+- Implemented complete resume comparison validation in submissions workflow
+- Added server-side resume comparison logic in `/api/submissions` endpoint
+- Frontend now handles 202 validation responses and shows comparison dialog
+- System detects significant changes in companies and job titles
+- Validation triggers automatically when existing candidates submit with resume changes
+- Fixed candidate profile rate display to show actual submission rates instead of hardcoded values
+- Added support for multiple rates display (comma-separated) in candidate profiles
+
 **Comprehensive Test Suite Implementation**
 - Added complete Jest-based testing framework with TypeScript support
 - Created 8 comprehensive test files covering all major services
