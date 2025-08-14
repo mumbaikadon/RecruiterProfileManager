@@ -2301,6 +2301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ).length;
         
         const successRate = totalSubmissions > 0 ? (approvedSubmissions / totalSubmissions) * 100 : 0;
+        const rejectedRate = totalSubmissions > 0 ? (rejectedSubmissions / totalSubmissions) * 100 : 0;
         
         // Get unique jobs worked on
         const jobsWorked = new Set(recruiterSubmissions.map(s => s.jobId)).size;
@@ -2313,6 +2314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           approvedSubmissions,
           rejectedSubmissions,
           successRate,
+          rejectedRate,
           avgTimeToSubmit: 0, // Could calculate this if we track job assignment dates
           jobsWorked
         };
@@ -2326,7 +2328,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const periodSubmissions = filteredSubmissions.length;
 
       // Basic submission trends (could be enhanced with daily/weekly breakdown)
-      const submissionTrends = [];
+      const submissionTrends: Array<{
+        date: string;
+        submissions: number;
+        recruiterId?: number;
+      }> = [];
       
       const analyticsData = {
         recruiters: recruiterStats,
