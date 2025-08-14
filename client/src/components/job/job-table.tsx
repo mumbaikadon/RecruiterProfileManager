@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import { useLocation } from "wouter";
-import { ChevronLeft, ChevronRight, Eye, MapPin, DollarSign, Calendar, Users, Shield, Edit, Download, Package } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, MapPin, DollarSign, Calendar, Users, Shield, Edit } from "lucide-react";
 
 import {
   Table,
@@ -37,56 +37,9 @@ const JobTable: React.FC<JobTableProps> = ({
   onEdit
 }) => {
   const [_, setLocation] = useLocation();
-  const [downloadingJob, setDownloadingJob] = useState<number | null>(null);
 
   const handleRowClick = (jobId: number) => {
     setLocation(`/jobs/${jobId}`);
-  };
-
-  const handleBulkDownload = async (jobId: number, jobTitle: string) => {
-    setDownloadingJob(jobId);
-    try {
-      const response = await fetch(`/api/jobs/${jobId}/download-all`, {
-        method: 'GET',
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Download failed' }));
-        throw new Error(errorData.message || `Download failed: ${response.status}`);
-      }
-
-      // Create a blob from the response
-      const blob = await response.blob();
-      
-      // Create a download link
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      
-      // Get filename from response headers or create one
-      const disposition = response.headers.get('Content-Disposition');
-      let filename = `Job_${jobId}_Candidates.zip`;
-      if (disposition && disposition.includes('filename=')) {
-        const matches = disposition.match(/filename="?([^"]+)"?/);
-        if (matches && matches[1]) {
-          filename = matches[1];
-        }
-      }
-      
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error('Download error:', error);
-      alert(`Failed to download candidates: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setDownloadingJob(null);
-    }
   };
 
   // Job details tooltip content
@@ -260,27 +213,6 @@ const JobTable: React.FC<JobTableProps> = ({
                             <Eye className="h-4 w-4 mr-1" />
                             <span className="hidden sm:inline">View</span>
                           </Button>
-                          {job.status.toLowerCase() === 'active' && (submissionCounts[job.id] || 0) > 0 && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-green-600 hover:text-green-700 transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleBulkDownload(job.id, job.title);
-                              }}
-                              disabled={downloadingJob === job.id}
-                            >
-                              {downloadingJob === job.id ? (
-                                <Package className="h-4 w-4 mr-1 animate-pulse" />
-                              ) : (
-                                <Download className="h-4 w-4 mr-1" />
-                              )}
-                              <span className="hidden sm:inline">
-                                {downloadingJob === job.id ? 'Downloading...' : 'Download All'}
-                              </span>
-                            </Button>
-                          )}
                           {onEdit && (
                             <Button 
                               variant="ghost" 
