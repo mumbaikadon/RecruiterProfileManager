@@ -17,8 +17,7 @@ import {
   AlertTriangle, 
   UploadCloud, 
   XCircle, 
-  CheckCircle,
-  Download 
+  CheckCircle 
 } from "lucide-react";
 import ActionsDropdown from "@/components/ui/actions-dropdown";
 import QuickSubmitDialog from "./quick-submit-dialog";
@@ -77,86 +76,6 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
     e.stopPropagation();
     setSelectedCandidate({ id, name, isUnreal, unrealReason });
     setIsUnrealDialogOpen(true);
-  };
-
-  const handleDownloadResume = async (candidateId: number, candidateName: string) => {
-    try {
-      const response = await fetch(`/api/candidates/${candidateId}/resume/download`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          alert('Resume file not found. The candidate may not have uploaded a resume.');
-          return;
-        }
-        throw new Error(`Failed to download resume: ${response.status}`);
-      }
-
-      // Get filename from response headers
-      const contentDisposition = response.headers.get('content-disposition');
-      let filename = `${candidateName.replace(/\s+/g, '_')}_resume`;
-      
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
-      }
-
-      // Create blob and download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Download error:', error);
-      alert('Failed to download resume. Please try again.');
-    }
-  };
-
-  const handleDownloadProfile = async (candidateId: number, candidateName: string) => {
-    try {
-      const response = await fetch(`/api/candidates/${candidateId}/profile/download`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          alert('Candidate profile not found.');
-          return;
-        }
-        throw new Error(`Failed to download profile: ${response.status}`);
-      }
-
-      // Get filename from response headers
-      const contentDisposition = response.headers.get('content-disposition');
-      let filename = `${candidateName.replace(/\s+/g, '_')}_Profile_and_Resume.txt`;
-      
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
-      }
-
-      // Create blob and download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Download error:', error);
-      alert('Failed to download profile. Please try again.');
-    }
   };
 
   const getWorkAuthorizationDisplay = (auth: string) => {
@@ -301,20 +220,6 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
                         label: "View",
                         icon: <Eye className="h-4 w-4" />,
                         onClick: () => handleViewCandidate(candidate.id)
-                      },
-                      {
-                        label: "Download Resume",
-                        icon: <Download className="h-4 w-4" />,
-                        onClick: () => handleDownloadResume(candidate.id, `${candidate.firstName} ${candidate.lastName}`),
-                        title: "Download original resume file",
-                        variant: "success" as const
-                      },
-                      {
-                        label: "Download Profile + Resume",
-                        icon: <Download className="h-4 w-4" />,
-                        onClick: () => handleDownloadProfile(candidate.id, `${candidate.firstName} ${candidate.lastName}`),
-                        title: "Download candidate details with resume",
-                        variant: "secondary" as const
                       },
                       {
                         label: "Resubmit", 

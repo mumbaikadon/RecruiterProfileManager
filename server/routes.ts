@@ -1476,7 +1476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Resume download endpoint - downloads original resume file
+  // Resume download endpoint
   app.get("/api/candidates/:id/resume/download", requireAuth, async (req: Request, res: Response) => {
     try {
       const candidateId = parseInt(req.params.id);
@@ -1499,78 +1499,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.send(resumeFile.fileContent);
     } catch (error) {
       console.error("Resume download error:", error);
-      res.status(500).json({ message: (error as Error).message });
-    }
-  });
-
-  // Download candidate profile with resume - combined document
-  app.get("/api/candidates/:id/profile/download", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const candidateId = parseInt(req.params.id);
-      
-      if (isNaN(candidateId)) {
-        return res.status(400).json({ message: "Invalid candidate ID" });
-      }
-      
-      // Get candidate details
-      const candidate = await storage.getCandidate(candidateId);
-      if (!candidate) {
-        return res.status(404).json({ message: "Candidate not found" });
-      }
-
-      // Get submission data to find the rate
-      const submissions = await storage.getSubmissionsByCandidate(candidateId);
-      const latestSubmission = submissions.length > 0 ? submissions[0] : null;
-
-      // Create candidate profile text
-      const profileText = `CANDIDATE PROFILE
-=============================================
-
-Personal Information:
-First Name: ${candidate.firstName}
-Last Name: ${candidate.lastName}
-Email: ${candidate.email}
-Phone Number: ${candidate.phone}
-LinkedIn URL: ${candidate.linkedIn || 'Not provided'}
-Location: ${candidate.location}
-Work Authorization: ${candidate.workAuthorization}
-${candidate.otherWorkAuthorization ? `Other Authorization: ${candidate.otherWorkAuthorization}` : ''}
-
-Professional Information:
-Rate: ${latestSubmission ? `$${latestSubmission.agreedRate}/hour` : 'Not specified'}
-Date of Birth: ${candidate.dobMonth}/${candidate.dobDay}
-SSN (Last 4): ${candidate.ssn4}
-
-Created: ${candidate.createdAt ? new Date(candidate.createdAt).toLocaleDateString() : 'N/A'}
-Profile ID: ${candidate.id}
-
-=============================================
-RESUME ATTACHED BELOW
-=============================================
-
-`;
-
-      // Get resume content if available
-      const resumeData = await storage.getResumeData(candidateId);
-      let combinedContent = profileText;
-      
-      if (resumeData && resumeData.extractedText) {
-        combinedContent += resumeData.extractedText;
-      } else {
-        combinedContent += "Resume content not available in text format.";
-      }
-
-      // Generate filename
-      const fileName = `${candidate.firstName}_${candidate.lastName}_Profile_and_Resume.txt`;
-      
-      // Set headers for text file download
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Length', Buffer.byteLength(combinedContent, 'utf8'));
-
-      res.send(combinedContent);
-    } catch (error) {
-      console.error("Profile download error:", error);
       res.status(500).json({ message: (error as Error).message });
     }
   });
