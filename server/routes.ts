@@ -2377,6 +2377,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
+      // Validate file size on the route level as well
+      const maxFileSize = 10 * 1024 * 1024; // 10MB
+      if (req.file.size > maxFileSize) {
+        return res.status(413).json({ 
+          message: `File size ${Math.round(req.file.size / 1024 / 1024)}MB exceeds maximum allowed size of ${maxFileSize / 1024 / 1024}MB` 
+        });
+      }
+
+      // Validate file type
+      const allowedExtensions = ['.pdf', '.docx', '.doc', '.txt'];
+      const fileName = req.file.originalname.toLowerCase();
+      const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+      
+      if (!hasValidExtension) {
+        return res.status(400).json({ 
+          message: `File type not supported. Allowed types: ${allowedExtensions.join(', ')}` 
+        });
+      }
+
       const candidateId = parseInt(req.body.candidateId);
       if (isNaN(candidateId)) {
         return res.status(400).json({ message: "Invalid candidate ID" });
@@ -2389,7 +2408,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Determine MIME type based on file extension
-      const fileName = req.file.originalname.toLowerCase();
       let mimeType = 'application/octet-stream';
       if (fileName.endsWith('.pdf')) {
         mimeType = 'application/pdf';
@@ -2409,11 +2427,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         message: "Resume file stored successfully",
         fileName: req.file.originalname,
-        candidateId 
+        candidateId,
+        fileSize: req.file.size
       });
 
     } catch (error) {
       console.error("Error storing resume file:", error);
+      
+      // Handle specific error types
+      if (error instanceof Error && error.message.includes('exceeds maximum allowed size')) {
+        return res.status(413).json({ message: error.message });
+      }
+      
       res.status(500).json({ message: "Failed to store resume file" });
     }
   });

@@ -958,6 +958,12 @@ export class DatabaseStorage implements IStorage {
 
   // Resume file storage methods
   async storeResumeFile(candidateId: number, fileName: string, fileContent: Buffer, mimeType: string): Promise<ResumeData> {
+    // Validate file size (limit to 10MB to prevent database bloat)
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    if (fileContent.length > maxFileSize) {
+      throw new Error(`File size ${Math.round(fileContent.length / 1024 / 1024)}MB exceeds maximum allowed size of ${maxFileSize / 1024 / 1024}MB`);
+    }
+    
     // Convert buffer to base64 for database storage
     const base64Content = fileContent.toString('base64');
     
@@ -1017,15 +1023,42 @@ export class DatabaseStorage implements IStorage {
       return;
     }
     
-    // Clear file content fields for the specified candidates
+    // Only delete resume files for candidates who are not submitted to any other ACTIVE jobs
+    const candidatesWithActiveJobs = await db
+      .select({ candidateId: submissions.candidateId })
+      .from(submissions)
+      .innerJoin(jobs, eq(jobs.id, submissions.jobId))
+      .where(
+        and(
+          sql`${submissions.candidateId} = ANY(${candidateIds})`,
+          eq(jobs.status, "active")
+        )
+      );
+    
+    const candidatesWithActiveJobIds = candidatesWithActiveJobs.map(row => row.candidateId);
+    
+    // Filter out candidates who still have active job submissions
+    const candidatesForDeletion = candidateIds.filter(id => 
+      !candidatesWithActiveJobIds.includes(id)
+    );
+    
+    if (candidatesForDeletion.length === 0) {
+      console.log("No candidates eligible for resume file deletion - all have active job submissions");
+      return;
+    }
+    
+    console.log(`Deleting resume files for ${candidatesForDeletion.length} candidates (${candidatesWithActiveJobIds.length} candidates preserved due to active job submissions)`);
+    
+    // Clear file content fields for eligible candidates only
     await db
       .update(resumeData)
       .set({
+        fileName: null,
         fileContent: null,
         fileSize: null,
         mimeType: null
       })
-      .where(sql`${resumeData.candidateId} = ANY(${candidateIds})`);
+      .where(sql`${resumeData.candidateId} = ANY(${candidatesForDeletion})`);
   }
 }
 
