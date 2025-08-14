@@ -10,6 +10,9 @@ RecruiterTracker is a modern AI-powered recruitment management platform built wi
 - Frontend now handles 202 validation responses and shows comparison dialog
 - System detects significant changes in companies and job titles
 - Validation triggers automatically when existing candidates submit with resume changes
+- **Critical Fix**: Resume data is no longer updated until recruiter approves changes - preserves original data for comparison during validation process
+- Fixed validation logic placement from regular submission dialog to resubmit dialog
+- Added skipComparison flag to bypass validation after recruiter approval
 - Fixed candidate profile rate display to show actual submission rates instead of hardcoded values
 - Added support for multiple rates display (comma-separated) in candidate profiles
 

@@ -1103,8 +1103,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             if (comparison.hasChanges && comparison.significantChanges) {
               console.log("⚠️  SIGNIFICANT RESUME CHANGES DETECTED - Requiring validation");
+              console.log("🔒 NOT updating resume data yet - waiting for recruiter approval");
               
               // Return 202 status to trigger frontend validation dialog
+              // DON'T UPDATE RESUME DATA YET - keep original data intact for comparison
               return res.status(202).json({
                 message: "Resume changes detected - validation required",
                 candidateId: candidateId,
@@ -1128,6 +1130,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
+          // Only update resume data if validation is skipped OR no significant changes detected
+          console.log(`📝 Updating resume data for candidate ${candidateId} (validation passed or skipped)`);
+          
           const resumeDataPayload: InsertResumeData = {
             candidateId: candidateId,
             clientNames: submissionData.resumeData.clientNames || [],
@@ -1144,11 +1149,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .update(resumeData)
               .set(resumeDataPayload)
               .where(eq(resumeData.candidateId, candidateId));
-            console.log(`Resume data updated for candidate ${candidateId}`);
+            console.log(`✅ Resume data updated for candidate ${candidateId}`);
           } else {
             // Create new resume data
             await storage.createResumeData(resumeDataPayload);
-            console.log(`New resume data created for candidate ${candidateId}`);
+            console.log(`✅ New resume data created for candidate ${candidateId}`);
           }
         } catch (resumeError) {
           console.error(`Failed to update resume data for candidate ${candidateId}:`, resumeError);
