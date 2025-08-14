@@ -35,7 +35,7 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({ actions, size = "sm" 
           <MoreHorizontal className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[140px]">
+      <DropdownMenuContent align="end" side="bottom" className="w-[130px] mr-2">
         {actions.map((action, index) => (
           <DropdownMenuItem
             key={index}

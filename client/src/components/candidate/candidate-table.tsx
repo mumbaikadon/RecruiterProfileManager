@@ -140,7 +140,7 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
             <TableHead className="hidden md:table-cell">Contact</TableHead>
             <TableHead className="hidden lg:table-cell">Work Authorization</TableHead>
             <TableHead className="hidden sm:table-cell">Created At</TableHead>
-            <TableHead className="text-right w-[60px]">Actions</TableHead>
+            <TableHead className="text-right w-[50px] max-w-[50px] pr-2"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -212,7 +212,7 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
                 {getWorkAuthorizationDisplay(candidate.workAuthorization)}
               </TableCell>
               <TableCell className="hidden sm:table-cell">{formatDate(candidate.createdAt)}</TableCell>
-              <TableCell className="text-right w-[60px]">
+              <TableCell className="text-right w-[50px] max-w-[50px] pr-2">
                 <div onClick={(e) => e.stopPropagation()}>
                   <ActionsDropdown
                     actions={[
