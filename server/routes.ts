@@ -15,27 +15,10 @@ import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
 import { parseJobRequirements } from "./job-parser";
 import fs from "fs";
-import path from "path";
 import multer from "multer";
 
 // Configure multer for file uploads 
-const multerStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = './uploads';
-    // Create uploads directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename with timestamp and random string
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 15);
-    const ext = path.extname(file.originalname);
-    cb(null, `${timestamp}_${randomString}${ext}`);
-  }
-});
+const multerStorage = multer.memoryStorage();
 const fileUpload = multer({ storage: multerStorage });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1008,7 +991,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       submissionData.resumeData.extractedText,
                     ).substring(0, 30000)
                   : "",
-                fileName: submissionData.resumeData.fileName || null,
               };
 
               await storage.createResumeData(resumeDataPayload);
@@ -1780,7 +1762,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Document parsing endpoint using same disk storage configuration
+  // Fixed document parsing endpoint using reusable multer setup
+  const multerStorage = multer.memoryStorage();
+  const fileUpload = multer({ storage: multerStorage });
   
   app.post("/api/parse-document", requireAuth, fileUpload.single('file'), async (req: Request, res: Response) => {
     console.log("Document parsing request received");
@@ -1796,14 +1780,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`File received: ${req.file.originalname}, ${Math.round(req.file.size / 1024)}KB`);
-      console.log(`File saved as: ${req.file.filename}`);
       
-      // Read the saved file from disk
-      const fs = require('fs').promises;
-      const path = require('path');
-      const filePath = path.join('./uploads', req.file.filename);
-      const fileBuffer = await fs.readFile(filePath);
-      
+      const fileBuffer = req.file.buffer;
       const fileName = req.file.originalname.toLowerCase();
       const fileType = fileName.endsWith('.pdf') ? 'pdf' : 
                      fileName.endsWith('.docx') ? 'docx' : 
@@ -2367,7 +2345,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk download all candidates for an active job
+  app.get("/api/jobs/:jobId/download-all", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const jobId = parseInt(req.params.jobId);
+      
+      if (isNaN(jobId)) {
+        return res.status(400).json({ message: "Invalid job ID" });
+      }
 
+      // Get job details and verify it's active
+      const job = await storage.getJob(jobId);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      if (job.status !== 'active') {
+        return res.status(403).json({ message: "Bulk download is only available for active jobs" });
+      }
+
+      // Get all submissions for this job
+      const submissions = await storage.getSubmissionsByJob(jobId);
+      
+      if (submissions.length === 0) {
+        return res.status(404).json({ message: "No candidates found for this job" });
+      }
+
+      const JSZip = await import("jszip");
+      const fs = await import("fs").then(m => m.promises);
+      const path = await import("path");
+      
+      const zip = new JSZip.default();
+      
+      // Create a folder for this job
+      const jobFolder = zip.folder(`${job.jobId}_${job.title.replace(/[^a-zA-Z0-9]/g, '_')}`);
+      
+      // Create candidate summary CSV content
+      let csvContent = "Candidate Name,Email,Phone,Location,Work Authorization,Rate,Match Score,Status,Submission Date,Resume File\n";
+      
+      let processedCount = 0;
+      
+      for (const submission of submissions) {
+        try {
+          // Get full candidate details
+          const candidate = await storage.getCandidate(submission.candidateId);
+          const resumeData = await storage.getResumeData(submission.candidateId);
+          
+          if (!candidate) continue;
+          
+          const candidateName = `${candidate.firstName} ${candidate.lastName}`;
+          const safeFileName = candidateName.replace(/[^a-zA-Z0-9]/g, '_');
+          
+          // Add candidate to CSV
+          csvContent += `"${candidateName}","${candidate.email}","${candidate.phone}","${candidate.location}","${candidate.workAuthorization}","${submission.agreedRate || 'N/A'}","${submission.matchScore || 'N/A'}","${submission.status}","${new Date(submission.submittedAt).toLocaleDateString()}","${resumeData?.fileName || 'No Resume'}"` + "\n";
+          
+          // Create candidate folder
+          const candidateFolder = jobFolder?.folder(`${String(processedCount + 1).padStart(2, '0')}_${safeFileName}`);
+          
+          // Add candidate details as JSON
+          const candidateDetails = {
+            personalInfo: {
+              name: candidateName,
+              email: candidate.email,
+              phone: candidate.phone,
+              location: candidate.location,
+              workAuthorization: candidate.workAuthorization,
+              linkedIn: candidate.linkedIn
+            },
+            submissionInfo: {
+              jobTitle: job.title,
+              submittedDate: new Date(submission.submittedAt).toISOString(),
+              status: submission.status,
+              agreedRate: submission.agreedRate,
+              matchScore: submission.matchScore,
+              notes: submission.notes
+            },
+            resumeData: resumeData ? {
+              skills: resumeData.skills,
+              education: resumeData.education,
+              clientNames: resumeData.clientNames,
+              jobTitles: resumeData.jobTitles,
+              relevantDates: resumeData.relevantDates
+            } : null
+          };
+          
+          candidateFolder?.file("candidate_details.json", JSON.stringify(candidateDetails, null, 2));
+          
+          // Add resume file if it exists
+          if (resumeData?.fileName) {
+            const resumePath = path.join(process.cwd(), "uploads", resumeData.fileName);
+            try {
+              const resumeBuffer = await fs.readFile(resumePath);
+              const ext = path.extname(resumeData.fileName);
+              candidateFolder?.file(`resume${ext}`, resumeBuffer);
+            } catch (fileError) {
+              console.warn(`Resume file not found for candidate ${candidateName}:`, fileError);
+              candidateFolder?.file("resume_not_found.txt", "Resume file could not be located on disk.");
+            }
+          } else {
+            candidateFolder?.file("no_resume.txt", "No resume file was uploaded for this candidate.");
+          }
+          
+          processedCount++;
+        } catch (candidateError) {
+          console.error(`Error processing candidate ${submission.candidateId}:`, candidateError);
+        }
+      }
+      
+      // Add the summary CSV to the root of the job folder
+      jobFolder?.file("candidates_summary.csv", csvContent);
+      
+      // Add job details
+      const jobDetails = {
+        jobInfo: {
+          jobId: job.jobId,
+          title: job.title,
+          description: job.description,
+          client: job.client,
+          location: `${job.city}, ${job.state}`,
+          jobType: job.jobType,
+          rate: job.rate,
+          status: job.status,
+          createdDate: new Date(job.createdAt).toISOString()
+        },
+        candidateCount: processedCount,
+        downloadDate: new Date().toISOString()
+      };
+      
+      jobFolder?.file("job_details.json", JSON.stringify(jobDetails, null, 2));
+      
+      // Generate ZIP
+      const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+      
+      // Set response headers
+      const fileName = `${job.jobId}_Candidates_${new Date().toISOString().split('T')[0]}.zip`;
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Length', zipBuffer.length.toString());
+      
+      // Send the ZIP file
+      res.send(zipBuffer);
+      
+    } catch (error) {
+      console.error("Error creating bulk download:", error);
+      return res.status(500).json({ message: "Failed to create download package" });
+    }
+  });
 
   // Test route for gap analysis
   app.get("/api/test-gap-analysis", requireAuth, async (_req: Request, res: Response) => {
@@ -2424,16 +2547,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let resumeFileName = "";
       
       if (resumeFile) {
-        resumeFileName = resumeFile.filename; // Use the saved filename, not original
+        resumeFileName = resumeFile.originalname;
         
-        // Extract text from saved resume file
+        // Extract text from resume file
         try {
-          const fs = require('fs').promises;
-          const path = require('path');
-          const filePath = path.join('./uploads', resumeFile.filename);
-          const fileBuffer = await fs.readFile(filePath);
           const { extractTextFromBuffer } = await import("./document-parser");
-          resumeContent = await extractTextFromBuffer(fileBuffer, resumeFile.mimetype);
+          resumeContent = await extractTextFromBuffer(resumeFile.buffer, resumeFile.mimetype);
         } catch (extractError) {
           console.error("Resume extraction failed:", extractError);
           // Continue without resume content
