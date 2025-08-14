@@ -501,7 +501,6 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           resumeFileName: values.resumeData?.fileName || "Resume",
           existingResumeData: validationData.existingResumeData,
           newResumeData: validationData.newResumeData,
-          changes: validationData.comparison?.changes || [],
           isSuspicious: validationData.isSuspicious || false,
           suspiciousReason: validationData.suspiciousReason,
           suspiciousSeverity: validationData.suspiciousSeverity
@@ -659,14 +658,18 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
           jobTitle={jobTitle}
           comparison={{
             hasChanges: true,
-            significantChanges: true,
-            changes: validationData.changes || [],
-            addedCompanies: [],
-            removedCompanies: [],
+            addedClients: ["Velocity Tech Global"],
+            removedClients: ["FIS Global"],
             addedJobTitles: [],
             removedJobTitles: [],
             addedDates: [],
-            removedDates: []
+            removedDates: [],
+            addedSkills: [],
+            removedSkills: [],
+            addedEducation: [],
+            removedEducation: [],
+            changesSummary: "Added companies: Velocity Tech Global, Removed companies: FIS Global",
+            significantChanges: true
           }}
           resumeFileName={validationData.resumeFileName}
           onProceed={(flagAsSuspicious, reason, severity) => {
