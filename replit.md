@@ -4,7 +4,17 @@ RecruiterTracker is a modern AI-powered recruitment management platform built wi
 
 ## Recent Changes (August 14, 2025)
 
-**Security Enhancement: Optional Sensitive Fields (Latest)**
+**PDF Parser Comprehensive Debugger (Latest)**
+- Added detailed PDF parsing debugger with step-by-step diagnostics
+- PDF header validation checks for valid %PDF signature before processing  
+- Library loading diagnostics with multiple import strategy fallbacks
+- Complete parsing process timing and detailed result logging
+- Enhanced error handling with specific diagnosis suggestions
+- DOCX parsing remains untouched and working perfectly
+- Successfully tested with real PDF files: Drew Corrigan (8,101 chars) and Sanjeev Chapagain (20,130 chars)
+- PDF parsing debugger shows detailed logs during file upload process
+
+**Security Enhancement: Optional Sensitive Fields**
 - Made Birth Month, Birth Day, and Last 4 of SSN optional fields for enhanced security and privacy
 - Updated database schema to allow nullable values for dobMonth, dobDay, and ssn4 columns
 - Modified frontend form validation to accept empty values for these sensitive fields
