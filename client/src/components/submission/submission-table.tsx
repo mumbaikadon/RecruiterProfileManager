@@ -129,7 +129,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
               <TableHead className="hidden lg:table-cell">Rate</TableHead>
               <TableHead className="hidden lg:table-cell">Match Score</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right min-w-[280px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -210,19 +210,19 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                     />
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end space-x-1 min-w-[200px]">
+                <TableCell className="text-right min-w-[280px]">
+                  <div className="flex justify-end gap-1 flex-nowrap">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-primary hover:text-primary/80 transition-colors"
+                      className="text-primary hover:text-primary/80 transition-colors px-2"
                       onClick={(e) => {
                         e.stopPropagation();
                         setLocation(`/submissions/${submission.id}`);
                       }}
                     >
                       <Eye className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">View</span>
+                      <span className="text-xs">View</span>
                     </Button>
 
                     {submission.candidate && (
@@ -230,7 +230,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                         variant="ghost"
                         size="sm"
                         className={cn(
-                          "transition-colors",
+                          "transition-colors px-2",
                           submission.job?.status?.toLowerCase() === "active" 
                             ? "text-green-600 hover:text-green-700" 
                             : "text-gray-400 cursor-not-allowed"
@@ -252,7 +252,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                         }
                       >
                         <Download className="h-4 w-4 mr-1" />
-                        <span className="hidden sm:inline">Download</span>
+                        <span className="text-xs">Download</span>
                       </Button>
                     )}
                     
@@ -261,7 +261,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+                          className="text-primary hover:text-primary/80 transition-colors whitespace-nowrap px-2"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (submission.candidate) {
@@ -274,13 +274,13 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                           }}
                         >
                           <RefreshCw className="h-4 w-4 mr-1" />
-                          <span className="hidden lg:inline">Resubmit</span>
+                          <span className="text-xs">Resubmit</span>
                         </Button>
                         
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-green-600 hover:text-green-700 transition-colors whitespace-nowrap"
+                          className="text-green-600 hover:text-green-700 transition-colors whitespace-nowrap px-2"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (submission.candidate) {
@@ -295,7 +295,7 @@ const SubmissionTable: React.FC<SubmissionTableProps> = ({
                           <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
-                          <span className="hidden lg:inline">Quick Submit</span>
+                          <span className="text-xs">Quick Submit</span>
                         </Button>
                       </>
                     )}
