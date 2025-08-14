@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import CandidateForm, { CandidateFormValues } from "@/components/candidate/candidate-form";
 import CandidateValidationDialog from "@/components/candidate/candidate-validation-dialog";
+import RateChangeDialog from "@/components/submission/rate-change-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +77,15 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
     isSuspicious?: boolean;
     suspiciousReason?: string;
     suspiciousSeverity?: "LOW" | "MEDIUM" | "HIGH";
+  } | null>(null);
+
+  // State for rate change dialog
+  const [rateChangeDialogOpen, setRateChangeDialogOpen] = useState(false);
+  const [rateChangeData, setRateChangeData] = useState<{
+    candidateName: string;
+    currentRate: number;
+    previousSubmissions: PreviousSubmissionInfo[];
+    pendingSubmissionData: any;
   } | null>(null);
 
   // Function to get previous submission info for a candidate
@@ -235,6 +245,34 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             name: candidateName,
             previousSubmissions: previousSubmissions
           });
+
+          // Check for rate changes before proceeding with validation
+          const currentRate = parseFloat(String(values.agreedRate || '0'));
+          const hasRateHistory = previousSubmissions.some(sub => sub.agreedRate !== undefined && sub.agreedRate !== null && sub.agreedRate !== 0);
+          
+          if (hasRateHistory) {
+            const mostRecentRate = previousSubmissions
+              .filter(sub => sub.agreedRate !== undefined && sub.agreedRate !== null && sub.agreedRate !== 0)
+              .sort((a, b) => new Date(b.submittedDate || 0).getTime() - new Date(a.submittedDate || 0).getTime())[0]?.agreedRate || 0;
+            
+            // If rate has changed by more than $0.50/hr, show rate change dialog
+            const rateDifference = Math.abs(currentRate - mostRecentRate);
+            if (rateDifference >= 0.5) {
+              setRateChangeData({
+                candidateName,
+                currentRate,
+                previousSubmissions,
+                pendingSubmissionData: {
+                  candidateId: data.candidateId,
+                  values,
+                  existingResumeData,
+                  validationRequired: true
+                }
+              });
+              setRateChangeDialogOpen(true);
+              return;
+            }
+          }
           
           // Always open validation dialog for duplicate candidates
           // First prepare the existing and new resume data
@@ -455,7 +493,44 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
     }
   };
 
-  // The validation result is now handled directly in the validateCandidate wrapper
+  // Handler for rate change confirmation
+  const handleRateChangeContinue = () => {
+    setRateChangeDialogOpen(false);
+    if (rateChangeData?.pendingSubmissionData) {
+      const { candidateId, values, existingResumeData, validationRequired } = rateChangeData.pendingSubmissionData;
+      
+      if (validationRequired) {
+        // Continue with validation dialog after rate confirmation
+        const existingData = {
+          id: existingResumeData?.id || 0,
+          clientNames: existingResumeData?.clientNames || [],
+          jobTitles: existingResumeData?.jobTitles || [],
+          relevantDates: existingResumeData?.relevantDates || []
+        };
+        
+        const newData = {
+          clientNames: values.resumeData?.clientNames || [],
+          jobTitles: values.resumeData?.jobTitles || [],
+          relevantDates: values.resumeData?.relevantDates || []
+        };
+        
+        setValidationData({
+          candidateId,
+          candidateName: rateChangeData.candidateName,
+          resumeFileName: values.resumeData?.fileName || "Resume",
+          existingResumeData: existingData,
+          newResumeData: newData,
+        });
+        setValidationDialogOpen(true);
+      }
+    }
+    setRateChangeData(null);
+  };
+
+  const handleRateChangeCancel = () => {
+    setRateChangeDialogOpen(false);
+    setRateChangeData(null);
+  };
 
   return (
     <>
@@ -598,6 +673,18 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             });
           }}
           validatedBy={recruiterId}
+        />
+      )}
+
+      {/* Rate Change Dialog */}
+      {rateChangeDialogOpen && rateChangeData && (
+        <RateChangeDialog
+          isOpen={rateChangeDialogOpen}
+          onClose={handleRateChangeCancel}
+          onContinue={handleRateChangeContinue}
+          candidateName={rateChangeData.candidateName}
+          currentRate={rateChangeData.currentRate}
+          previousSubmissions={rateChangeData.previousSubmissions}
         />
       )}
     </>
