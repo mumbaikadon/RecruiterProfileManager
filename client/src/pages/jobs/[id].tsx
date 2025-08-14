@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -396,74 +396,68 @@ const JobDetailPage: React.FC = () => {
           </Card>
         </div>
         
-        {/* Right column - Tabs for description and submissions */}
-        <div className="md:col-span-2">
-          <Tabs defaultValue="description">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="description">Job Description</TabsTrigger>
-              <TabsTrigger value="submissions">Candidate Submissions</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="description" className="mt-4">
-              <Card>
-                <CardHeader className="pb-0 pt-6">
-                  <div className="flex justify-end gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setIsDescriptionDialogOpen(true)}
-                      className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Edit Description
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setIsEditJobDialogOpen(true)}
-                      className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Edit Job
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  <div className="prose dark:prose-invert max-w-none">
-                    <p className="whitespace-pre-line text-foreground">{sanitizeHtml(job.description)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* Job description edit dialog */}
-              {isDescriptionDialogOpen && (
-                <JobDescriptionEditDialog
-                  isOpen={isDescriptionDialogOpen}
-                  onClose={() => setIsDescriptionDialogOpen(false)}
-                  jobId={numericId}
-                  jobTitle={job.title}
-                  currentDescription={job.description || ''}
-                />
-              )}
-            </TabsContent>
-            
-            <TabsContent value="submissions" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Submissions</CardTitle>
-                  <CardDescription>
-                    Candidates who have been submitted for this job
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <SubmissionTable 
-                    submissions={submissions || []} 
-                    isLoading={isSubmissionsLoading} 
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+        {/* Right column - Job description and submissions */}
+        <div className="md:col-span-2 space-y-6">
+          {/* Job Description Card */}
+          <Card>
+            <CardHeader className="pb-0 pt-6">
+              <div className="flex justify-between items-center">
+                <CardTitle>Job Description</CardTitle>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setIsDescriptionDialogOpen(true)}
+                    className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Description
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setIsEditJobDialogOpen(true)}
+                    className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Job
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="prose dark:prose-invert max-w-none">
+                <p className="whitespace-pre-line text-foreground">{sanitizeHtml(job.description)}</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Job description edit dialog */}
+          {isDescriptionDialogOpen && (
+            <JobDescriptionEditDialog
+              isOpen={isDescriptionDialogOpen}
+              onClose={() => setIsDescriptionDialogOpen(false)}
+              jobId={numericId}
+              jobTitle={job.title}
+              currentDescription={job.description || ''}
+            />
+          )}
+
+          {/* Candidate Submissions Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Candidate Submissions</CardTitle>
+              <CardDescription>
+                Candidates who have been submitted for this job
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SubmissionTable 
+                submissions={submissions || []} 
+                isLoading={isSubmissionsLoading} 
+              />
+            </CardContent>
+          </Card>
         </div>
       </div>
       
