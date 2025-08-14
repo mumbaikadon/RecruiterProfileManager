@@ -113,6 +113,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
         // Parse the new resume first
         const formData = new FormData();
         formData.append("file", data.resumeFile);
+        formData.append("candidateId", candidateId.toString()); // Add candidateId for file storage
         
         const parsedResume = await fetch("/api/parse-document", {
           method: "POST",

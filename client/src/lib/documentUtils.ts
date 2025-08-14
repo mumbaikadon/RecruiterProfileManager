@@ -80,7 +80,7 @@ async function extractDocxText(arrayBuffer: ArrayBuffer): Promise<string> {
 /**
  * Main function to extract text from a document file (pdf, docx, txt)
  */
-export async function extractDocumentText(file: File): Promise<string> {
+export async function extractDocumentText(file: File, candidateId?: number): Promise<string> {
   try {
     console.log(`Starting extraction for file: ${file.name} (${Math.round(file.size / 1024)} KB)`);
     
@@ -104,10 +104,10 @@ export async function extractDocumentText(file: File): Promise<string> {
     } else if (fileType === 'pdf') {
       // For PDFs, we need to fallback to server-side processing
       // as PDF.js might not be available
-      extractedText = await callServerExtraction(file);
+      extractedText = await callServerExtraction(file, candidateId);
     } else if (fileType === 'docx') {
       // For DOCX, we need to fallback to server-side processing
-      extractedText = await callServerExtraction(file);
+      extractedText = await callServerExtraction(file, candidateId);
     } else {
       throw new Error(`Unsupported file type: ${fileType}. Please use PDF, DOCX, or TXT files.`);
     }
@@ -121,7 +121,7 @@ export async function extractDocumentText(file: File): Promise<string> {
     // Fallback to server-side extraction
     if (error instanceof Error && !error.message.includes("server-side")) {
       console.log("Falling back to server-side extraction...");
-      return callServerExtraction(file);
+      return callServerExtraction(file, candidateId);
     }
     
     throw error;
@@ -131,13 +131,19 @@ export async function extractDocumentText(file: File): Promise<string> {
 /**
  * Fallback function that calls the server API for document extraction
  */
-async function callServerExtraction(file: File): Promise<string> {
+async function callServerExtraction(file: File, candidateId?: number): Promise<string> {
   try {
     console.log("Using server-side extraction for document...");
     
     // Create a FormData object for file upload
     const formData = new FormData();
     formData.append("file", file);
+    
+    // Add candidateId if provided to enable file storage
+    if (candidateId) {
+      formData.append("candidateId", candidateId.toString());
+      console.log(`Including candidateId ${candidateId} for file storage`);
+    }
     
     // Call the server API
     console.log("Sending file to server for extraction...");

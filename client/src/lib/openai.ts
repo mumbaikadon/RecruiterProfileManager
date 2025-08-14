@@ -141,7 +141,7 @@ export async function matchResumeToJob(
 /**
  * Process a resume file and extract text for analysis
  */
-export async function analyzeResume(file: File): Promise<{
+export async function analyzeResume(file: File, candidateId?: number): Promise<{
   analysis: ResumeAnalysisResult;
   text: string;
 }> {
@@ -150,7 +150,7 @@ export async function analyzeResume(file: File): Promise<{
     
     // Use our document utils to extract text - this will handle different file types
     // and fall back to server extraction when needed
-    const extractedText = await extractDocumentText(file);
+    const extractedText = await extractDocumentText(file, candidateId);
     
     console.log(`Successfully extracted ${extractedText.length} characters from ${file.name}`);
     console.log("First 200 characters of resume:", extractedText.substring(0, 200));
