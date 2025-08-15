@@ -841,10 +841,12 @@ export class DatabaseStorage implements IStorage {
       .from(jobs)
       .where(eq(jobs.status, "active"));
     
-    // Get total submissions
+    // Get total submissions for active jobs only
     const [totalSubmissionsResult] = await db
       .select({ count: count() })
-      .from(submissions);
+      .from(submissions)
+      .innerJoin(jobs, eq(submissions.jobId, jobs.id))
+      .where(eq(jobs.status, "active"));
     
     // Get assigned active jobs count - jobs that are active and have at least one recruiter assigned
     const assignedActiveJobsQuery = await db
@@ -877,8 +879,10 @@ export class DatabaseStorage implements IStorage {
     const [submissionsThisWeekResult] = await db
       .select({ count: count() })
       .from(submissions)
+      .innerJoin(jobs, eq(submissions.jobId, jobs.id))
       .where(
         and(
+          eq(jobs.status, "active"),
           gte(submissions.submittedAt, monday),
           lte(submissions.submittedAt, sunday)
         )

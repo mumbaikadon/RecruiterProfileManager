@@ -169,7 +169,7 @@ const Dashboard: React.FC = () => {
               icon={<Users />} 
               color="secondary" 
               change={!isLoadingStats && statsData ? { value: 8, type: "increase" } : undefined}
-              subtitle="Total candidate submissions"
+              subtitle="Active job submissions only"
             />
             
             <StatCard 
@@ -187,7 +187,7 @@ const Dashboard: React.FC = () => {
               icon={<Clock />} 
               color="accent" 
               change={!isLoadingStats && statsData ? { value: 15, type: "increase" } : undefined}
-              subtitle="Recent candidate submissions"
+              subtitle="Recent submissions (active jobs)"
             />
           </div>
           
