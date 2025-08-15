@@ -1,4 +1,5 @@
 import React from "react";
+import { useLocation } from "wouter";
 import { 
   CheckCircle, 
   UserPlus, 
@@ -7,7 +8,8 @@ import {
   Briefcase,
   MapPin,
   Shield,
-  Clock
+  Clock,
+  ExternalLink
 } from "lucide-react";
 import { formatTimeAgo } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
@@ -45,6 +47,8 @@ interface ActivityFeedProps {
 }
 
 const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = false }) => {
+  const [, setLocation] = useLocation();
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -60,6 +64,21 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
       </div>
     );
   }
+
+  const handleActivityClick = (activity: ActivityItem) => {
+    // Navigate based on activity type and available IDs
+    if (activity.submissionId) {
+      setLocation(`/submissions/${activity.submissionId}`);
+    } else if (activity.candidateId) {
+      setLocation(`/candidates/${activity.candidateId}`);
+    } else if (activity.jobId) {
+      setLocation(`/jobs/${activity.jobId}`);
+    }
+  };
+
+  const isClickable = (activity: ActivityItem) => {
+    return activity.submissionId || activity.candidateId || activity.jobId;
+  };
 
   const getIconForActivity = (type: string) => {
     switch (type) {
@@ -124,7 +143,16 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
   return (
     <ul className="divide-y divide-border">
       {activities.map((activity) => (
-        <li key={activity.id} className="px-4 py-4 sm:px-6 transition-colors duration-200 hover:bg-muted/20">
+        <li 
+          key={activity.id} 
+          className={cn(
+            "px-4 py-4 sm:px-6 transition-all duration-200",
+            isClickable(activity) 
+              ? "cursor-pointer hover:bg-muted/20 hover:scale-[1.01] active:scale-[0.99]" 
+              : "hover:bg-muted/10"
+          )}
+          onClick={() => isClickable(activity) && handleActivityClick(activity)}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div
@@ -136,7 +164,12 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
                 {getIconForActivity(activity.type)}
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-foreground">{activity.message}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-foreground">{activity.message}</p>
+                  {isClickable(activity) && (
+                    <ExternalLink className="h-3 w-3 text-muted-foreground/50" />
+                  )}
+                </div>
                 {activity.job && (
                   <p className="text-sm text-muted-foreground">
                     {activity.job.title} • {activity.job.jobId}
