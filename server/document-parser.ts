@@ -84,8 +84,8 @@ export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
   try {
     console.log("Starting DOCX text extraction, buffer size:", buffer.length);
     
-    // Use direct require for mammoth to avoid complex import chain
-    const mammoth = require('mammoth');
+    // Use dynamic import for mammoth library
+    const mammoth = await import('mammoth');
     
     if (!mammoth || typeof mammoth.extractRawText !== 'function') {
       throw new Error('Mammoth library not available');
