@@ -101,7 +101,7 @@ export default function ReportsPage() {
     if (!analyticsData) return;
     
     const csvContent = [
-      'Recruiter,Total Submissions,Active,Approved,Rejected,Success Rate (%),Rejected Rate (%),Jobs Worked',
+      'Recruiter,Submissions,Active,Approved,Rejected,Success Rate (%),Rejected Rate (%),Jobs Worked',
       ...analyticsData.recruiters.map(r => 
         `${r.recruiterName},${r.totalSubmissions},${r.activeSubmissions},${r.approvedSubmissions},${r.rejectedSubmissions},${r.successRate.toFixed(1)},${r.rejectedRate.toFixed(1)},${r.jobsWorked}`
       )
@@ -350,7 +350,7 @@ export default function ReportsPage() {
                       <thead>
                         <tr className="border-b">
                           <th className="text-left p-3">Recruiter</th>
-                          <th className="text-center p-3">Total</th>
+                          <th className="text-center p-3">Submissions</th>
                           <th className="text-center p-3">Active</th>
                           <th className="text-center p-3">Approved</th>
                           <th className="text-center p-3">Rejected</th>
