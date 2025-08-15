@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Download, TrendingUp, Users, Briefcase, Clock } from "lucide-react";
+import { CalendarIcon, Download, TrendingUp, Users, Briefcase, Clock, Filter, User } from "lucide-react";
 import { formatDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { addDays, format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
@@ -142,67 +142,78 @@ export default function ReportsPage() {
           {/* Date Range and Filters */}
           <Card>
             <CardHeader>
-              <CardTitle>Filter Options</CardTitle>
+              <div className="flex items-center gap-2">
+                <Filter className="h-5 w-5 text-primary" />
+                <CardTitle>Filter Options</CardTitle>
+              </div>
               <CardDescription>Select date range and recruiter to analyze</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-4 items-end">
-                {/* Quick Date Range Buttons */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Quick Select</label>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDateRangeSelect('this-week')}
-                    >
-                      This Week
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDateRangeSelect('this-month')}
-                    >
-                      This Month
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDateRangeSelect('last-month')}
-                    >
-                      Last Month
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDateRangeSelect('last-30-days')}
-                    >
-                      Last 30 Days
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDateRangeSelect('last-90-days')}
-                    >
-                      Last 90 Days
-                    </Button>
-                  </div>
+            <CardContent className="space-y-6">
+              {/* Quick Date Range Buttons */}
+              <div className="space-y-3">
+                <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  Quick Select
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDateRangeSelect('this-week')}
+                    className="hover:bg-primary hover:text-primary-foreground"
+                  >
+                    This Week
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDateRangeSelect('this-month')}
+                    className="hover:bg-primary hover:text-primary-foreground"
+                  >
+                    This Month
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDateRangeSelect('last-month')}
+                    className="hover:bg-primary hover:text-primary-foreground"
+                  >
+                    Last Month
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDateRangeSelect('last-30-days')}
+                    className="hover:bg-primary hover:text-primary-foreground"
+                  >
+                    Last 30 Days
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDateRangeSelect('last-90-days')}
+                    className="hover:bg-primary hover:text-primary-foreground"
+                  >
+                    Last 90 Days
+                  </Button>
                 </div>
+              </div>
 
-                {/* Custom Date Range */}
+              {/* Custom Date Range and Recruiter Filter */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">From Date</label>
+                  <label className="text-sm font-medium text-foreground">From Date</label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-[240px] justify-start text-left font-normal",
+                          "w-full justify-start text-left font-normal",
                           !dateFrom && "text-muted-foreground"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateFrom ? format(dateFrom, "PPP") : <span>Pick a date</span>}
+                        {dateFrom ? format(dateFrom, "MMM d, yyyy") : <span>Pick start date</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -217,18 +228,18 @@ export default function ReportsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">To Date</label>
+                  <label className="text-sm font-medium text-foreground">To Date</label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-[240px] justify-start text-left font-normal",
+                          "w-full justify-start text-left font-normal",
                           !dateTo && "text-muted-foreground"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateTo ? format(dateTo, "PPP") : <span>Pick a date</span>}
+                        {dateTo ? format(dateTo, "MMM d, yyyy") : <span>Pick end date</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -242,11 +253,13 @@ export default function ReportsPage() {
                   </Popover>
                 </div>
 
-                {/* Recruiter Filter */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Recruiter</label>
+                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Recruiter
+                  </label>
                   <Select value={selectedRecruiter} onValueChange={setSelectedRecruiter}>
-                    <SelectTrigger className="w-[200px]">
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select recruiter" />
                     </SelectTrigger>
                     <SelectContent>
@@ -260,7 +273,11 @@ export default function ReportsPage() {
                   </Select>
                 </div>
 
-                <Button onClick={() => refetch()}>
+                <Button 
+                  onClick={() => refetch()} 
+                  className="gap-2 bg-primary hover:bg-primary/90"
+                >
+                  <Filter className="h-4 w-4" />
                   Apply Filters
                 </Button>
               </div>
