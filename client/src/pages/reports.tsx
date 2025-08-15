@@ -101,9 +101,9 @@ export default function ReportsPage() {
     if (!analyticsData) return;
     
     const csvContent = [
-      'Recruiter,Submissions,Active,Approved,Rejected,Success Rate (%),Rejected Rate (%),Jobs Worked',
+      'Recruiter,Submissions,Active,Approved,Jobs Worked',
       ...analyticsData.recruiters.map(r => 
-        `${r.recruiterName},${r.totalSubmissions},${r.activeSubmissions},${r.approvedSubmissions},${r.rejectedSubmissions},${r.successRate.toFixed(1)},${r.rejectedRate.toFixed(1)},${r.jobsWorked}`
+        `${r.recruiterName},${r.totalSubmissions},${r.activeSubmissions},${r.approvedSubmissions},${r.jobsWorked}`
       )
     ].join('\n');
     
@@ -353,9 +353,6 @@ export default function ReportsPage() {
                           <th className="text-center p-3">Submissions</th>
                           <th className="text-center p-3">Active</th>
                           <th className="text-center p-3">Approved</th>
-                          <th className="text-center p-3">Rejected</th>
-                          <th className="text-center p-3">Success Rate</th>
-                          <th className="text-center p-3">Rejected Rate</th>
                           <th className="text-center p-3">Jobs Worked</th>
                         </tr>
                       </thead>
@@ -372,37 +369,6 @@ export default function ReportsPage() {
                             <td className="text-center p-3">
                               <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">
                                 {recruiter.approvedSubmissions}
-                              </Badge>
-                            </td>
-                            <td className="text-center p-3">
-                              <Badge variant="destructive">{recruiter.rejectedSubmissions}</Badge>
-                            </td>
-                            <td className="text-center p-3">
-                              <Badge 
-                                variant={recruiter.successRate >= 70 ? "default" : recruiter.successRate >= 50 ? "secondary" : "destructive"}
-                                className={
-                                  recruiter.successRate >= 70 
-                                    ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                    : recruiter.successRate >= 50 
-                                    ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                                    : ""
-                                }
-                              >
-                                {recruiter.successRate.toFixed(1)}%
-                              </Badge>
-                            </td>
-                            <td className="text-center p-3">
-                              <Badge 
-                                variant={recruiter.rejectedRate <= 30 ? "default" : recruiter.rejectedRate <= 50 ? "secondary" : "destructive"}
-                                className={
-                                  recruiter.rejectedRate <= 30 
-                                    ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                    : recruiter.rejectedRate <= 50 
-                                    ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                                    : ""
-                                }
-                              >
-                                {recruiter.rejectedRate.toFixed(1)}%
                               </Badge>
                             </td>
                             <td className="text-center p-3">{recruiter.jobsWorked}</td>
