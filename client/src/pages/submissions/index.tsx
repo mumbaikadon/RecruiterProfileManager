@@ -118,6 +118,10 @@ const SubmissionsPage: React.FC = () => {
             <Button variant="outline" size="sm">
               Profile Search
             </Button>
+            
+            <Button variant="outline" size="sm">
+              Profile History Search
+            </Button>
           </div>
         </div>
         
