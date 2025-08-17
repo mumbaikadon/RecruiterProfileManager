@@ -13,8 +13,8 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
     console.log("Starting PDF text extraction, buffer size:", buffer.length);
     
-    // Use direct require for pdf-parse to avoid complex import chain
-    const pdfParse = require('pdf-parse');
+    // Use dynamic import for pdf-parse in ES modules
+    const { default: pdfParse } = await import('pdf-parse');
     
     if (!pdfParse || typeof pdfParse !== 'function') {
       throw new Error('PDF parser not available');

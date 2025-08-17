@@ -264,8 +264,7 @@ export const resumeContent = pgTable("resume_content", {
   profileResumeId: integer("profile_resume_id").notNull().references(() => profileResumes.id, { onDelete: "cascade" }),
   extractedText: text("extracted_text").notNull(),
   contentHash: text("content_hash").notNull(), // Hash for duplicate detection
-  searchVector: text("search_vector"), // For PostgreSQL full-text search
-  extractedAt: timestamp("extracted_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => {
   return {
     // Full-text search index on extracted content
@@ -277,7 +276,7 @@ export const resumeContent = pgTable("resume_content", {
 
 // Create insert schemas
 export const insertProfileResumeSchema = createInsertSchema(profileResumes).omit({ id: true, uploadedAt: true });
-export const insertResumeContentSchema = createInsertSchema(resumeContent).omit({ id: true, extractedAt: true });
+export const insertResumeContentSchema = createInsertSchema(resumeContent).omit({ id: true, createdAt: true });
 
 // Export types
 export type ProfileResume = typeof profileResumes.$inferSelect;
