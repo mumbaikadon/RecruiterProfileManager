@@ -4,19 +4,21 @@ RecruiterTracker is a modern AI-powered recruitment management platform built wi
 
 ## Recent Changes (August 17, 2025)
 
-**Profile Record System - Complete Implementation with Logging & Testing (Latest)**
+**Profile Record System - Complete Implementation with Advanced Boolean Search (Latest)**
 - Implemented comprehensive Profile Record system for resume library management
+- Added complex Boolean search with AND/OR operators and phrase matching in quotes
+- Created advanced search parser converting recruiter syntax to PostgreSQL tsquery format
+- Implemented visual search term highlighting in results using ts_headline with <mark> tags
+- Enhanced UI with search examples and guidance for complex Boolean queries
 - Added Winston logging system with file rotation and detailed event tracking
 - Fixed PDF parsing errors by switching from require() to dynamic imports for ES modules
 - Created complete Jest test suite with 8 comprehensive test files covering all scenarios
 - Enhanced multiple file upload with individual X-icon removal on hover functionality
 - Implemented PostgreSQL full-text search with GIN indexing for efficient content searching
 - Added comprehensive error handling with user-friendly messages instead of raw stack traces
-- Fixed database schema issues by removing problematic search_vector columns
-- Integrated logging throughout document parser, API routes, and storage operations
-- System successfully handles PDF/DOCX uploads, text extraction, search, and file management
-- Performance optimized: 38KB DOCX file processed in 1.18s with 26,678 characters extracted
-- All CRUD operations working with proper authentication and activity logging
+- System successfully handles complex searches like: ("Senior Developer" OR "Full Stack") AND (React OR Java)
+- Visual highlighting shows search terms in yellow highlighting within resume content previews
+- Performance optimized with automatic fallback from complex to simple search when needed
 
 ## Previous Changes (August 14, 2025)
 

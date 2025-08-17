@@ -279,7 +279,11 @@ export const insertProfileResumeSchema = createInsertSchema(profileResumes).omit
 export const insertResumeContentSchema = createInsertSchema(resumeContent).omit({ id: true, createdAt: true });
 
 // Export types
-export type ProfileResume = typeof profileResumes.$inferSelect;
+export type ProfileResume = typeof profileResumes.$inferSelect & {
+  extractedText?: string;
+  rank?: number;
+  highlightedText?: string;
+};
 export type InsertProfileResume = z.infer<typeof insertProfileResumeSchema>;
 
 export type ResumeContent = typeof resumeContent.$inferSelect;

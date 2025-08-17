@@ -92,15 +92,32 @@ function convertToTsquery(query: string): string {
   tsquery = tsquery.replace(/\bAND\b/gi, ' & ');
   
   // Step 4: Handle implicit AND between terms (space-separated)
-  // Split by existing operators and parentheses, then join non-operator terms with &
-  tsquery = tsquery.replace(/\s+(?![|&\(\)])/g, ' & ');
+  // First normalize spaces around operators
+  tsquery = tsquery.replace(/\s*\|\s*/g, ' | ');
+  tsquery = tsquery.replace(/\s*&\s*/g, ' & ');
   
-  // Step 5: Clean up extra spaces and operators
+  // Split by operators and parentheses to find terms that need connecting
+  const parts = tsquery.split(/(\s*[\|\&]\s*|\s*[\(\)]\s*)/);
+  const processed = parts.map(part => {
+    const trimmed = part.trim();
+    // If it's not an operator or parenthesis, treat multiple words as AND
+    if (trimmed && !/(^\s*[\|\&\(\)]\s*$)/.test(trimmed)) {
+      return trimmed.replace(/\s+/g, ' & ');
+    }
+    return trimmed;
+  });
+  
+  tsquery = processed.join(' ');
+  
+  // Step 5: Clean up extra spaces and duplicate operators
   tsquery = tsquery.replace(/\s+/g, ' ').trim();
-  tsquery = tsquery.replace(/(&\s*&|&\s*\||\\|\s*\|)/g, (match) => {
+  tsquery = tsquery.replace(/(&\s*&+|&\s*\||\|\s*&)/g, (match) => {
     if (match.includes('|')) return ' | ';
     return ' & ';
   });
+  
+  // Remove leading/trailing operators
+  tsquery = tsquery.replace(/^[\s&|]+|[\s&|]+$/g, '');
   
   return tsquery;
 }

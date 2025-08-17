@@ -418,12 +418,24 @@ export default function ProfileRecord() {
                           </div>
                         )}
                         
-                        {resume.extractedText && searchTerm && (
+                        {searchTerm && (resume.highlightedText || resume.extractedText) && (
                           <div className="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
                             <p className="text-sm text-gray-700">
-                              {resume.extractedText.length > 200
-                                ? `${resume.extractedText.substring(0, 200)}...`
-                                : resume.extractedText}
+                              {resume.highlightedText ? (
+                                <span
+                                  dangerouslySetInnerHTML={{
+                                    __html: resume.highlightedText.replace(
+                                      /<mark>/g,
+                                      '<mark style="background-color: #fbbf24; padding: 2px 4px; border-radius: 3px; font-weight: 600;">'
+                                    )
+                                  }}
+                                />
+                              ) : (
+                                // Fallback for results without highlighting
+                                resume.extractedText && resume.extractedText.length > 200
+                                  ? `${resume.extractedText.substring(0, 200)}...`
+                                  : resume.extractedText
+                              )}
                             </p>
                           </div>
                         )}
@@ -500,11 +512,25 @@ export default function ProfileRecord() {
                 
                 <div>
                   <Label>Extracted Text Content</Label>
-                  <Textarea
-                    value={viewingResume.extractedText || "No text content available"}
-                    readOnly
-                    className="mt-2 h-64 resize-none"
-                  />
+                  {searchTerm && viewingResume.highlightedText ? (
+                    <div className="mt-2 h-64 overflow-y-auto p-3 border rounded-md bg-gray-50">
+                      <div
+                        className="text-sm whitespace-pre-wrap"
+                        dangerouslySetInnerHTML={{
+                          __html: viewingResume.highlightedText.replace(
+                            /<mark>/g,
+                            '<mark style="background-color: #fbbf24; padding: 2px 4px; border-radius: 3px; font-weight: 600;">'
+                          )
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <Textarea
+                      value={viewingResume.extractedText || "No text content available"}
+                      readOnly
+                      className="mt-2 h-64 resize-none"
+                    />
+                  )}
                 </div>
                 
                 <div className="flex gap-2 pt-4">
