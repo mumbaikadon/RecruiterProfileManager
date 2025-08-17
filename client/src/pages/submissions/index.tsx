@@ -114,6 +114,10 @@ const SubmissionsPage: React.FC = () => {
                 Clear
               </Button>
             )}
+            
+            <Button variant="outline" size="sm">
+              Profile Search
+            </Button>
           </div>
         </div>
         
