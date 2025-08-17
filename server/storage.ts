@@ -1,5 +1,6 @@
 import { 
   users, jobs, jobAssignments, candidates, resumeData, submissions, activities, candidateValidations, publicApplications,
+  profileResumes, resumeContent,
   type User, type InsertUser, 
   type Job, type InsertJob, 
   type JobAssignment, type InsertJobAssignment, 
@@ -8,7 +9,9 @@ import {
   type Submission, type InsertSubmission, 
   type Activity, type InsertActivity,
   type CandidateValidation, type InsertCandidateValidation,
-  type PublicApplication, type InsertPublicApplication
+  type PublicApplication, type InsertPublicApplication,
+  type ProfileResume, type InsertProfileResume,
+  type ResumeContent, type InsertResumeContent
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql, gte, lte } from "drizzle-orm";
@@ -101,6 +104,14 @@ export interface IStorage {
   getPublicApplications(filters?: { jobId?: number, status?: string }): Promise<PublicApplication[]>;
   getPublicApplication(id: number): Promise<PublicApplication | undefined>;
   updatePublicApplicationStatus(id: number, status: string, reviewedBy?: number, notes?: string): Promise<PublicApplication>;
+
+  // Profile Resume operations (Resume Database)
+  getProfileResumes(filters?: { searchTerm?: string }): Promise<Array<ProfileResume & { extractedText?: string }>>;
+  getProfileResume(id: number): Promise<ProfileResume | undefined>;
+  createProfileResume(resume: InsertProfileResume, extractedText: string): Promise<ProfileResume>;
+  deleteProfileResume(id: number): Promise<void>;
+  searchProfileResumesByContent(searchTerm: string): Promise<Array<ProfileResume & { extractedText: string; rank: number }>>;
+  getProfileResumeContent(resumeId: number): Promise<ResumeContent | undefined>;
 }
 
 const PostgresSessionStore = connectPg(session);
@@ -1085,6 +1096,108 @@ export class DatabaseStorage implements IStorage {
         mimeType: null
       })
       .where(sql`${resumeData.candidateId} = ANY(${candidatesForDeletion})`);
+  }
+
+  // Profile Resume operations implementation
+  async getProfileResumes(filters?: { searchTerm?: string }): Promise<Array<ProfileResume & { extractedText?: string }>> {
+    let query = db
+      .select({
+        id: profileResumes.id,
+        filename: profileResumes.filename,
+        fileType: profileResumes.fileType,
+        fileSize: profileResumes.fileSize,
+        fileData: profileResumes.fileData,
+        candidateName: profileResumes.candidateName,
+        candidateEmail: profileResumes.candidateEmail,
+        uploadedAt: profileResumes.uploadedAt,
+        uploadedBy: profileResumes.uploadedBy,
+        extractedText: resumeContent.extractedText,
+      })
+      .from(profileResumes)
+      .leftJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id));
+
+    if (filters?.searchTerm) {
+      query = query.where(
+        sql`to_tsvector('english', ${resumeContent.extractedText}) @@ plainto_tsquery('english', ${filters.searchTerm})`
+      );
+    }
+
+    return query.orderBy(desc(profileResumes.uploadedAt));
+  }
+
+  async getProfileResume(id: number): Promise<ProfileResume | undefined> {
+    const [resume] = await db
+      .select()
+      .from(profileResumes)
+      .where(eq(profileResumes.id, id));
+    return resume;
+  }
+
+  async createProfileResume(resume: InsertProfileResume, extractedText: string): Promise<ProfileResume> {
+    return await db.transaction(async (tx) => {
+      // Create the profile resume
+      const [createdResume] = await tx
+        .insert(profileResumes)
+        .values(resume)
+        .returning();
+
+      // Create content hash for duplicate detection
+      const crypto = await import('crypto');
+      const contentHash = crypto.createHash('sha256').update(extractedText).digest('hex');
+
+      // Create the resume content
+      await tx
+        .insert(resumeContent)
+        .values({
+          profileResumeId: createdResume.id,
+          extractedText,
+          contentHash,
+        });
+
+      return createdResume;
+    });
+  }
+
+  async deleteProfileResume(id: number): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Delete content first (cascade should handle this, but being explicit)
+      await tx.delete(resumeContent).where(eq(resumeContent.profileResumeId, id));
+      // Delete the resume
+      await tx.delete(profileResumes).where(eq(profileResumes.id, id));
+    });
+  }
+
+  async searchProfileResumesByContent(searchTerm: string): Promise<Array<ProfileResume & { extractedText: string; rank: number }>> {
+    const results = await db
+      .select({
+        id: profileResumes.id,
+        filename: profileResumes.filename,
+        fileType: profileResumes.fileType,
+        fileSize: profileResumes.fileSize,
+        fileData: profileResumes.fileData,
+        candidateName: profileResumes.candidateName,
+        candidateEmail: profileResumes.candidateEmail,
+        uploadedAt: profileResumes.uploadedAt,
+        uploadedBy: profileResumes.uploadedBy,
+        extractedText: resumeContent.extractedText,
+        rank: sql<number>`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), plainto_tsquery('english', ${searchTerm}))`,
+      })
+      .from(profileResumes)
+      .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
+      .where(
+        sql`to_tsvector('english', ${resumeContent.extractedText}) @@ plainto_tsquery('english', ${searchTerm})`
+      )
+      .orderBy(sql`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), plainto_tsquery('english', ${searchTerm})) DESC`);
+
+    return results;
+  }
+
+  async getProfileResumeContent(resumeId: number): Promise<ResumeContent | undefined> {
+    const [content] = await db
+      .select()
+      .from(resumeContent)
+      .where(eq(resumeContent.profileResumeId, resumeId));
+    return content;
   }
 }
 

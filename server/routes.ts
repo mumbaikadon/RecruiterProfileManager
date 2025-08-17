@@ -11,6 +11,7 @@ import {
   insertPublicApplicationSchema,
   insertUserSchema,
   insertCandidateValidationSchema,
+  insertProfileResumeSchema,
   type InsertResumeData,
   resumeData,
 } from "@shared/schema";
@@ -3338,6 +3339,162 @@ Generated on: ${new Date().toLocaleString()}
       res.json(safeUser);
     } catch (error) {
       console.error("Error updating user role:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Profile Resume API routes (Resume Database)
+  app.get("/api/profile-resumes", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { search } = req.query;
+      const filters = search ? { searchTerm: search as string } : undefined;
+      const resumes = await storage.getProfileResumes(filters);
+      res.json(resumes);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.get("/api/profile-resumes/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid resume ID" });
+      }
+
+      const resume = await storage.getProfileResume(id);
+      if (!resume) {
+        return res.status(404).json({ message: "Resume not found" });
+      }
+      res.json(resume);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.post("/api/profile-resumes/upload", requireAuth, fileUpload.single('resume'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const { candidateName, candidateEmail } = req.body;
+      const file = req.file;
+      
+      // Validate file type
+      if (!['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.mimetype)) {
+        return res.status(400).json({ message: "Only PDF and DOCX files are allowed" });
+      }
+
+      // Extract text from the uploaded file
+      let extractedText = "";
+      try {
+        const { extractTextFromDocument } = await import("./document-parser");
+        extractedText = await extractTextFromDocument(file.buffer, file.mimetype);
+      } catch (parseError) {
+        console.error("Error extracting text from document:", parseError);
+        return res.status(400).json({ message: "Failed to extract text from document" });
+      }
+
+      if (!extractedText || extractedText.trim().length === 0) {
+        return res.status(400).json({ message: "No text content found in the document" });
+      }
+
+      // Convert file to base64
+      const fileData = file.buffer.toString('base64');
+      const fileType = file.mimetype === 'application/pdf' ? 'pdf' : 'docx';
+
+      const resumeData = {
+        filename: file.originalname,
+        fileType,
+        fileSize: file.size,
+        fileData,
+        candidateName: candidateName || null,
+        candidateEmail: candidateEmail || null,
+        uploadedBy: (req as any).user.id,
+      };
+
+      const validatedData = insertProfileResumeSchema.parse(resumeData);
+      const resume = await storage.createProfileResume(validatedData, extractedText);
+      
+      // Create activity for resume upload
+      await storage.createActivity({
+        type: "system_integration",
+        userId: (req as any).user.id,
+        message: `Profile resume uploaded: ${file.originalname} (${candidateName || 'Unknown candidate'})`
+      });
+
+      res.status(201).json(resume);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.delete("/api/profile-resumes/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid resume ID" });
+      }
+
+      const resume = await storage.getProfileResume(id);
+      if (!resume) {
+        return res.status(404).json({ message: "Resume not found" });
+      }
+
+      await storage.deleteProfileResume(id);
+      
+      // Create activity for resume deletion
+      await storage.createActivity({
+        type: "system_integration",
+        userId: (req as any).user.id,
+        message: `Profile resume deleted: ${resume.filename}`
+      });
+
+      res.json({ message: "Resume deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.get("/api/profile-resumes/search/:searchTerm", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const searchTerm = req.params.searchTerm;
+      if (!searchTerm || searchTerm.trim().length === 0) {
+        return res.status(400).json({ message: "Search term is required" });
+      }
+
+      const results = await storage.searchProfileResumesByContent(searchTerm);
+      res.json(results);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.get("/api/profile-resumes/:id/download", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid resume ID" });
+      }
+
+      const resume = await storage.getProfileResume(id);
+      if (!resume) {
+        return res.status(404).json({ message: "Resume not found" });
+      }
+
+      // Decode base64 file data
+      const fileBuffer = Buffer.from(resume.fileData, 'base64');
+      const mimeType = resume.fileType === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${resume.filename}"`);
+      res.setHeader('Content-Length', fileBuffer.length);
+      res.send(fileBuffer);
+    } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
   });

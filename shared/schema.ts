@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, date, timestamp, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, date, timestamp, boolean, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 
 // Users table (recruiters and leads)
 export const users = pgTable("users", {
@@ -243,3 +244,44 @@ export type InsertCandidateValidation = z.infer<typeof insertCandidateValidation
 
 export type PublicApplication = typeof publicApplications.$inferSelect;
 export type InsertPublicApplication = z.infer<typeof insertPublicApplicationSchema>;
+
+// Profile Resumes table - for resume library/database
+export const profileResumes = pgTable("profile_resumes", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  fileType: text("file_type", { enum: ["pdf", "docx"] }).notNull(),
+  fileSize: integer("file_size").notNull(),
+  fileData: text("file_data").notNull(), // Base64 encoded file data
+  candidateName: text("candidate_name"),
+  candidateEmail: text("candidate_email"),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  uploadedBy: integer("uploaded_by").references(() => users.id),
+});
+
+// Resume Content table - extracted text content with full-text search
+export const resumeContent = pgTable("resume_content", {
+  id: serial("id").primaryKey(),
+  profileResumeId: integer("profile_resume_id").notNull().references(() => profileResumes.id, { onDelete: "cascade" }),
+  extractedText: text("extracted_text").notNull(),
+  contentHash: text("content_hash").notNull(), // Hash for duplicate detection
+  searchVector: text("search_vector"), // For PostgreSQL full-text search
+  extractedAt: timestamp("extracted_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Full-text search index on extracted content
+    searchIdx: index("resume_content_search_idx").using("gin", sql`to_tsvector('english', ${table.extractedText})`),
+    // Index on content hash for duplicate detection
+    hashIdx: index("resume_content_hash_idx").on(table.contentHash),
+  };
+});
+
+// Create insert schemas
+export const insertProfileResumeSchema = createInsertSchema(profileResumes).omit({ id: true, uploadedAt: true });
+export const insertResumeContentSchema = createInsertSchema(resumeContent).omit({ id: true, extractedAt: true });
+
+// Export types
+export type ProfileResume = typeof profileResumes.$inferSelect;
+export type InsertProfileResume = z.infer<typeof insertProfileResumeSchema>;
+
+export type ResumeContent = typeof resumeContent.$inferSelect;
+export type InsertResumeContent = z.infer<typeof insertResumeContentSchema>;
