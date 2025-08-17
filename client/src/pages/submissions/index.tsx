@@ -35,10 +35,10 @@ const SubmissionsPage: React.FC = () => {
       // Apply search filter
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
-        const jobTitle = submission.job?.title?.toLowerCase() || '';
-        const candidateName = `${submission.candidate?.firstName || ''} ${submission.candidate?.lastName || ''}`.toLowerCase();
+        // For now, just search by submission ID or status until we have proper relations
+        const searchableText = `${submission.id} ${submission.status}`.toLowerCase();
         
-        if (!jobTitle.includes(searchLower) && !candidateName.includes(searchLower)) {
+        if (!searchableText.includes(searchLower)) {
           return false;
         }
       }
