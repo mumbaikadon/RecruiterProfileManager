@@ -322,28 +322,40 @@ export default function ProfileRecord() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-2">
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search resume content (skills, experience, education...)"
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="flex-1"
-              />
-              <Button onClick={handleSearch} disabled={isSearching}>
-                {isSearching ? "Searching..." : "Search"}
-              </Button>
-              {(searchTerm || searchResults.length > 0) && (
-                <Button variant="outline" onClick={clearSearch}>
-                  Clear
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder='Advanced search: "Senior Developer" AND React OR Java...'
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  className="flex-1"
+                />
+                <Button onClick={handleSearch} disabled={isSearching}>
+                  {isSearching ? "Searching..." : "Search"}
                 </Button>
-              )}
+                {(searchTerm || searchResults.length > 0) && (
+                  <Button variant="outline" onClick={clearSearch}>
+                    Clear
+                  </Button>
+                )}
+              </div>
+              
+              <div className="text-xs text-gray-500 space-y-1">
+                <p><strong>Advanced Search Examples:</strong></p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-1 font-mono text-xs">
+                  <p>• Simple: <code className="bg-gray-100 px-1 rounded">JavaScript React</code></p>
+                  <p>• Phrases: <code className="bg-gray-100 px-1 rounded">"Senior Developer" AND React</code></p>
+                  <p>• Complex: <code className="bg-gray-100 px-1 rounded">Java AND ("Spring Boot" OR "Spring Framework")</code></p>
+                  <p>• Multi-tech: <code className="bg-gray-100 px-1 rounded">("Full Stack" OR "Frontend") AND (React OR Vue)</code></p>
+                </div>
+              </div>
             </div>
             
             {searchResults.length > 0 && (
-              <div className="mt-4">
-                <p className="text-sm text-gray-600">
-                  Found {searchResults.length} resume(s) matching "{searchTerm}"
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  Found <strong>{searchResults.length}</strong> resume(s) matching: <code className="bg-white px-2 py-1 rounded text-xs">{searchTerm}</code>
                 </p>
               </div>
             )}

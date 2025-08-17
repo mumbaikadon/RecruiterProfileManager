@@ -1167,29 +1167,109 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async searchProfileResumesByContent(searchTerm: string): Promise<Array<ProfileResume & { extractedText: string; rank: number }>> {
-    const results = await db
-      .select({
-        id: profileResumes.id,
-        filename: profileResumes.filename,
-        fileType: profileResumes.fileType,
-        fileSize: profileResumes.fileSize,
-        fileData: profileResumes.fileData,
-        candidateName: profileResumes.candidateName,
-        candidateEmail: profileResumes.candidateEmail,
-        uploadedAt: profileResumes.uploadedAt,
-        uploadedBy: profileResumes.uploadedBy,
-        extractedText: resumeContent.extractedText,
-        rank: sql<number>`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), plainto_tsquery('english', ${searchTerm}))`,
-      })
-      .from(profileResumes)
-      .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
-      .where(
-        sql`to_tsvector('english', ${resumeContent.extractedText}) @@ plainto_tsquery('english', ${searchTerm})`
-      )
-      .orderBy(sql`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), plainto_tsquery('english', ${searchTerm})) DESC`);
+  async searchProfileResumesByContent(searchTerm: string): Promise<Array<ProfileResume & { extractedText: string; rank: number; highlightedText?: string }>> {
+    try {
+      console.log("Advanced search starting for:", searchTerm);
+      
+      // Parse the search query to handle complex Boolean logic
+      const { parseSearchQuery, sanitizeTsquery } = await import('./search-parser');
+      const parsed = parseSearchQuery(searchTerm);
+      const sanitizedQuery = sanitizeTsquery(parsed.tsquery);
+      
+      console.log("Parsed search query:", {
+        original: parsed.originalQuery,
+        tsquery: parsed.tsquery,
+        sanitized: sanitizedQuery,
+        hasComplexLogic: parsed.hasComplexLogic,
+        terms: parsed.searchTerms
+      });
+      
+      // Use to_tsquery for complex Boolean queries, plainto_tsquery for simple ones
+      const searchQuery = parsed.hasComplexLogic ? sanitizedQuery : searchTerm;
+      
+      let results;
+      
+      if (parsed.hasComplexLogic) {
+        // Complex Boolean search with to_tsquery
+        results = await db
+          .select({
+            id: profileResumes.id,
+            filename: profileResumes.filename,
+            fileType: profileResumes.fileType,
+            fileSize: profileResumes.fileSize,
+            fileData: profileResumes.fileData,
+            candidateName: profileResumes.candidateName,
+            candidateEmail: profileResumes.candidateEmail,
+            uploadedAt: profileResumes.uploadedAt,
+            uploadedBy: profileResumes.uploadedBy,
+            extractedText: resumeContent.extractedText,
+            rank: sql<number>`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), to_tsquery('english', ${searchQuery}))`,
+            highlightedText: sql<string>`ts_headline('english', ${resumeContent.extractedText}, to_tsquery('english', ${searchQuery}), 'MaxWords=50, MinWords=10, StartSel=<mark>, StopSel=</mark>')`,
+          })
+          .from(profileResumes)
+          .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
+          .where(
+            sql`to_tsvector('english', ${resumeContent.extractedText}) @@ to_tsquery('english', ${searchQuery})`
+          )
+          .orderBy(sql`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), to_tsquery('english', ${searchQuery})) DESC`)
+          .limit(100);
+      } else {
+        // Simple search with plainto_tsquery
+        results = await db
+          .select({
+            id: profileResumes.id,
+            filename: profileResumes.filename,
+            fileType: profileResumes.fileType,
+            fileSize: profileResumes.fileSize,
+            fileData: profileResumes.fileData,
+            candidateName: profileResumes.candidateName,
+            candidateEmail: profileResumes.candidateEmail,
+            uploadedAt: profileResumes.uploadedAt,
+            uploadedBy: profileResumes.uploadedBy,
+            extractedText: resumeContent.extractedText,
+            rank: sql<number>`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), plainto_tsquery('english', ${searchQuery}))`,
+            highlightedText: sql<string>`ts_headline('english', ${resumeContent.extractedText}, plainto_tsquery('english', ${searchQuery}), 'MaxWords=50, MinWords=10, StartSel=<mark>, StopSel=</mark>')`,
+          })
+          .from(profileResumes)
+          .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
+          .where(
+            sql`to_tsvector('english', ${resumeContent.extractedText}) @@ plainto_tsquery('english', ${searchQuery})`
+          )
+          .orderBy(sql`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), plainto_tsquery('english', ${searchQuery})) DESC`)
+          .limit(50);
+      }
+      
+      console.log(`Found ${results.length} matching resumes`);
+      return results;
+      
+    } catch (error) {
+      console.error("Advanced search failed, falling back to simple search:", error);
+      
+      // Fallback to simple search if complex query fails
+      const results = await db
+        .select({
+          id: profileResumes.id,
+          filename: profileResumes.filename,
+          fileType: profileResumes.fileType,
+          fileSize: profileResumes.fileSize,
+          fileData: profileResumes.fileData,
+          candidateName: profileResumes.candidateName,
+          candidateEmail: profileResumes.candidateEmail,
+          uploadedAt: profileResumes.uploadedAt,
+          uploadedBy: profileResumes.uploadedBy,
+          extractedText: resumeContent.extractedText,
+          rank: sql<number>`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), plainto_tsquery('english', ${searchTerm}))`,
+        })
+        .from(profileResumes)
+        .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
+        .where(
+          sql`to_tsvector('english', ${resumeContent.extractedText}) @@ plainto_tsquery('english', ${searchTerm})`
+        )
+        .orderBy(sql`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), plainto_tsquery('english', ${searchTerm})) DESC`)
+        .limit(25);
 
-    return results;
+      return results;
+    }
   }
 
   async getProfileResumeContent(resumeId: number): Promise<ResumeContent | undefined> {

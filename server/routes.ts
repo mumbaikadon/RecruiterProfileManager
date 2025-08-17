@@ -3484,16 +3484,78 @@ Generated on: ${new Date().toLocaleString()}
   });
 
   app.get("/api/profile-resumes/search/:searchTerm", requireAuth, async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const { profileLogger } = await import('./logger');
+    
     try {
+      profileLogger.apiRequest('GET', '/api/profile-resumes/search', (req as any).user?.id);
+      
       const searchTerm = req.params.searchTerm;
       if (!searchTerm || searchTerm.trim().length === 0) {
+        profileLogger.apiError('GET', '/api/profile-resumes/search', 'Search term is required', 400);
         return res.status(400).json({ message: "Search term is required" });
       }
 
+      profileLogger.searchStart(searchTerm, (req as any).user?.id);
+      
       const results = await storage.searchProfileResumesByContent(searchTerm);
+      
+      const duration = Date.now() - startTime;
+      profileLogger.searchSuccess(searchTerm, results.length, duration);
+      profileLogger.apiResponse('GET', '/api/profile-resumes/search', 200, duration);
+      
       res.json(results);
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      const duration = Date.now() - startTime;
+      const errorMsg = (error as Error).message;
+      profileLogger.searchError(searchTerm || 'unknown', errorMsg);
+      profileLogger.apiError('GET', '/api/profile-resumes/search', errorMsg, 500);
+      res.status(500).json({ message: errorMsg });
+    }
+  });
+
+  // Enhanced search endpoint that accepts POST requests for complex queries
+  app.post("/api/profile-resumes/search", requireAuth, async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const { profileLogger } = await import('./logger');
+    
+    try {
+      profileLogger.apiRequest('POST', '/api/profile-resumes/search', (req as any).user?.id);
+      
+      const { query: searchTerm } = req.body;
+      if (!searchTerm || searchTerm.trim().length === 0) {
+        profileLogger.apiError('POST', '/api/profile-resumes/search', 'Search query is required', 400);
+        return res.status(400).json({ message: "Search query is required" });
+      }
+
+      profileLogger.searchStart(searchTerm, (req as any).user?.id);
+      
+      const results = await storage.searchProfileResumesByContent(searchTerm);
+      
+      const duration = Date.now() - startTime;
+      profileLogger.searchSuccess(searchTerm, results.length, duration);
+      profileLogger.apiResponse('POST', '/api/profile-resumes/search', 200, duration);
+      
+      // Include search metadata in response for debugging
+      const { parseSearchQuery } = await import('./search-parser');
+      const parsedQuery = parseSearchQuery(searchTerm);
+      
+      res.json({
+        results,
+        metadata: {
+          originalQuery: parsedQuery.originalQuery,
+          hasComplexLogic: parsedQuery.hasComplexLogic,
+          searchTerms: parsedQuery.searchTerms,
+          resultCount: results.length,
+          searchDuration: duration
+        }
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      const errorMsg = (error as Error).message;
+      profileLogger.searchError(searchTerm || 'unknown', errorMsg);
+      profileLogger.apiError('POST', '/api/profile-resumes/search', errorMsg, 500);
+      res.status(500).json({ message: errorMsg });
     }
   });
 
