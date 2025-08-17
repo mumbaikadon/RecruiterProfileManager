@@ -3,6 +3,7 @@
  */
 
 import type { Buffer } from 'node:buffer';
+import { profileLogger } from './logger';
 
 /**
  * Extract text from a PDF file using pdf-parse library
@@ -11,6 +12,7 @@ import type { Buffer } from 'node:buffer';
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
+    profileLogger.extractionStart('pdf-file', 'pdf');
     console.log("Starting PDF text extraction, buffer size:", buffer.length);
     
     // Use dynamic import for pdf-parse in ES modules
@@ -54,6 +56,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
         
         if (extractedText.length > 50) {
           console.log(`PDF extraction successful with ${strategy.name} strategy: ${extractedText.length} characters`);
+          profileLogger.extractionSuccess('pdf-file', extractedText.length);
           return extractedText;
         } else if (extractedText.length > 0) {
           console.log(`PDF extraction returned short text with ${strategy.name}: ${extractedText.length} characters`);
@@ -71,7 +74,9 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     
   } catch (error) {
     console.error("PDF extraction error:", error);
-    return `PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try converting the PDF to a Word document or use a different PDF file.`;
+    const errorMsg = `PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try converting the PDF to a Word document or use a different PDF file.`;
+    profileLogger.extractionError('pdf-file', errorMsg);
+    return errorMsg;
   }
 }
 
@@ -82,6 +87,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
  */
 export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
   try {
+    profileLogger.extractionStart('docx-file', 'docx');
     console.log("Starting DOCX text extraction, buffer size:", buffer.length);
     
     // Use dynamic import for mammoth library
@@ -98,11 +104,16 @@ export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
     const extractedText = result.value || "";
     console.log(`DOCX extraction completed: ${extractedText.length} characters extracted`);
     
+    if (extractedText.length > 0) {
+      profileLogger.extractionSuccess('docx-file', extractedText.length);
+    }
+    
     return extractedText;
   } catch (error) {
     console.error("DOCX extraction error:", error);
-    // Return a more user-friendly error message instead of throwing
-    return `DOCX parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try saving the document as a PDF or use a different Word document.`;
+    const errorMsg = `DOCX parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try saving the document as a PDF or use a different Word document.`;
+    profileLogger.extractionError('docx-file', errorMsg);
+    return errorMsg;
   }
 }
 

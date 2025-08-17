@@ -3345,13 +3345,24 @@ Generated on: ${new Date().toLocaleString()}
 
   // Profile Resume API routes (Resume Database)
   app.get("/api/profile-resumes", requireAuth, async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const { profileLogger } = await import('./logger');
+    
     try {
+      profileLogger.apiRequest('GET', '/api/profile-resumes', (req as any).user?.id);
+      
       const { search } = req.query;
       const filters = search ? { searchTerm: search as string } : undefined;
       const resumes = await storage.getProfileResumes(filters);
+      
+      const duration = Date.now() - startTime;
+      profileLogger.apiResponse('GET', '/api/profile-resumes', 200, duration);
       res.json(resumes);
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      const duration = Date.now() - startTime;
+      const errorMsg = (error as Error).message;
+      profileLogger.apiError('GET', '/api/profile-resumes', errorMsg, 500);
+      res.status(500).json({ message: errorMsg });
     }
   });
 
@@ -3373,17 +3384,27 @@ Generated on: ${new Date().toLocaleString()}
   });
 
   app.post("/api/profile-resumes/upload", requireAuth, fileUpload.single('resume'), async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const { profileLogger } = await import('./logger');
+    
     try {
+      profileLogger.apiRequest('POST', '/api/profile-resumes/upload', (req as any).user?.id);
+      
       if (!req.file) {
+        profileLogger.apiError('POST', '/api/profile-resumes/upload', 'No file uploaded', 400);
         return res.status(400).json({ message: "No file uploaded" });
       }
 
       const { candidateName, candidateEmail } = req.body;
       const file = req.file;
       
+      profileLogger.uploadStart(file.originalname, (req as any).user?.id, file.size);
+      
       // Validate file type
       if (!['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.mimetype)) {
-        return res.status(400).json({ message: "Only PDF and DOCX files are allowed" });
+        const errorMsg = "Only PDF and DOCX files are allowed";
+        profileLogger.uploadError(file.originalname, (req as any).user?.id, errorMsg);
+        return res.status(400).json({ message: errorMsg });
       }
 
       // Extract text from the uploaded file
@@ -3393,7 +3414,9 @@ Generated on: ${new Date().toLocaleString()}
         extractedText = await extractTextFromDocument(file.buffer, file.mimetype);
       } catch (parseError) {
         console.error("Error extracting text from document:", parseError);
-        return res.status(400).json({ message: "Failed to extract text from document" });
+        const errorMsg = "Failed to extract text from document";
+        profileLogger.uploadError(file.originalname, (req as any).user?.id, errorMsg);
+        return res.status(400).json({ message: errorMsg });
       }
 
       if (!extractedText || extractedText.trim().length === 0) {
