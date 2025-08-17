@@ -125,15 +125,24 @@ export async function extractTextFromDocument(buffer: Buffer, fileType: string):
   // Convert file type to lowercase for consistency
   const type = fileType.toLowerCase();
   
-  // Extract text based on file type
-  switch (type) {
-    case 'pdf':
-      return extractTextFromPdf(buffer);
-    case 'docx':
-      return extractTextFromDocx(buffer);
-    case 'txt':
-      return extractTextFromTxt(buffer);
-    default:
-      throw new Error(`Unsupported file type: ${fileType}`);
+  // Handle MIME types
+  if (type.includes('pdf') || type === 'application/pdf') {
+    return extractTextFromPdf(buffer);
+  } else if (type.includes('docx') || type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    return extractTextFromDocx(buffer);
+  } else if (type.includes('txt') || type === 'text/plain') {
+    return extractTextFromTxt(buffer);
+  } else if (type === 'pdf' || type === 'docx' || type === 'txt') {
+    // Legacy file extension handling
+    switch (type) {
+      case 'pdf':
+        return extractTextFromPdf(buffer);
+      case 'docx':
+        return extractTextFromDocx(buffer);
+      case 'txt':
+        return extractTextFromTxt(buffer);
+    }
   }
+  
+  throw new Error(`Unsupported file type: ${fileType}. Please use PDF or DOCX files only.`);
 }

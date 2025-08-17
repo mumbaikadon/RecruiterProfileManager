@@ -235,9 +235,25 @@ export default function ProfileRecord() {
                     <div className="mt-2 space-y-1">
                       <p className="text-sm text-gray-600">Selected files ({selectedFiles.length}):</p>
                       {selectedFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded">
-                          <span>{file.name}</span>
-                          <span className="text-gray-500">{formatFileSize(file.size)}</span>
+                        <div key={index} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded group">
+                          <div className="flex-1 min-w-0">
+                            <span className="truncate">{file.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500">{formatFileSize(file.size)}</span>
+                            <button
+                              onClick={() => {
+                                const newFiles = selectedFiles.filter((_, i) => i !== index);
+                                setSelectedFiles(newFiles);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 p-1"
+                              title="Remove file"
+                            >
+                              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
