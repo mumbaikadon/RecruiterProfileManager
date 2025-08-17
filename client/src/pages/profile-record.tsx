@@ -34,7 +34,7 @@ export default function ProfileRecord() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -48,24 +48,36 @@ export default function ProfileRecord() {
     queryKey: ["/api/profile-resumes"],
   });
 
-  // Upload mutation
+  // Upload mutation for multiple files
   const uploadMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const response = await fetch("/api/profile-resumes/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message);
+    mutationFn: async (files: { file: File; candidateName: string; candidateEmail: string }[]) => {
+      const results = [];
+      for (const { file, candidateName, candidateEmail } of files) {
+        const formData = new FormData();
+        formData.append("resume", file);
+        if (candidateName) formData.append("candidateName", candidateName);
+        if (candidateEmail) formData.append("candidateEmail", candidateEmail);
+
+        const response = await fetch("/api/profile-resumes/upload", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(`${file.name}: ${error.message}`);
+        }
+        
+        const result = await response.json();
+        results.push(result);
       }
-      return response.json();
+      return results;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile-resumes"] });
       setIsUploadOpen(false);
-      setSelectedFile(null);
+      setSelectedFiles([]);
       setCandidateName("");
       setCandidateEmail("");
     },
@@ -74,9 +86,15 @@ export default function ProfileRecord() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/profile-resumes/${id}`, {
+      const response = await fetch(`/api/profile-resumes/${id}`, {
         method: "DELETE",
+        credentials: "include",
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile-resumes"] });
@@ -118,16 +136,17 @@ export default function ProfileRecord() {
     setIsSearching(false);
   };
 
-  // Handle file upload
+  // Handle multiple file upload
   const handleUpload = () => {
-    if (!selectedFile) return;
+    if (selectedFiles.length === 0) return;
 
-    const formData = new FormData();
-    formData.append("resume", selectedFile);
-    if (candidateName) formData.append("candidateName", candidateName);
-    if (candidateEmail) formData.append("candidateEmail", candidateEmail);
+    const uploadData = selectedFiles.map(file => ({
+      file,
+      candidateName,
+      candidateEmail,
+    }));
 
-    uploadMutation.mutate(formData);
+    uploadMutation.mutate(uploadData);
   };
 
   // Download resume
@@ -203,35 +222,47 @@ export default function ProfileRecord() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="resume-file">Resume File (PDF or DOCX)</Label>
+                  <Label htmlFor="resume-files">Resume Files (PDF or DOCX)</Label>
                   <Input
-                    id="resume-file"
+                    id="resume-files"
                     type="file"
                     accept=".pdf,.docx"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    multiple
+                    onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
                     className="mt-1"
                   />
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-sm text-gray-600">Selected files ({selectedFiles.length}):</p>
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded">
+                          <span>{file.name}</span>
+                          <span className="text-gray-500">{formatFileSize(file.size)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
-                  <Label htmlFor="candidate-name">Candidate Name (Optional)</Label>
+                  <Label htmlFor="candidate-name">Default Candidate Name (Optional)</Label>
                   <Input
                     id="candidate-name"
                     value={candidateName}
                     onChange={(e) => setCandidateName(e.target.value)}
-                    placeholder="John Doe"
+                    placeholder="Will be applied to all files if specified"
                     className="mt-1"
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="candidate-email">Candidate Email (Optional)</Label>
+                  <Label htmlFor="candidate-email">Default Candidate Email (Optional)</Label>
                   <Input
                     id="candidate-email"
                     type="email"
                     value={candidateEmail}
                     onChange={(e) => setCandidateEmail(e.target.value)}
-                    placeholder="john@example.com"
+                    placeholder="Will be applied to all files if specified"
                     className="mt-1"
                   />
                 </div>
@@ -239,10 +270,10 @@ export default function ProfileRecord() {
                 <div className="flex gap-2 pt-4">
                   <Button 
                     onClick={handleUpload}
-                    disabled={!selectedFile || uploadMutation.isPending}
+                    disabled={selectedFiles.length === 0 || uploadMutation.isPending}
                     className="flex-1"
                   >
-                    {uploadMutation.isPending ? "Uploading..." : "Upload"}
+                    {uploadMutation.isPending ? `Uploading ${selectedFiles.length} file(s)...` : `Upload ${selectedFiles.length} file(s)`}
                   </Button>
                   <Button
                     type="button"
