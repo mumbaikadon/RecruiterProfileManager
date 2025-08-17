@@ -10,7 +10,8 @@ import {
   PlusCircle,
   Zap,
   ChevronRight,
-  Building2
+  Building2,
+  UserCheck
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -121,6 +122,13 @@ const Sidebar = () => {
               isActive={location.startsWith("/submissions")}
               badge={5}>
               Submissions
+            </SidebarLink>
+
+            <SidebarLink 
+              href="/profile-record" 
+              icon={<UserCheck />} 
+              isActive={location.startsWith("/profile-record")}>
+              Profile Record
             </SidebarLink>
           </nav>
 

@@ -16,6 +16,7 @@ import CandidatesPage from "@/pages/candidates/index";
 import CandidateDetailPage from "@/pages/candidates/[id]";
 import SubmissionsPage from "@/pages/submissions/index";
 import SubmissionDetailPage from "@/pages/submissions/[id]";
+import ProfileRecordPage from "@/pages/profile-record";
 import { PublicJobs } from "@/pages/PublicJobs";
 import SignupPage from "@/pages/signup-page";
 import OrganizationPage from "@/pages/organization";
@@ -95,6 +96,14 @@ function Router() {
         component={() => (
           <Layout>
             <SubmissionDetailPage />
+          </Layout>
+        )} 
+      />
+      <ProtectedRoute 
+        path="/profile-record" 
+        component={() => (
+          <Layout>
+            <ProfileRecordPage />
           </Layout>
         )} 
       />
