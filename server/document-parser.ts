@@ -15,78 +15,57 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     profileLogger.extractionStart('pdf-file', 'pdf');
     console.log("Starting PDF text extraction, buffer size:", buffer.length);
     
-    // Use pdfjs-dist which is more stable for server environments
+    // Try pdf-extraction library which is more reliable for server environments
     try {
-      const { getDocument } = await import('pdfjs-dist');
+      const { extractText } = await import('pdf-extraction');
       
-      // Load the PDF document from buffer
-      const uint8Array = new Uint8Array(buffer);
-      const loadingTask = getDocument({ data: uint8Array });
-      const pdf = await loadingTask.promise;
+      console.log("Attempting PDF parsing with pdf-extraction...");
       
-      let fullText = '';
-      const numPages = pdf.numPages;
-      console.log(`PDF has ${numPages} pages`);
+      // Extract text using pdf-extraction which is more stable
+      const extractionResult = await extractText(buffer);
       
-      // Extract text from each page
-      for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-        try {
-          const page = await pdf.getPage(pageNum);
-          const textContent = await page.getTextContent();
-          
-          const pageText = textContent.items
-            .map((item: any) => item.str || '')
-            .join(' ');
-          
-          fullText += pageText + '\n';
-        } catch (pageError) {
-          console.log(`Error extracting page ${pageNum}:`, pageError.message);
-          // Continue with other pages
-        }
-      }
+      const extractedText = extractionResult?.trim() || "";
       
-      const extractedText = fullText.trim();
-      
-      if (extractedText.length > 50) {
+      if (extractedText && extractedText.length > 10) {
         console.log(`PDF extraction successful: ${extractedText.length} characters extracted`);
         profileLogger.extractionSuccess('pdf-file', extractedText.length);
         return extractedText;
       } else {
-        console.log("PDF extraction returned minimal text");
-        throw new Error("Minimal text extracted from PDF");
+        console.log("PDF extraction returned minimal or no text");
+        throw new Error("No meaningful text extracted from PDF");
       }
       
-    } catch (pdfjsError) {
-      console.log("pdfjs-dist extraction failed:", pdfjsError.message);
+    } catch (extractionError) {
+      console.log("pdf-extraction failed:", extractionError.message);
       
-      // Fallback to pdf-parse with isolated execution
+      // Fallback: Try simple text extraction approach
       try {
-        // Create a safe wrapper to avoid the test file issue
-        const pdfParseModule = await import('pdf-parse');
-        const pdfParse = pdfParseModule.default;
+        console.log("Trying fallback approach for PDF text extraction...");
         
-        if (!pdfParse || typeof pdfParse !== 'function') {
-          throw new Error('PDF parser not available');
+        // Convert buffer to string and look for readable text patterns
+        const bufferString = buffer.toString('utf8');
+        
+        // Look for text patterns in PDF (very basic approach)
+        const textMatches = bufferString.match(/[\x20-\x7E\s]{10,}/g);
+        
+        if (textMatches && textMatches.length > 0) {
+          const extractedText = textMatches
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          if (extractedText.length > 50) {
+            console.log(`Fallback PDF extraction found ${extractedText.length} characters`);
+            profileLogger.extractionSuccess('pdf-file', extractedText.length);
+            return extractedText;
+          }
         }
         
-        // Use minimal options to avoid library bugs
-        const data = await pdfParse(buffer, {
-          max: 0 // No page limit to extract all pages
-        });
-        
-        const extractedText = data.text?.trim() || "";
-        
-        if (extractedText.length > 50) {
-          console.log(`PDF extraction successful with pdf-parse: ${extractedText.length} characters`);
-          profileLogger.extractionSuccess('pdf-file', extractedText.length);
-          return extractedText;
-        } else {
-          throw new Error("Minimal text extracted");
-        }
+        throw new Error("No readable text found in PDF");
         
       } catch (fallbackError) {
-        console.log("pdf-parse fallback failed:", fallbackError.message);
-        throw new Error("All PDF parsing methods failed");
+        console.log("All PDF extraction methods failed:", fallbackError.message);
+        throw new Error("PDF appears to be image-based or encrypted - no text could be extracted");
       }
     }
     
