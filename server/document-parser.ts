@@ -15,94 +15,49 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     profileLogger.extractionStart('pdf-file', 'pdf');
     console.log("Starting PDF text extraction, buffer size:", buffer.length);
     
-    // Try pdf-extraction library which is more reliable for server environments
+    // Try pdf-parse with proper configuration to avoid test file issues
     try {
-      const { extractText } = await import('pdf-extraction');
+      // Create a temporary file-like approach to avoid the test file path issue
+      const fs = await import('fs');
+      const path = await import('path');
+      const os = await import('os');
       
-      console.log("Attempting PDF parsing with pdf-extraction...");
+      // Create a temporary file to avoid the library's hardcoded test path
+      const tempDir = os.tmpdir();
+      const tempFile = path.join(tempDir, `temp_pdf_${Date.now()}.pdf`);
       
-      // Extract text using pdf-extraction which is more stable
-      const extractionResult = await extractText(buffer);
-      
-      const extractedText = extractionResult?.trim() || "";
-      
-      if (extractedText && extractedText.length > 10) {
-        console.log(`PDF extraction successful: ${extractedText.length} characters extracted`);
-        profileLogger.extractionSuccess('pdf-file', extractedText.length);
-        return extractedText;
-      } else {
-        console.log("PDF extraction returned minimal or no text");
-        throw new Error("No meaningful text extracted from PDF");
-      }
-      
-    } catch (extractionError) {
-      console.log("pdf-extraction failed:", extractionError.message);
-      
-      // Fallback: Try to extract readable text from PDF stream content
       try {
-        console.log("Trying improved fallback approach for PDF text extraction...");
+        // Write buffer to temp file
+        fs.writeFileSync(tempFile, buffer);
         
-        const bufferString = buffer.toString('latin1');
+        // Now use pdf-parse with the file path instead of buffer
+        const pdfParse = await import('pdf-parse').then(module => module.default);
+        const data = await pdfParse(fs.readFileSync(tempFile));
         
-        // Look for text content between stream markers and clean it up
-        const streamPattern = /stream\s*(.*?)\s*endstream/gs;
-        const streamMatches = bufferString.match(streamPattern);
+        // Clean up temp file
+        fs.unlinkSync(tempFile);
         
-        let extractedText = '';
+        const extractedText = data.text?.trim() || "";
         
-        if (streamMatches) {
-          for (const match of streamMatches) {
-            // Extract content between stream/endstream
-            const content = match.replace(/^stream\s*/, '').replace(/\s*endstream$/, '');
-            
-            // Look for readable ASCII text (common resume content)
-            const readableText = content.match(/[A-Za-z][A-Za-z0-9\s\.,\-\(\)@]{5,}/g);
-            
-            if (readableText) {
-              extractedText += readableText
-                .filter(text => {
-                  // Filter out PDF commands and keep actual text
-                  return !text.match(/^(BT|ET|Tf|Td|TJ|Tj|q|Q|f|S|rg|RG|re|cm)$/) &&
-                         !text.includes('/') && 
-                         !text.includes('endobj') &&
-                         text.length > 3;
-                })
-                .join(' ') + ' ';
-            }
-          }
-        }
-        
-        // Also try direct text extraction from uncompressed parts
-        const directTextPattern = /\((.*?)\)/g;
-        const directMatches = bufferString.match(directTextPattern);
-        
-        if (directMatches) {
-          for (const match of directMatches) {
-            const text = match.slice(1, -1); // Remove parentheses
-            if (text.match(/[A-Za-z]{3,}/) && text.length > 3) {
-              extractedText += text + ' ';
-            }
-          }
-        }
-        
-        // Clean up the extracted text
-        extractedText = extractedText
-          .replace(/\s+/g, ' ')
-          .replace(/[^\x20-\x7E]/g, ' ')
-          .trim();
-        
-        if (extractedText.length > 100) {
-          console.log(`Improved fallback PDF extraction found ${extractedText.length} characters`);
+        if (extractedText && extractedText.length > 10) {
+          console.log(`PDF extraction successful: ${extractedText.length} characters extracted`);
           profileLogger.extractionSuccess('pdf-file', extractedText.length);
           return extractedText;
+        } else {
+          throw new Error("No meaningful text extracted from PDF");
         }
         
-        throw new Error("No meaningful readable text found in PDF streams");
-        
-      } catch (fallbackError) {
-        console.log("Improved fallback failed:", fallbackError.message);
-        throw new Error("PDF appears to be image-based, encrypted, or uses unsupported compression - no text could be extracted");
+      } catch (tempFileError) {
+        // Clean up temp file if it exists
+        try { fs.unlinkSync(tempFile); } catch {}
+        throw tempFileError;
       }
+      
+    } catch (parseError) {
+      console.log("pdf-parse failed:", parseError.message);
+      
+      // No fallback needed since pdf-parse should work with temp file approach
+      throw new Error("PDF text extraction failed - file may be image-based, encrypted, or corrupted");
     }
     
   } catch (error) {
