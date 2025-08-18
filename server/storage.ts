@@ -1241,6 +1241,44 @@ export class DatabaseStorage implements IStorage {
       }
       
       console.log(`Found ${results.length} matching resumes`);
+      
+      // If no results found with full-text search, try ILIKE search for numbers/patterns
+      if (results.length === 0 && /^\d+$/.test(searchTerm)) {
+        console.log("No full-text results for number search, trying ILIKE fallback...");
+        const likePattern = `%${searchTerm}%`;
+        
+        const fallbackResults = await db
+          .select({
+            id: profileResumes.id,
+            filename: profileResumes.filename,
+            fileType: profileResumes.fileType,
+            fileSize: profileResumes.fileSize,
+            fileData: profileResumes.fileData,
+            candidateName: profileResumes.candidateName,
+            candidateEmail: profileResumes.candidateEmail,
+            uploadedAt: profileResumes.uploadedAt,
+            uploadedBy: profileResumes.uploadedBy,
+            extractedText: resumeContent.extractedText,
+            rank: sql<number>`1.0`,
+            highlightedText: sql<string>`
+              regexp_replace(
+                substring(${resumeContent.extractedText}, 1, 500),
+                ${searchTerm},
+                '<mark>' || ${searchTerm} || '</mark>',
+                'gi'
+              )
+            `,
+          })
+          .from(profileResumes)
+          .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
+          .where(ilike(resumeContent.extractedText, likePattern))
+          .orderBy(desc(profileResumes.uploadedAt))
+          .limit(50);
+        
+        console.log(`ILIKE fallback found ${fallbackResults.length} matching resumes`);
+        return fallbackResults;
+      }
+      
       return results;
       
     } catch (error) {
