@@ -38,34 +38,70 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     } catch (extractionError) {
       console.log("pdf-extraction failed:", extractionError.message);
       
-      // Fallback: Try simple text extraction approach
+      // Fallback: Try to extract readable text from PDF stream content
       try {
-        console.log("Trying fallback approach for PDF text extraction...");
+        console.log("Trying improved fallback approach for PDF text extraction...");
         
-        // Convert buffer to string and look for readable text patterns
-        const bufferString = buffer.toString('utf8');
+        const bufferString = buffer.toString('latin1');
         
-        // Look for text patterns in PDF (very basic approach)
-        const textMatches = bufferString.match(/[\x20-\x7E\s]{10,}/g);
+        // Look for text content between stream markers and clean it up
+        const streamPattern = /stream\s*(.*?)\s*endstream/gs;
+        const streamMatches = bufferString.match(streamPattern);
         
-        if (textMatches && textMatches.length > 0) {
-          const extractedText = textMatches
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          
-          if (extractedText.length > 50) {
-            console.log(`Fallback PDF extraction found ${extractedText.length} characters`);
-            profileLogger.extractionSuccess('pdf-file', extractedText.length);
-            return extractedText;
+        let extractedText = '';
+        
+        if (streamMatches) {
+          for (const match of streamMatches) {
+            // Extract content between stream/endstream
+            const content = match.replace(/^stream\s*/, '').replace(/\s*endstream$/, '');
+            
+            // Look for readable ASCII text (common resume content)
+            const readableText = content.match(/[A-Za-z][A-Za-z0-9\s\.,\-\(\)@]{5,}/g);
+            
+            if (readableText) {
+              extractedText += readableText
+                .filter(text => {
+                  // Filter out PDF commands and keep actual text
+                  return !text.match(/^(BT|ET|Tf|Td|TJ|Tj|q|Q|f|S|rg|RG|re|cm)$/) &&
+                         !text.includes('/') && 
+                         !text.includes('endobj') &&
+                         text.length > 3;
+                })
+                .join(' ') + ' ';
+            }
           }
         }
         
-        throw new Error("No readable text found in PDF");
+        // Also try direct text extraction from uncompressed parts
+        const directTextPattern = /\((.*?)\)/g;
+        const directMatches = bufferString.match(directTextPattern);
+        
+        if (directMatches) {
+          for (const match of directMatches) {
+            const text = match.slice(1, -1); // Remove parentheses
+            if (text.match(/[A-Za-z]{3,}/) && text.length > 3) {
+              extractedText += text + ' ';
+            }
+          }
+        }
+        
+        // Clean up the extracted text
+        extractedText = extractedText
+          .replace(/\s+/g, ' ')
+          .replace(/[^\x20-\x7E]/g, ' ')
+          .trim();
+        
+        if (extractedText.length > 100) {
+          console.log(`Improved fallback PDF extraction found ${extractedText.length} characters`);
+          profileLogger.extractionSuccess('pdf-file', extractedText.length);
+          return extractedText;
+        }
+        
+        throw new Error("No meaningful readable text found in PDF streams");
         
       } catch (fallbackError) {
-        console.log("All PDF extraction methods failed:", fallbackError.message);
-        throw new Error("PDF appears to be image-based or encrypted - no text could be extracted");
+        console.log("Improved fallback failed:", fallbackError.message);
+        throw new Error("PDF appears to be image-based, encrypted, or uses unsupported compression - no text could be extracted");
       }
     }
     
