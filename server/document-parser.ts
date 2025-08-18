@@ -15,68 +15,88 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     profileLogger.extractionStart('pdf-file', 'pdf');
     console.log("Starting PDF text extraction, buffer size:", buffer.length);
     
-    // Use dynamic import for pdf-parse in ES modules
-    const { default: pdfParse } = await import('pdf-parse');
-    
-    if (!pdfParse || typeof pdfParse !== 'function') {
-      throw new Error('PDF parser not available');
-    }
-    
-    // Multiple parsing strategies for different PDF types
-    const strategies = [
-      // Strategy 1: Basic parsing with limits
-      {
-        name: 'basic',
-        options: {
-          max: 50,
-          normalizeWhitespace: false
-        }
-      },
-      // Strategy 2: Minimal options for problematic PDFs
-      {
-        name: 'minimal',
-        options: {}
-      },
-      // Strategy 3: Text-only extraction
-      {
-        name: 'text-only',
-        options: {
-          max: 25,
-          normalizeWhitespace: true
+    // Use pdfjs-dist which is more stable for server environments
+    try {
+      const { getDocument } = await import('pdfjs-dist');
+      
+      // Load the PDF document from buffer
+      const uint8Array = new Uint8Array(buffer);
+      const loadingTask = getDocument({ data: uint8Array });
+      const pdf = await loadingTask.promise;
+      
+      let fullText = '';
+      const numPages = pdf.numPages;
+      console.log(`PDF has ${numPages} pages`);
+      
+      // Extract text from each page
+      for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+        try {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          
+          const pageText = textContent.items
+            .map((item: any) => item.str || '')
+            .join(' ');
+          
+          fullText += pageText + '\n';
+        } catch (pageError) {
+          console.log(`Error extracting page ${pageNum}:`, pageError.message);
+          // Continue with other pages
         }
       }
-    ];
-    
-    for (const strategy of strategies) {
+      
+      const extractedText = fullText.trim();
+      
+      if (extractedText.length > 50) {
+        console.log(`PDF extraction successful: ${extractedText.length} characters extracted`);
+        profileLogger.extractionSuccess('pdf-file', extractedText.length);
+        return extractedText;
+      } else {
+        console.log("PDF extraction returned minimal text");
+        throw new Error("Minimal text extracted from PDF");
+      }
+      
+    } catch (pdfjsError) {
+      console.log("pdfjs-dist extraction failed:", pdfjsError.message);
+      
+      // Fallback to pdf-parse with isolated execution
       try {
-        console.log(`Trying PDF parsing strategy: ${strategy.name}`);
-        const data = await pdfParse(buffer, strategy.options);
+        // Create a safe wrapper to avoid the test file issue
+        const pdfParseModule = await import('pdf-parse');
+        const pdfParse = pdfParseModule.default;
+        
+        if (!pdfParse || typeof pdfParse !== 'function') {
+          throw new Error('PDF parser not available');
+        }
+        
+        // Use minimal options to avoid library bugs
+        const data = await pdfParse(buffer, {
+          max: 0 // No page limit to extract all pages
+        });
         
         const extractedText = data.text?.trim() || "";
         
         if (extractedText.length > 50) {
-          console.log(`PDF extraction successful with ${strategy.name} strategy: ${extractedText.length} characters`);
+          console.log(`PDF extraction successful with pdf-parse: ${extractedText.length} characters`);
           profileLogger.extractionSuccess('pdf-file', extractedText.length);
           return extractedText;
-        } else if (extractedText.length > 0) {
-          console.log(`PDF extraction returned short text with ${strategy.name}: ${extractedText.length} characters`);
-          // Continue to try other strategies for better results
+        } else {
+          throw new Error("Minimal text extracted");
         }
-      } catch (strategyError) {
-        console.log(`Strategy ${strategy.name} failed:`, strategyError.message);
-        // Continue to next strategy
+        
+      } catch (fallbackError) {
+        console.log("pdf-parse fallback failed:", fallbackError.message);
+        throw new Error("All PDF parsing methods failed");
       }
     }
     
-    // If all strategies failed, return a helpful message
-    console.log("All PDF parsing strategies failed");
-    return "PDF content could not be extracted. The file may be image-based, password-protected, or corrupted. Please try converting to Word document format.";
-    
   } catch (error) {
     console.error("PDF extraction error:", error);
-    const errorMsg = `PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try converting the PDF to a Word document or use a different PDF file.`;
+    const errorMsg = `PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. The file may be image-based, password-protected, or corrupted.`;
     profileLogger.extractionError('pdf-file', errorMsg);
-    return errorMsg;
+    
+    // For bulk uploads, we should throw the error so the file is marked as failed
+    throw new Error("PDF content could not be extracted. Please try converting to Word document format.");
   }
 }
 
@@ -113,7 +133,9 @@ export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
     console.error("DOCX extraction error:", error);
     const errorMsg = `DOCX parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try saving the document as a PDF or use a different Word document.`;
     profileLogger.extractionError('docx-file', errorMsg);
-    return errorMsg;
+    
+    // For bulk uploads, we should throw the error so the file is marked as failed
+    throw new Error("DOCX content could not be extracted. Please try a different Word document.");
   }
 }
 
