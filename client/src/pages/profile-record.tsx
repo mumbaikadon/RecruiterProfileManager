@@ -48,7 +48,7 @@ export default function ProfileRecord() {
     queryKey: ["/api/profile-resumes"],
   });
 
-  // Upload mutation for multiple files
+  // Upload mutation for multiple files with real-time updates
   const uploadMutation = useMutation({
     mutationFn: async (files: { file: File; candidateName: string; candidateEmail: string }[]) => {
       // Step 1: Check for duplicates
@@ -141,7 +141,7 @@ export default function ProfileRecord() {
     },
   });
 
-  // Delete mutation
+  // Delete mutation with optimistic updates
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const response = await fetch(`/api/profile-resumes/${id}`, {
@@ -154,12 +154,78 @@ export default function ProfileRecord() {
       }
       return response.json();
     },
+    onMutate: async (deletedId) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ["/api/profile-resumes"] });
+
+      // Snapshot the previous value
+      const previousResumes = queryClient.getQueryData<ProfileResume[]>(["/api/profile-resumes"]);
+
+      // Optimistically update to the new value
+      if (previousResumes) {
+        queryClient.setQueryData<ProfileResume[]>(
+          ["/api/profile-resumes"],
+          previousResumes.filter(resume => resume.id !== deletedId)
+        );
+      }
+
+      // Return a context object with the snapshotted value
+      return { previousResumes };
+    },
+    onError: (err, deletedId, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousResumes) {
+        queryClient.setQueryData(["/api/profile-resumes"], context.previousResumes);
+      }
+    },
     onSuccess: () => {
+      // Show success notification
+      const alert = document.createElement('div');
+      alert.className = 'fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50';
+      alert.textContent = 'Resume deleted successfully';
+      document.body.appendChild(alert);
+      
+      setTimeout(() => {
+        if (document.body.contains(alert)) {
+          document.body.removeChild(alert);
+        }
+      }, 2000);
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure we have the latest data
       queryClient.invalidateQueries({ queryKey: ["/api/profile-resumes"] });
     },
   });
 
-  // Search function
+  // Enhanced search function with debouncing
+  const searchMutation = useMutation({
+    mutationFn: async (searchQuery: string) => {
+      if (!searchQuery.trim()) {
+        return [];
+      }
+      
+      const response = await fetch(`/api/profile-resumes/search/${encodeURIComponent(searchQuery)}`, {
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (results) => {
+      setSearchResults(results);
+      setIsSearching(false);
+    },
+    onError: (error) => {
+      console.error("Search error:", error);
+      setSearchResults([]);
+      setIsSearching(false);
+    },
+  });
+
+  // Debounced search function
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
       setSearchResults([]);
@@ -168,23 +234,7 @@ export default function ProfileRecord() {
     }
 
     setIsSearching(true);
-    try {
-      const response = await fetch(`/api/profile-resumes/search/${encodeURIComponent(searchTerm)}`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const results = await response.json();
-        setSearchResults(results);
-      } else {
-        console.error("Search failed");
-        setSearchResults([]);
-      }
-    } catch (error) {
-      console.error("Search error:", error);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
+    searchMutation.mutate(searchTerm);
   };
 
   // Clear search
