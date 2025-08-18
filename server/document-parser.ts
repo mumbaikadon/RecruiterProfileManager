@@ -29,7 +29,8 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
         max: 0,
       };
       
-      // Use pdf-parse directly with buffer
+      // Use pdf-parse directly with buffer - ensure clean buffer handling
+      console.log("Calling pdf-parse with buffer and options...");
       const data = await pdfParse(buffer, options);
       
       let extractedText = data.text?.trim() || "";

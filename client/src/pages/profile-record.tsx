@@ -127,16 +127,38 @@ export default function ProfileRecord() {
         const duplicateMsg = duplicatesRemoved > 0 ? ` (${duplicatesRemoved} duplicates removed)` : '';
         const failMsg = failed.length > 0 ? `, ${failed.length} failed` : '';
         
-        // Create a toast or alert to show success
+        // Determine alert type based on results
+        const isSuccess = successful.length > 0;
+        const hasFailures = failed.length > 0;
+        
+        let alertType, alertMessage;
+        
+        if (isSuccess && !hasFailures) {
+          // All successful
+          alertType = 'bg-green-500';
+          alertMessage = successMsg + duplicateMsg;
+        } else if (isSuccess && hasFailures) {
+          // Mixed results
+          alertType = 'bg-yellow-500';
+          alertMessage = `Partial success: ${successMsg}${duplicateMsg}${failMsg}`;
+        } else {
+          // All failed
+          alertType = 'bg-red-500';
+          alertMessage = `Upload failed: ${failed.length} file(s) could not be processed`;
+        }
+        
+        // Create a toast or alert with appropriate styling
         const alert = document.createElement('div');
-        alert.className = 'fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50';
-        alert.textContent = successMsg + duplicateMsg + failMsg;
+        alert.className = `fixed top-4 right-4 ${alertType} text-white p-4 rounded-lg shadow-lg z-50`;
+        alert.textContent = alertMessage;
         document.body.appendChild(alert);
         
-        // Remove alert after 3 seconds
+        // Remove alert after 4 seconds for better readability
         setTimeout(() => {
-          document.body.removeChild(alert);
-        }, 3000);
+          if (document.body.contains(alert)) {
+            document.body.removeChild(alert);
+          }
+        }, 4000);
       }
     },
   });
