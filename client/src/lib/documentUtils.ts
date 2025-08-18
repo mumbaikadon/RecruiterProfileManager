@@ -182,31 +182,18 @@ async function callServerExtraction(file: File, candidateId?: number): Promise<s
     // Check response status
     if (!response.ok) {
       console.error("Server returned error status:", response.status);
-      console.error("Server error response:", result);
       throw new Error(result.message || result.error || `Server error: ${response.status}`);
     }
     
     // Validate the parsed result
-    if (!result.success) {
-      console.error("Server response indicates failure:", result);
-      throw new Error(result.message || result.error || "Document parsing failed on server");
+    if (!result.success || !result.text) {
+      console.error("Server response missing success or text field:", result);
+      throw new Error("Document parsing failed on server: missing required fields");
     }
     
-    if (!result.text || result.text.length === 0) {
-      console.error("Server response missing text content:", result);
-      throw new Error("No text content extracted from document. The file may be image-based, password-protected, or corrupted.");
-    }
-    
-    // Check if the result contains error messages instead of actual content
-    if (result.text.includes("could not be extracted") || result.text.includes("parsing error")) {
-      console.error("Server returned error message instead of extracted text:", result.text);
-      throw new Error("Document processing failed: " + result.text);
-    }
-    
-    // Verify text content length
+    // Verify text content
     if (result.text.length < 100) {
       console.warn("Extracted text is very short, possibly incomplete:", result.text);
-      throw new Error("Extracted text is too short. The document may be empty, image-based, or corrupted.");
     }
     
     console.log(`Server extracted ${result.text.length} characters`);

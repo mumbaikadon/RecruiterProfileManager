@@ -1029,34 +1029,9 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
       });
     } catch (error: any) {
       console.error("Error processing resume:", error);
-      
-      // Provide specific guidance based on the error type
-      let errorMessage = error.message || "The resume file couldn't be processed.";
-      let suggestions = "";
-      
-      if (error.message?.includes("extraction failed") || error.message?.includes("parsing failed")) {
-        suggestions = " Try: 1) Convert to Word document, 2) Ensure PDF has selectable text (not scanned), 3) Check file isn't password-protected.";
-      } else if (error.message?.includes("too short") || error.message?.includes("empty")) {
-        suggestions = " The file appears to be empty or contains very little text.";
-      }
-      
       toast({
-        title: "Resume Processing Failed",
-        description: errorMessage + suggestions,
-        variant: "destructive",
-      });
-      
-      // Reset resume-related state on error
-      setResumeFile(null);
-      setResumeText("");
-      setResumeData({
-        clientNames: [],
-        jobTitles: [],
-        relevantDates: [],
-        skills: [],
-        education: [],
-        extractedText: "",
-        fileName: ""
+        title: "Resume Upload Notice",
+        description: error.message || "The resume file couldn't be processed. You can still submit using the form fields.",
       });
 
       // Create minimal resume data even when there's an error

@@ -186,8 +186,18 @@ export async function analyzeResume(file: File, candidateId?: number): Promise<{
   } catch (error) {
     console.error("Error processing resume file:", error);
     
-    // Throw the error instead of returning corrupted data
-    // This will prevent OpenAI analysis from running with invalid data
-    throw new Error(`Failed to extract text from ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    // Don't store error messages in extractedText - this corrupts the data
+    return {
+      analysis: {
+        clientNames: [],
+        jobTitles: [],
+        relevantDates: [],
+        skills: [],
+        education: [],
+        extractedText: "Resume text could not be extracted due to file parsing error.",
+        fileName: file.name
+      },
+      text: "Resume text could not be extracted due to file parsing error."
+    };
   }
 }
