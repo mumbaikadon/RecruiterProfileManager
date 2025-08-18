@@ -31,15 +31,21 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     // Clean and normalize the query
     let normalizedQuery = query.trim();
     
-    // Check if this is a phone number search (digits only, 4+ characters)
-    const phoneMatch = normalizedQuery.match(/^\d{4,}$/);
-    if (phoneMatch) {
+    // Check if this is a phone number search (more specific patterns)
+    // Only treat as phone search if it looks like a partial phone number pattern
+    const phoneMatch = normalizedQuery.match(/^\d{4}$/) && (
+      normalizedQuery.length === 4 && // Exactly 4 digits for last 4 of phone
+      parseInt(normalizedQuery) > 1000 // Reasonable phone number range
+    );
+    
+    // For now, disable phone search to allow regular content search for numbers
+    // This ensures "1789" gets searched in content with highlighting
+    if (false && phoneMatch) { // Disabled phone search temporarily
       isPhoneSearch = true;
       phonePattern = normalizedQuery;
       
-      // For phone searches, we'll handle this specially in the route
       return {
-        tsquery: '', // Empty since we'll use a different search method
+        tsquery: '',
         originalQuery,
         searchTerms: [normalizedQuery],
         hasComplexLogic: false,

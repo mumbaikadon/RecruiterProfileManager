@@ -1285,25 +1285,8 @@ export class DatabaseStorage implements IStorage {
     console.log(`Phone search starting for pattern: ${phonePattern}`);
     
     try {
-      // Search for phone numbers in resume content and candidate data
-      // Support both last 4 digits and full numbers
-      const phoneConditions = [];
-      
-      if (phonePattern.length === 4) {
-        // Last 4 digits search - search in both content and structured phone data
-        phoneConditions.push(
-          sql`${resumeContent.extractedText} ~* '[^0-9]${phonePattern}[^0-9]?$'`, // Last 4 digits at end
-          sql`${resumeContent.extractedText} ~* '\\b\\d{3}[\\s\\-\\.]?\\d{3}[\\s\\-\\.]?${phonePattern}\\b'`, // XXX-XXX-phonePattern format
-          sql`${resumeContent.extractedText} ~* '\\b\\(\\d{3}\\)\\s?\\d{3}[\\s\\-\\.]?${phonePattern}\\b'`, // (XXX) XXX-phonePattern format
-          sql`${profileResumes.candidateEmail} ~* '${phonePattern}'` // Also check email for phone patterns
-        );
-      } else {
-        // Full number search
-        phoneConditions.push(
-          sql`${resumeContent.extractedText} ~* '${phonePattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`,
-          sql`${profileResumes.candidateEmail} ~* '${phonePattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`
-        );
-      }
+      // Simplified phone search using LIKE and ILIKE patterns
+      const likePattern = `%${phonePattern}%`;
       
       const results = await db
         .select({
@@ -1317,19 +1300,24 @@ export class DatabaseStorage implements IStorage {
           uploadedAt: profileResumes.uploadedAt,
           uploadedBy: profileResumes.uploadedBy,
           extractedText: resumeContent.extractedText,
-          rank: sql<number>`1.0`, // Static rank for phone searches
+          rank: sql<number>`1.0`,
           highlightedText: sql<string>`
             CASE 
-              WHEN ${resumeContent.extractedText} ~* '${phonePattern}' THEN 
-                regexp_replace(${resumeContent.extractedText}, '(\\d{3}[\\s\\-\\.]?\\d{3}[\\s\\-\\.]?${phonePattern})', '<mark>\\1</mark>', 'gi')
+              WHEN ${resumeContent.extractedText} ILIKE ${likePattern} THEN 
+                regexp_replace(${resumeContent.extractedText}, ${phonePattern}, '<mark>' || ${phonePattern} || '</mark>', 'gi')
               ELSE 
-                substring(${resumeContent.extractedText}, 1, 200) || '...'
+                substring(${resumeContent.extractedText}, 1, 300) || '...'
             END
           `,
         })
         .from(profileResumes)
         .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
-        .where(or(...phoneConditions))
+        .where(
+          or(
+            ilike(resumeContent.extractedText, likePattern),
+            ilike(profileResumes.candidateEmail, likePattern)
+          )
+        )
         .orderBy(desc(profileResumes.uploadedAt))
         .limit(50);
       
