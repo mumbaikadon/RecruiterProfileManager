@@ -15,75 +15,21 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     profileLogger.extractionStart('pdf-file', 'pdf');
     console.log("Starting PDF text extraction, buffer size:", buffer.length);
     
-    // Try pdf-parse with direct buffer approach and proper error handling
-    try {
-      console.log("Attempting PDF parsing with pdf-parse library...");
-      
-      const pdfParse = (await import('pdf-parse')).default;
-      
-      // Configure pdf-parse with specific options to handle different PDF types
-      const options = {
-        normalizeWhitespace: false,
-        disableCombineTextItems: false,
-        // Maximum pages to parse (0 means all pages)
-        max: 0,
-      };
-      
-      // Use pdf-parse directly with buffer - ensure clean buffer handling
-      console.log("Calling pdf-parse with buffer and options...");
-      const data = await pdfParse(buffer, options);
-      
-      let extractedText = data.text?.trim() || "";
-      
-      // Clean up the extracted text
-      if (extractedText) {
-        // Remove excessive whitespace but preserve structure
-        extractedText = extractedText
-          .replace(/\s+/g, ' ')
-          .replace(/\n\s*\n/g, '\n')
-          .trim();
-      }
-      
-      if (extractedText && extractedText.length > 20) {
-        console.log(`PDF extraction successful: ${extractedText.length} characters extracted`);
-        console.log("First 200 chars:", extractedText.substring(0, 200));
-        profileLogger.extractionSuccess('pdf-file', extractedText.length);
-        return extractedText;
-      } else {
-        throw new Error("PDF extraction returned minimal text - likely image-based or empty");
-      }
-      
-    } catch (parseError) {
-      console.log("pdf-parse failed:", parseError.message);
-      
-      // Try alternative parsing approach for problematic PDFs
-      try {
-        console.log("Trying alternative PDF text extraction approach...");
-        
-        // Use a more direct approach with pdf-parse and different options
-        const pdfParse = (await import('pdf-parse')).default;
-        
-        const altOptions = {
-          normalizeWhitespace: true,
-          disableCombineTextItems: true,
-          max: 20, // Limit to first 20 pages for performance
-        };
-        
-        const altData = await pdfParse(buffer, altOptions);
-        let altText = altData.text?.trim() || "";
-        
-        if (altText && altText.length > 20) {
-          console.log(`Alternative PDF extraction successful: ${altText.length} characters extracted`);
-          profileLogger.extractionSuccess('pdf-file', altText.length);
-          return altText;
-        }
-        
-        throw new Error("Alternative extraction also failed");
-        
-      } catch (altError) {
-        console.log("Alternative PDF extraction failed:", altError.message);
-        throw new Error("PDF text extraction failed - file may be image-based, encrypted, or use unsupported format");
-      }
+    // Simple, direct approach with pdf-parse
+    const pdfParse = (await import('pdf-parse')).default;
+    
+    console.log("Calling pdf-parse with buffer...");
+    const data = await pdfParse(buffer);
+    
+    let extractedText = data.text?.trim() || "";
+    
+    if (extractedText && extractedText.length > 20) {
+      console.log(`PDF extraction successful: ${extractedText.length} characters extracted`);
+      console.log("First 200 chars:", extractedText.substring(0, 200));
+      profileLogger.extractionSuccess('pdf-file', extractedText.length);
+      return extractedText;
+    } else {
+      throw new Error("PDF contains no readable text - likely image-based or encrypted");
     }
     
   } catch (error) {
