@@ -14,7 +14,7 @@ import {
   type ResumeContent, type InsertResumeContent
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, sql, gte, lte, or } from "drizzle-orm";
+import { eq, and, desc, count, sql, gte, lte, or, ilike } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
