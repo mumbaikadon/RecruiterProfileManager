@@ -19,7 +19,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     try {
       console.log("Attempting PDF parsing with pdf-parse library...");
       
-      const pdfParse = await import('pdf-parse').then(module => module.default);
+      const pdfParse = (await import('pdf-parse')).default;
       
       // Configure pdf-parse with specific options to handle different PDF types
       const options = {
@@ -60,7 +60,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
         console.log("Trying alternative PDF text extraction approach...");
         
         // Use a more direct approach with pdf-parse and different options
-        const pdfParse = await import('pdf-parse').then(module => module.default);
+        const pdfParse = (await import('pdf-parse')).default;
         
         const altOptions = {
           normalizeWhitespace: true,
