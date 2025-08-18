@@ -28,6 +28,15 @@ import multer from "multer";
 const multerStorage = multer.memoryStorage();
 const fileUpload = multer({ storage: multerStorage });
 
+// Configure multer for bulk uploads with higher limits
+const bulkUpload = multer({ 
+  storage: multerStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB per file
+    files: 200 // Maximum 200 files
+  }
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   setupAuth(app);
@@ -3410,7 +3419,7 @@ Generated on: ${new Date().toLocaleString()}
   });
 
   // Bulk upload endpoint for parallel processing
-  app.post("/api/profile-resumes/bulk-upload", requireAuth, fileUpload.array('resumes', 50), async (req: Request, res: Response) => {
+  app.post("/api/profile-resumes/bulk-upload", requireAuth, bulkUpload.array('resumes', 200), async (req: Request, res: Response) => {
     const startTime = Date.now();
     const { profileLogger } = await import('./logger');
     

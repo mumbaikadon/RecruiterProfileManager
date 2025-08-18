@@ -127,7 +127,16 @@ export default function ProfileRecord() {
         const duplicateMsg = duplicatesRemoved > 0 ? ` (${duplicatesRemoved} duplicates removed)` : '';
         const failMsg = failed.length > 0 ? `, ${failed.length} failed` : '';
         
-        console.log(successMsg + duplicateMsg + failMsg);
+        // Create a toast or alert to show success
+        const alert = document.createElement('div');
+        alert.className = 'fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50';
+        alert.textContent = successMsg + duplicateMsg + failMsg;
+        document.body.appendChild(alert);
+        
+        // Remove alert after 3 seconds
+        setTimeout(() => {
+          document.body.removeChild(alert);
+        }, 3000);
       }
     },
   });
