@@ -216,12 +216,14 @@ export default function ProfileRecord() {
                 Upload Resume
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Upload Resume</DialogTitle>
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+              <DialogHeader className="flex-shrink-0">
+                <DialogTitle>Upload Resume Files</DialogTitle>
+                <p className="text-sm text-gray-600">Select multiple PDF or DOCX files to upload</p>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
+              
+              <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+                <div className="flex-shrink-0">
                   <Label htmlFor="resume-files">Resume Files (PDF or DOCX)</Label>
                   <Input
                     id="resume-files"
@@ -231,74 +233,106 @@ export default function ProfileRecord() {
                     onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
                     className="mt-1"
                   />
-                  {selectedFiles.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      <p className="text-sm text-gray-600">Selected files ({selectedFiles.length}):</p>
+                </div>
+                
+                {selectedFiles.length > 0 && (
+                  <div className="flex-1 overflow-hidden flex flex-col">
+                    <div className="flex-shrink-0 flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-gray-700">
+                        Selected files ({selectedFiles.length}):
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedFiles([])}
+                        className="text-xs h-6 px-2"
+                      >
+                        Clear All
+                      </Button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-2 max-h-60">
                       {selectedFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded group">
-                          <div className="flex-1 min-w-0">
-                            <span className="truncate">{file.name}</span>
+                        <div key={index} className="flex items-center justify-between text-sm bg-gray-50 p-3 rounded-lg border group hover:bg-gray-100 transition-colors">
+                          <div className="flex-1 min-w-0 mr-3">
+                            <div className="font-medium truncate" title={file.name}>
+                              {file.name}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {formatFileSize(file.size)} • {file.type.includes('pdf') ? 'PDF' : 'DOCX'}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-500">{formatFileSize(file.size)}</span>
-                            <button
-                              onClick={() => {
-                                const newFiles = selectedFiles.filter((_, i) => i !== index);
-                                setSelectedFiles(newFiles);
-                              }}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 p-1"
-                              title="Remove file"
-                            >
-                              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => {
+                              const newFiles = selectedFiles.filter((_, i) => i !== index);
+                              setSelectedFiles(newFiles);
+                            }}
+                            className="flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                            title="Remove file"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
                 
-                <div>
-                  <Label htmlFor="candidate-name">Default Candidate Name (Optional)</Label>
-                  <Input
-                    id="candidate-name"
-                    value={candidateName}
-                    onChange={(e) => setCandidateName(e.target.value)}
-                    placeholder="Will be applied to all files if specified"
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="candidate-email">Default Candidate Email (Optional)</Label>
-                  <Input
-                    id="candidate-email"
-                    type="email"
-                    value={candidateEmail}
-                    onChange={(e) => setCandidateEmail(e.target.value)}
-                    placeholder="Will be applied to all files if specified"
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div className="flex gap-2 pt-4">
-                  <Button 
-                    onClick={handleUpload}
-                    disabled={selectedFiles.length === 0 || uploadMutation.isPending}
-                    className="flex-1"
-                  >
-                    {uploadMutation.isPending ? `Uploading ${selectedFiles.length} file(s)...` : `Upload ${selectedFiles.length} file(s)`}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsUploadOpen(false)}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
+                <div className="flex-shrink-0 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="candidate-name">Default Candidate Name (Optional)</Label>
+                      <Input
+                        id="candidate-name"
+                        value={candidateName}
+                        onChange={(e) => setCandidateName(e.target.value)}
+                        placeholder="Applied to all files"
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="candidate-email">Default Candidate Email (Optional)</Label>
+                      <Input
+                        id="candidate-email"
+                        type="email"
+                        value={candidateEmail}
+                        onChange={(e) => setCandidateEmail(e.target.value)}
+                        placeholder="Applied to all files"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      onClick={handleUpload}
+                      disabled={selectedFiles.length === 0 || uploadMutation.isPending}
+                      className="flex-1"
+                      size="lg"
+                    >
+                      {uploadMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                          Uploading {selectedFiles.length} file(s)...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload {selectedFiles.length} file(s)
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsUploadOpen(false)}
+                      size="lg"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
                 
                 {uploadMutation.error && (
