@@ -15,48 +15,64 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     profileLogger.extractionStart('pdf-file', 'pdf');
     console.log("Starting PDF text extraction, buffer size:", buffer.length);
     
-    // Try pdf-parse with proper configuration to avoid test file issues
+    // Use pdf2json for reliable PDF text extraction
     try {
-      // Create a temporary file-like approach to avoid the test file path issue
-      const fs = await import('fs');
-      const path = await import('path');
-      const os = await import('os');
+      const PDFParser = await import('pdf2json').then(module => module.default);
       
-      // Create a temporary file to avoid the library's hardcoded test path
-      const tempDir = os.tmpdir();
-      const tempFile = path.join(tempDir, `temp_pdf_${Date.now()}.pdf`);
+      console.log("Attempting PDF parsing with pdf2json...");
       
-      try {
-        // Write buffer to temp file
-        fs.writeFileSync(tempFile, buffer);
+      return new Promise((resolve, reject) => {
+        const pdfParser = new (PDFParser as any)(null, 1);
         
-        // Now use pdf-parse with the file path instead of buffer
-        const pdfParse = await import('pdf-parse').then(module => module.default);
-        const data = await pdfParse(fs.readFileSync(tempFile));
+        pdfParser.on("pdfParser_dataError", (errData: any) => {
+          console.log("PDF parsing error:", errData.parserError);
+          reject(new Error(`PDF parsing failed: ${errData.parserError}`));
+        });
         
-        // Clean up temp file
-        fs.unlinkSync(tempFile);
+        pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
+          try {
+            // Extract text from parsed PDF data
+            let extractedText = '';
+            
+            if (pdfData.Pages) {
+              for (const page of pdfData.Pages) {
+                if (page.Texts) {
+                  for (const text of page.Texts) {
+                    if (text.R) {
+                      for (const run of text.R) {
+                        if (run.T) {
+                          // Decode the text content
+                          const decodedText = decodeURIComponent(run.T);
+                          extractedText += decodedText + ' ';
+                        }
+                      }
+                    }
+                  }
+                  extractedText += '\n';
+                }
+              }
+            }
+            
+            extractedText = extractedText.trim();
+            
+            if (extractedText && extractedText.length > 10) {
+              console.log(`PDF extraction successful: ${extractedText.length} characters extracted`);
+              profileLogger.extractionSuccess('pdf-file', extractedText.length);
+              resolve(extractedText);
+            } else {
+              reject(new Error("No meaningful text extracted from PDF"));
+            }
+          } catch (processingError) {
+            reject(new Error(`PDF text processing failed: ${processingError.message}`));
+          }
+        });
         
-        const extractedText = data.text?.trim() || "";
-        
-        if (extractedText && extractedText.length > 10) {
-          console.log(`PDF extraction successful: ${extractedText.length} characters extracted`);
-          profileLogger.extractionSuccess('pdf-file', extractedText.length);
-          return extractedText;
-        } else {
-          throw new Error("No meaningful text extracted from PDF");
-        }
-        
-      } catch (tempFileError) {
-        // Clean up temp file if it exists
-        try { fs.unlinkSync(tempFile); } catch {}
-        throw tempFileError;
-      }
+        // Parse the PDF buffer
+        pdfParser.parseBuffer(buffer);
+      });
       
     } catch (parseError) {
-      console.log("pdf-parse failed:", parseError.message);
-      
-      // No fallback needed since pdf-parse should work with temp file approach
+      console.log("pdf2json failed:", parseError.message);
       throw new Error("PDF text extraction failed - file may be image-based, encrypted, or corrupted");
     }
     

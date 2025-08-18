@@ -43,9 +43,11 @@ export default function ProfileRecord() {
 
   const queryClient = useQueryClient();
 
-  // Fetch all resumes
-  const { data: resumes = [], isLoading } = useQuery<ProfileResume[]>({
+  // Fetch all resumes with auto-refresh
+  const { data: resumes = [], isLoading, refetch } = useQuery<ProfileResume[]>({
     queryKey: ["/api/profile-resumes"],
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+    refetchIntervalInBackground: true, // Continue refreshing when tab is not active
   });
 
   // Upload mutation for multiple files
@@ -111,7 +113,9 @@ export default function ProfileRecord() {
       };
     },
     onSuccess: (result) => {
+      // Force immediate refresh after successful upload
       queryClient.invalidateQueries({ queryKey: ["/api/profile-resumes"] });
+      refetch();
       setIsUploadOpen(false);
       setSelectedFiles([]);
       setCandidateName("");
@@ -155,7 +159,9 @@ export default function ProfileRecord() {
       return response.json();
     },
     onSuccess: () => {
+      // Force immediate refresh after successful deletion
       queryClient.invalidateQueries({ queryKey: ["/api/profile-resumes"] });
+      refetch();
     },
   });
 
