@@ -14,9 +14,10 @@ import {
   insertProfileResumeSchema,
   type InsertResumeData,
   resumeData,
+  profileResumes,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
 import { parseJobRequirements } from "./job-parser";
@@ -3380,6 +3381,161 @@ Generated on: ${new Date().toLocaleString()}
       res.json(resume);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Check for duplicate files before upload
+  app.post("/api/profile-resumes/check-duplicates", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { filenames } = req.body;
+      
+      if (!Array.isArray(filenames)) {
+        return res.status(400).json({ message: "Filenames must be an array" });
+      }
+
+      // Query database for existing filenames
+      const existingResumes = await db
+        .select({ filename: profileResumes.filename })
+        .from(profileResumes)
+        .where(inArray(profileResumes.filename, filenames));
+
+      const existingFilenames = existingResumes.map(r => r.filename);
+      const duplicates = filenames.filter(filename => existingFilenames.includes(filename));
+
+      res.json({ duplicates, existingCount: duplicates.length });
+    } catch (error) {
+      console.error("Error checking duplicates:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Bulk upload endpoint for parallel processing
+  app.post("/api/profile-resumes/bulk-upload", requireAuth, fileUpload.array('resumes', 50), async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const { profileLogger } = await import('./logger');
+    
+    try {
+      profileLogger.apiRequest('POST', '/api/profile-resumes/bulk-upload', (req as any).user?.id);
+      
+      if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        profileLogger.apiError('POST', '/api/profile-resumes/bulk-upload', 'No files uploaded', 400);
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const files = req.files as Express.Multer.File[];
+      const { candidateName, candidateEmail } = req.body;
+      
+      console.log(`Starting bulk upload of ${files.length} files`);
+      
+      const results = {
+        successful: [] as any[],
+        failed: [] as any[],
+        total: files.length
+      };
+
+      // Process files in parallel chunks of 10
+      const CHUNK_SIZE = 10;
+      const chunks = [];
+      
+      for (let i = 0; i < files.length; i += CHUNK_SIZE) {
+        chunks.push(files.slice(i, i + CHUNK_SIZE));
+      }
+
+      // Process each chunk in parallel
+      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+        const chunk = chunks[chunkIndex];
+        console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} files`);
+        
+        // Process files in current chunk concurrently
+        const chunkPromises = chunk.map(async (file) => {
+          try {
+            profileLogger.uploadStart(file.originalname, (req as any).user?.id, file.size);
+            
+            // Validate file type
+            if (!['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.mimetype)) {
+              throw new Error("Only PDF and DOCX files are allowed");
+            }
+
+            // Extract text from the uploaded file
+            let extractedText = "";
+            try {
+              const { extractTextFromDocument } = await import("./document-parser");
+              extractedText = await extractTextFromDocument(file.buffer, file.mimetype);
+            } catch (parseError) {
+              throw new Error(`Failed to extract text: ${(parseError as Error).message}`);
+            }
+
+            if (!extractedText || extractedText.trim().length === 0) {
+              throw new Error("No text content found in the document");
+            }
+
+            // Convert file to base64
+            const fileData = file.buffer.toString('base64');
+            const fileType = file.mimetype === 'application/pdf' ? 'pdf' : 'docx';
+
+            const resumeData = {
+              filename: file.originalname,
+              fileType,
+              fileSize: file.size,
+              fileData,
+              candidateName: candidateName || null,
+              candidateEmail: candidateEmail || null,
+              uploadedBy: (req as any).user.id,
+            };
+
+            const validatedData = insertProfileResumeSchema.parse(resumeData);
+            const resume = await storage.createProfileResume(validatedData, extractedText);
+            
+            profileLogger.uploadSuccess(file.originalname, (req as any).user?.id, extractedText.length);
+            
+            return {
+              success: true,
+              filename: file.originalname,
+              resume
+            };
+            
+          } catch (error) {
+            const errorMsg = (error as Error).message;
+            profileLogger.uploadError(file.originalname, (req as any).user?.id, errorMsg);
+            
+            return {
+              success: false,
+              filename: file.originalname,
+              error: errorMsg
+            };
+          }
+        });
+
+        // Wait for current chunk to complete
+        const chunkResults = await Promise.all(chunkPromises);
+        
+        // Categorize results
+        chunkResults.forEach(result => {
+          if (result.success) {
+            results.successful.push(result);
+          } else {
+            results.failed.push(result);
+          }
+        });
+      }
+
+      // Create activity for bulk upload
+      await storage.createActivity({
+        type: "system_integration",
+        userId: (req as any).user.id,
+        message: `Bulk upload completed: ${results.successful.length} successful, ${results.failed.length} failed out of ${results.total} files`
+      });
+
+      const duration = Date.now() - startTime;
+      console.log(`Bulk upload completed in ${duration}ms: ${results.successful.length}/${results.total} successful`);
+      
+      res.status(200).json(results);
+      
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      const errorMsg = (error as Error).message;
+      profileLogger.apiError('POST', '/api/profile-resumes/bulk-upload', errorMsg, 500);
+      res.status(500).json({ message: errorMsg });
     }
   });
 

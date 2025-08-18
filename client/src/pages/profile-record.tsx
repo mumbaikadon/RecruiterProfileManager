@@ -51,35 +51,84 @@ export default function ProfileRecord() {
   // Upload mutation for multiple files
   const uploadMutation = useMutation({
     mutationFn: async (files: { file: File; candidateName: string; candidateEmail: string }[]) => {
-      const results = [];
-      for (const { file, candidateName, candidateEmail } of files) {
-        const formData = new FormData();
-        formData.append("resume", file);
-        if (candidateName) formData.append("candidateName", candidateName);
-        if (candidateEmail) formData.append("candidateEmail", candidateEmail);
-
-        const response = await fetch("/api/profile-resumes/upload", {
-          method: "POST",
-          body: formData,
-          credentials: "include",
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(`${file.name}: ${error.message}`);
-        }
-        
-        const result = await response.json();
-        results.push(result);
+      // Step 1: Check for duplicates
+      const filenames = files.map(f => f.file.name);
+      const duplicateResponse = await fetch("/api/profile-resumes/check-duplicates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filenames }),
+        credentials: "include",
+      });
+      
+      if (!duplicateResponse.ok) {
+        throw new Error("Failed to check for duplicates");
       }
-      return results;
+      
+      const { duplicates } = await duplicateResponse.json();
+      
+      // Step 2: Filter out duplicates
+      const newFiles = files.filter(fileData => !duplicates.includes(fileData.file.name));
+      
+      if (duplicates.length > 0) {
+        console.log(`Removed ${duplicates.length} duplicate files:`, duplicates);
+      }
+
+      if (newFiles.length === 0) {
+        return { 
+          successful: [], 
+          failed: [], 
+          total: files.length,
+          duplicatesRemoved: duplicates.length,
+          message: "All files already exist in database"
+        };
+      }
+
+      // Step 3: Bulk upload remaining files
+      const formData = new FormData();
+      newFiles.forEach(({ file }) => {
+        formData.append('resumes', file);
+      });
+      
+      // Use the candidate name/email from the first file (they should all be the same)
+      if (newFiles[0]?.candidateName) formData.append('candidateName', newFiles[0].candidateName);
+      if (newFiles[0]?.candidateEmail) formData.append('candidateEmail', newFiles[0].candidateEmail);
+      
+      const response = await fetch("/api/profile-resumes/bulk-upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+      
+      const result = await response.json();
+      return {
+        ...result,
+        duplicatesRemoved: duplicates.length
+      };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile-resumes"] });
       setIsUploadOpen(false);
       setSelectedFiles([]);
       setCandidateName("");
       setCandidateEmail("");
+      
+      const { successful, failed, duplicatesRemoved, message } = result;
+      
+      if (message) {
+        // All files were duplicates
+        console.log(message);
+      } else {
+        const successMsg = `Successfully uploaded ${successful.length} resume(s)`;
+        const duplicateMsg = duplicatesRemoved > 0 ? ` (${duplicatesRemoved} duplicates removed)` : '';
+        const failMsg = failed.length > 0 ? `, ${failed.length} failed` : '';
+        
+        console.log(successMsg + duplicateMsg + failMsg);
+      }
     },
   });
 
@@ -316,12 +365,12 @@ export default function ProfileRecord() {
                       {uploadMutation.isPending ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                          Uploading {selectedFiles.length} file(s)...
+                          Processing {selectedFiles.length} file(s)...
                         </>
                       ) : (
                         <>
                           <Upload className="h-4 w-4 mr-2" />
-                          Upload {selectedFiles.length} file(s)
+                          Smart Upload {selectedFiles.length} file(s)
                         </>
                       )}
                     </Button>
@@ -339,6 +388,17 @@ export default function ProfileRecord() {
                   <Alert variant="destructive">
                     <AlertDescription>
                       {uploadMutation.error.message}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {uploadMutation.isPending && (
+                  <Alert>
+                    <AlertDescription>
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                        <span>Checking for duplicates and processing files in parallel chunks...</span>
+                      </div>
                     </AlertDescription>
                   </Alert>
                 )}
