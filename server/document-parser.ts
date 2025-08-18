@@ -3,6 +3,7 @@
  */
 
 import type { Buffer } from 'node:buffer';
+import { createRequire } from 'node:module';
 import { profileLogger } from './logger';
 
 /**
@@ -17,9 +18,10 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     console.log("Buffer type:", typeof buffer);
     console.log("Is Buffer instance:", Buffer.isBuffer(buffer));
     
-    // Use require to avoid debug mode issue with dynamic imports
+    // Use createRequire to avoid debug mode issue with dynamic imports
     // pdf-parse enters debug mode when module.parent is undefined (which happens with dynamic imports)
-    console.log("Loading pdf-parse using require to avoid debug mode...");
+    console.log("Loading pdf-parse using createRequire to avoid debug mode...");
+    const require = createRequire(import.meta.url);
     const pdfParse = require('pdf-parse');
     console.log("pdf-parse loaded successfully");
     
