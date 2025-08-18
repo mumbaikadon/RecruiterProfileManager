@@ -10,6 +10,8 @@ export interface ParsedSearchQuery {
   originalQuery: string;
   searchTerms: string[];
   hasComplexLogic: boolean;
+  phonePattern?: string; // For phone number partial matching
+  isPhoneSearch?: boolean;
 }
 
 /**
@@ -22,10 +24,29 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   const originalQuery = query;
   let searchTerms: string[] = [];
   let hasComplexLogic = false;
+  let phonePattern: string | undefined;
+  let isPhoneSearch = false;
   
   try {
     // Clean and normalize the query
     let normalizedQuery = query.trim();
+    
+    // Check if this is a phone number search (digits only, 4+ characters)
+    const phoneMatch = normalizedQuery.match(/^\d{4,}$/);
+    if (phoneMatch) {
+      isPhoneSearch = true;
+      phonePattern = normalizedQuery;
+      
+      // For phone searches, we'll handle this specially in the route
+      return {
+        tsquery: '', // Empty since we'll use a different search method
+        originalQuery,
+        searchTerms: [normalizedQuery],
+        hasComplexLogic: false,
+        phonePattern,
+        isPhoneSearch: true
+      };
+    }
     
     // Check if query contains Boolean operators
     hasComplexLogic = /\b(AND|OR)\b/i.test(normalizedQuery) || /[\(\)]/.test(normalizedQuery);
@@ -42,7 +63,8 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
         tsquery,
         originalQuery,
         searchTerms,
-        hasComplexLogic: false
+        hasComplexLogic: false,
+        isPhoneSearch: false
       };
     }
     
@@ -54,7 +76,8 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       tsquery,
       originalQuery,
       searchTerms,
-      hasComplexLogic: true
+      hasComplexLogic: true,
+      isPhoneSearch: false
     };
     
   } catch (error) {
@@ -66,7 +89,8 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       tsquery: fallbackTerms.join(' & '),
       originalQuery,
       searchTerms: fallbackTerms,
-      hasComplexLogic: false
+      hasComplexLogic: false,
+      isPhoneSearch: false
     };
   }
 }

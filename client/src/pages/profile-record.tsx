@@ -382,6 +382,8 @@ export default function ProfileRecord() {
                   <p>• Phrases: <code className="bg-gray-100 px-1 rounded">"Senior Developer" AND React</code></p>
                   <p>• Complex: <code className="bg-gray-100 px-1 rounded">Java AND ("Spring Boot" OR "Spring Framework")</code></p>
                   <p>• Multi-tech: <code className="bg-gray-100 px-1 rounded">("Full Stack" OR "Frontend") AND (React OR Vue)</code></p>
+                  <p>• Phone (last 4): <code className="bg-gray-100 px-1 rounded">1234</code></p>
+                  <p>• Phone (full): <code className="bg-gray-100 px-1 rounded">5551234567</code></p>
                 </div>
               </div>
             </div>

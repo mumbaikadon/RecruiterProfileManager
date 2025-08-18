@@ -3498,7 +3498,18 @@ Generated on: ${new Date().toLocaleString()}
 
       profileLogger.searchStart(searchTerm, (req as any).user?.id);
       
-      const results = await storage.searchProfileResumesByContent(searchTerm);
+      // Parse the search query to detect phone number patterns
+      const { parseSearchQuery } = await import('./search-parser');
+      const parsedQuery = parseSearchQuery(searchTerm);
+      
+      let results;
+      if (parsedQuery.isPhoneSearch && parsedQuery.phonePattern) {
+        // Handle phone number search
+        results = await storage.searchProfileResumesByPhone(parsedQuery.phonePattern);
+      } else {
+        // Handle regular content search
+        results = await storage.searchProfileResumesByContent(searchTerm);
+      }
       
       const duration = Date.now() - startTime;
       profileLogger.searchSuccess(searchTerm, results.length, duration);
@@ -3530,15 +3541,22 @@ Generated on: ${new Date().toLocaleString()}
 
       profileLogger.searchStart(searchTerm, (req as any).user?.id);
       
-      const results = await storage.searchProfileResumesByContent(searchTerm);
+      // Parse the search query to detect phone number patterns
+      const { parseSearchQuery } = await import('./search-parser');
+      const parsedQuery = parseSearchQuery(searchTerm);
+      
+      let results;
+      if (parsedQuery.isPhoneSearch && parsedQuery.phonePattern) {
+        // Handle phone number search
+        results = await storage.searchProfileResumesByPhone(parsedQuery.phonePattern);
+      } else {
+        // Handle regular content search
+        results = await storage.searchProfileResumesByContent(searchTerm);
+      }
       
       const duration = Date.now() - startTime;
       profileLogger.searchSuccess(searchTerm, results.length, duration);
       profileLogger.apiResponse('POST', '/api/profile-resumes/search', 200, duration);
-      
-      // Include search metadata in response for debugging
-      const { parseSearchQuery } = await import('./search-parser');
-      const parsedQuery = parseSearchQuery(searchTerm);
       
       res.json({
         results,
@@ -3546,6 +3564,8 @@ Generated on: ${new Date().toLocaleString()}
           originalQuery: parsedQuery.originalQuery,
           hasComplexLogic: parsedQuery.hasComplexLogic,
           searchTerms: parsedQuery.searchTerms,
+          isPhoneSearch: parsedQuery.isPhoneSearch,
+          phonePattern: parsedQuery.phonePattern,
           resultCount: results.length,
           searchDuration: duration
         }

@@ -14,7 +14,7 @@ import {
   type ResumeContent, type InsertResumeContent
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, sql, gte, lte } from "drizzle-orm";
+import { eq, and, desc, count, sql, gte, lte, or } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -111,6 +111,7 @@ export interface IStorage {
   createProfileResume(resume: InsertProfileResume, extractedText: string): Promise<ProfileResume>;
   deleteProfileResume(id: number): Promise<void>;
   searchProfileResumesByContent(searchTerm: string): Promise<Array<ProfileResume & { extractedText: string; rank: number }>>;
+  searchProfileResumesByPhone(phonePattern: string): Promise<Array<ProfileResume & { extractedText?: string; highlightedText?: string; rank?: number }>>;
   getProfileResumeContent(resumeId: number): Promise<ResumeContent | undefined>;
 }
 
@@ -1278,6 +1279,67 @@ export class DatabaseStorage implements IStorage {
       .from(resumeContent)
       .where(eq(resumeContent.profileResumeId, resumeId));
     return content;
+  }
+
+  async searchProfileResumesByPhone(phonePattern: string): Promise<Array<ProfileResume & { extractedText?: string; highlightedText?: string; rank?: number }>> {
+    console.log(`Phone search starting for pattern: ${phonePattern}`);
+    
+    try {
+      // Search for phone numbers in resume content and candidate data
+      // Support both last 4 digits and full numbers
+      const phoneConditions = [];
+      
+      if (phonePattern.length === 4) {
+        // Last 4 digits search - search in both content and structured phone data
+        phoneConditions.push(
+          sql`${resumeContent.extractedText} ~* '[^0-9]${phonePattern}[^0-9]?$'`, // Last 4 digits at end
+          sql`${resumeContent.extractedText} ~* '\\b\\d{3}[\\s\\-\\.]?\\d{3}[\\s\\-\\.]?${phonePattern}\\b'`, // XXX-XXX-phonePattern format
+          sql`${resumeContent.extractedText} ~* '\\b\\(\\d{3}\\)\\s?\\d{3}[\\s\\-\\.]?${phonePattern}\\b'`, // (XXX) XXX-phonePattern format
+          sql`${profileResumes.candidateEmail} ~* '${phonePattern}'` // Also check email for phone patterns
+        );
+      } else {
+        // Full number search
+        phoneConditions.push(
+          sql`${resumeContent.extractedText} ~* '${phonePattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`,
+          sql`${profileResumes.candidateEmail} ~* '${phonePattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`
+        );
+      }
+      
+      const results = await db
+        .select({
+          id: profileResumes.id,
+          filename: profileResumes.filename,
+          fileType: profileResumes.fileType,
+          fileSize: profileResumes.fileSize,
+          fileData: profileResumes.fileData,
+          candidateName: profileResumes.candidateName,
+          candidateEmail: profileResumes.candidateEmail,
+          uploadedAt: profileResumes.uploadedAt,
+          uploadedBy: profileResumes.uploadedBy,
+          extractedText: resumeContent.extractedText,
+          rank: sql<number>`1.0`, // Static rank for phone searches
+          highlightedText: sql<string>`
+            CASE 
+              WHEN ${resumeContent.extractedText} ~* '${phonePattern}' THEN 
+                regexp_replace(${resumeContent.extractedText}, '(\\d{3}[\\s\\-\\.]?\\d{3}[\\s\\-\\.]?${phonePattern})', '<mark>\\1</mark>', 'gi')
+              ELSE 
+                substring(${resumeContent.extractedText}, 1, 200) || '...'
+            END
+          `,
+        })
+        .from(profileResumes)
+        .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
+        .where(or(...phoneConditions))
+        .orderBy(desc(profileResumes.uploadedAt))
+        .limit(50);
+      
+      console.log(`Phone search found ${results.length} matching resumes`);
+      return results;
+      
+    } catch (error) {
+      console.error("Phone search failed:", error);
+      return [];
+    }
   }
 }
 
