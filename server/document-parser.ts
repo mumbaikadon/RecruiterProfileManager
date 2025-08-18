@@ -14,14 +14,28 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
     profileLogger.extractionStart('pdf-file', 'pdf');
     console.log("Starting PDF text extraction, buffer size:", buffer.length);
+    console.log("Buffer type:", typeof buffer);
+    console.log("Is Buffer instance:", Buffer.isBuffer(buffer));
     
-    // Simple, direct approach with pdf-parse
-    const pdfParse = (await import('pdf-parse')).default;
+    // Use require to avoid debug mode issue with dynamic imports
+    // pdf-parse enters debug mode when module.parent is undefined (which happens with dynamic imports)
+    console.log("Loading pdf-parse using require to avoid debug mode...");
+    const pdfParse = require('pdf-parse');
+    console.log("pdf-parse loaded successfully");
     
+    console.log("pdf-parse type:", typeof pdfParse);
     console.log("Calling pdf-parse with buffer...");
+    
+    // Ensure we have a clean buffer
+    if (!Buffer.isBuffer(buffer)) {
+      throw new Error("Input is not a valid buffer");
+    }
+    
     const data = await pdfParse(buffer);
+    console.log("pdf-parse completed, data keys:", Object.keys(data));
     
     let extractedText = data.text?.trim() || "";
+    console.log("Extracted text length:", extractedText.length);
     
     if (extractedText && extractedText.length > 20) {
       console.log(`PDF extraction successful: ${extractedText.length} characters extracted`);

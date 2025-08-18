@@ -2,9 +2,17 @@
 
 RecruiterTracker is a modern AI-powered recruitment management platform built with React/TypeScript frontend and Node.js/Express backend. The system streamlines the recruitment process by allowing recruiters to manage jobs, candidates, and submissions while integrating OpenAI for resume analysis and matching capabilities. Key features include duplicate candidate prevention, intelligent resume processing, comprehensive tracking of the recruitment pipeline from initial submission to final hiring decisions, and robust analytics with success/rejection rate calculations.
 
-## Recent Changes (August 17, 2025)
+## Recent Changes (August 18, 2025)
 
-**Profile Record System - Complete Implementation with Smart Bulk Upload (Latest)**
+**Critical PDF Parsing Fix - Debug Mode Issue Resolved (Latest)**
+- Fixed critical PDF parsing failure caused by pdf-parse library entering debug mode
+- Root cause: Dynamic imports cause `module.parent` to be undefined, triggering debug code that looks for test files
+- Solution: Changed from dynamic import to require() to maintain proper module.parent context
+- Eliminated complex fallback parsing logic that was causing additional confusion
+- Added comprehensive debugging logs to track parsing process
+- PDF files now extract text content correctly instead of throwing ENOENT errors for test files
+
+**Profile Record System - Complete Implementation with Smart Bulk Upload**
 - Implemented comprehensive Profile Record system for resume library management
 - Added complex Boolean search with AND/OR operators and phrase matching in quotes
 - Created advanced search parser converting recruiter syntax to PostgreSQL tsquery format
