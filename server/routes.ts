@@ -2192,11 +2192,12 @@ Generated on: ${new Date().toLocaleString()}
   });
 
   app.post("/api/parse-document", requireAuth, fileUpload.single('file'), async (req: Request, res: Response) => {
+    console.log("=== DOCUMENT PARSING REQUEST START ===");
     console.log("Document parsing request received");
     
     try {
       if (!req.file) {
-        console.error("No file in the request");
+        console.error("❌ No file in the request");
         return res.status(400).json({ 
           success: false, 
           error: "No file uploaded",
@@ -2204,7 +2205,8 @@ Generated on: ${new Date().toLocaleString()}
         });
       }
 
-      console.log(`File received: ${req.file.originalname}, ${Math.round(req.file.size / 1024)}KB`);
+      console.log(`📄 File received: ${req.file.originalname}, ${Math.round(req.file.size / 1024)}KB`);
+      console.log(`📄 MIME type: ${req.file.mimetype}`);
       
       const fileBuffer = req.file.buffer;
       const fileName = req.file.originalname.toLowerCase();
@@ -2212,7 +2214,26 @@ Generated on: ${new Date().toLocaleString()}
                      fileName.endsWith('.docx') ? 'docx' : 
                      fileName.endsWith('.txt') ? 'txt' : 'unknown';
       
-      console.log(`Processing ${fileType.toUpperCase()} document: ${req.file.originalname} (${fileBuffer.length} bytes)`);
+      console.log(`🔄 Processing ${fileType.toUpperCase()} document: ${req.file.originalname} (${fileBuffer.length} bytes)`);
+      
+      // Additional file validation
+      if (fileType === 'unknown') {
+        console.error(`❌ Unsupported file type: ${fileName}`);
+        return res.status(400).json({
+          success: false,
+          error: "Unsupported file type",
+          message: "Please upload a PDF, DOCX, or TXT file only"
+        });
+      }
+      
+      if (!fileBuffer || fileBuffer.length === 0) {
+        console.error("❌ File buffer is empty");
+        return res.status(400).json({
+          success: false,
+          error: "Empty file",
+          message: "The uploaded file appears to be empty"
+        });
+      }
       
       // Use our document parser utility for text extraction
       let extractedText = '';
@@ -2222,14 +2243,23 @@ Generated on: ${new Date().toLocaleString()}
         const { extractTextFromDocument } = await import('./document-parser');
         
         // Extract text based on file type
-        console.log(`Processing ${fileType.toUpperCase()} document using document-parser`);
+        console.log(`🔄 Processing ${fileType.toUpperCase()} document using document-parser`);
         extractedText = await extractTextFromDocument(fileBuffer, fileType);
+        console.log(`✅ Extraction completed successfully: ${extractedText.length} characters`);
       } catch (extractionError) {
-        console.error(`${fileType.toUpperCase()} extraction error:`, extractionError);
+        console.error(`❌ ${fileType.toUpperCase()} extraction error:`, extractionError);
+        console.error(`❌ Error type: ${extractionError?.constructor?.name}`);
+        console.error(`❌ Error message: ${extractionError instanceof Error ? extractionError.message : 'Unknown error'}`);
+        
         return res.status(500).json({
           success: false,
           error: `${fileType.toUpperCase()} parsing failed`,
-          message: extractionError instanceof Error ? extractionError.message : "Unknown error"
+          message: extractionError instanceof Error ? extractionError.message : "Unknown error",
+          details: {
+            fileName: req.file.originalname,
+            fileSize: fileBuffer.length,
+            fileType: fileType
+          }
         });
       }
       
@@ -2307,12 +2337,27 @@ Generated on: ${new Date().toLocaleString()}
       const { resumeText, jobDescription } = req.body;
 
       if (!resumeText || typeof resumeText !== "string") {
-        return res.status(200).json({
+        return res.status(400).json({
+          error: "Resume text is required",
           message: "Resume text is required",
           score: 0,
           strengths: [],
           weaknesses: ["Missing resume text"],
           suggestions: ["Upload a resume to get a match score"],
+        });
+      }
+
+      // Check if the resume text is actually an error message from failed extraction
+      if (resumeText.includes("could not be extracted") || resumeText.includes("parsing error") || resumeText.length < 100) {
+        console.error("Rejecting OpenAI analysis - resume text appears to be an error message or too short");
+        console.error("Resume text received:", resumeText);
+        return res.status(400).json({
+          error: "Document extraction failed",
+          message: "The resume file could not be processed. Please ensure it's a valid PDF or Word document with readable text.",
+          score: 0,
+          strengths: [],
+          weaknesses: ["Document extraction failed"],
+          suggestions: ["Try converting to Word document format", "Ensure PDF contains selectable text (not scanned images)"],
         });
       }
 

@@ -14,12 +14,28 @@ import { profileLogger } from './logger';
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
     profileLogger.extractionStart('pdf-file', 'pdf');
+    console.log("=== PDF EXTRACTION DEBUG START ===");
     console.log("Starting PDF text extraction, buffer size:", buffer.length);
     console.log("Buffer type:", typeof buffer);
     console.log("Is Buffer instance:", Buffer.isBuffer(buffer));
     
+    // Additional buffer validation
+    if (!buffer || buffer.length === 0) {
+      throw new Error("PDF buffer is empty or null");
+    }
+    
+    if (buffer.length < 100) {
+      throw new Error(`PDF buffer is too small (${buffer.length} bytes) - likely corrupted`);
+    }
+    
+    // Check if buffer starts with PDF signature
+    const pdfSignature = buffer.toString('ascii', 0, 4);
+    console.log("PDF signature check:", pdfSignature);
+    if (!pdfSignature.startsWith('%PDF')) {
+      throw new Error(`Invalid PDF signature: '${pdfSignature}' - file may be corrupted or not a valid PDF`);
+    }
+    
     // Use createRequire to avoid debug mode issue with dynamic imports
-    // pdf-parse enters debug mode when module.parent is undefined (which happens with dynamic imports)
     console.log("Loading pdf-parse using createRequire to avoid debug mode...");
     const require = createRequire(import.meta.url);
     const pdfParse = require('pdf-parse');
@@ -28,33 +44,42 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     console.log("pdf-parse type:", typeof pdfParse);
     console.log("Calling pdf-parse with buffer...");
     
-    // Ensure we have a clean buffer
-    if (!Buffer.isBuffer(buffer)) {
-      throw new Error("Input is not a valid buffer");
-    }
-    
     const data = await pdfParse(buffer);
-    console.log("pdf-parse completed, data keys:", Object.keys(data));
+    console.log("pdf-parse completed successfully");
+    console.log("pdf-parse result data keys:", Object.keys(data));
+    console.log("pdf-parse metadata:", {
+      numpages: data.numpages,
+      version: data.version,
+      info: data.info
+    });
     
     let extractedText = data.text?.trim() || "";
     console.log("Extracted text length:", extractedText.length);
     
     if (extractedText && extractedText.length > 20) {
-      console.log(`PDF extraction successful: ${extractedText.length} characters extracted`);
-      console.log("First 200 chars:", extractedText.substring(0, 200));
+      console.log(`✅ PDF extraction successful: ${extractedText.length} characters extracted`);
+      console.log("First 300 chars:", extractedText.substring(0, 300));
+      console.log("=== PDF EXTRACTION DEBUG END ===");
       profileLogger.extractionSuccess('pdf-file', extractedText.length);
       return extractedText;
     } else {
-      throw new Error("PDF contains no readable text - likely image-based or encrypted");
+      console.log("❌ PDF extraction failed: No readable text found");
+      console.log("Raw text data:", JSON.stringify(data.text).substring(0, 200));
+      throw new Error("PDF contains no readable text - likely image-based, scanned document, or encrypted");
     }
     
   } catch (error) {
-    console.error("PDF extraction error:", error);
+    console.error("=== PDF EXTRACTION ERROR ===");
+    console.error("Error details:", error);
+    console.error("Error type:", error?.constructor?.name);
+    console.error("Error message:", error instanceof Error ? error.message : 'Unknown error');
+    console.error("=== PDF EXTRACTION ERROR END ===");
+    
     const errorMsg = `PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. The file may be image-based, password-protected, or corrupted.`;
     profileLogger.extractionError('pdf-file', errorMsg);
     
-    // For bulk uploads, we should throw the error so the file is marked as failed
-    throw new Error("PDF content could not be extracted. Please try converting to Word document format.");
+    // Re-throw with more specific error information
+    throw new Error(`PDF content extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try converting to Word document format or ensure the PDF contains selectable text.`);
   }
 }
 
