@@ -110,8 +110,47 @@ export default function ProfileRecord() {
         duplicatesRemoved: duplicates.length
       };
     },
+    onMutate: async (files) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ["/api/profile-resumes"] });
+
+      // Snapshot the previous value
+      const previousResumes = queryClient.getQueryData<ProfileResume[]>(["/api/profile-resumes"]);
+
+      // Optimistically add the uploading files to the list
+      if (previousResumes) {
+        const optimisticResumes = files.map((fileData, index) => ({
+          id: -index - 1, // Temporary negative ID
+          filename: fileData.file.name,
+          fileType: fileData.file.name.endsWith('.pdf') ? 'pdf' as const : 'docx' as const,
+          fileSize: fileData.file.size,
+          candidateName: fileData.candidateName || null,
+          candidateEmail: fileData.candidateEmail || null,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: 2, // Current user ID
+          extractedText: "Processing...",
+        }));
+
+        queryClient.setQueryData<ProfileResume[]>(
+          ["/api/profile-resumes"],
+          [...optimisticResumes, ...previousResumes]
+        );
+      }
+
+      // Return a context object with the snapshotted value
+      return { previousResumes };
+    },
+    onError: (err, files, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousResumes) {
+        queryClient.setQueryData(["/api/profile-resumes"], context.previousResumes);
+      }
+    },
     onSuccess: (result) => {
+      // Invalidate and refetch to get the real data from server
       queryClient.invalidateQueries({ queryKey: ["/api/profile-resumes"] });
+      queryClient.refetchQueries({ queryKey: ["/api/profile-resumes"] });
+      
       setIsUploadOpen(false);
       setSelectedFiles([]);
       setCandidateName("");
