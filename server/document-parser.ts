@@ -44,7 +44,13 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     console.log("pdf-parse type:", typeof pdfParse);
     console.log("Calling pdf-parse with buffer...");
     
-    const data = await pdfParse(buffer);
+    // Set a timeout to prevent infinite recursion/hanging
+    const parsePromise = pdfParse(buffer);
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('PDF parsing timeout - file may be too complex or corrupted')), 30000);
+    });
+    
+    const data = await Promise.race([parsePromise, timeoutPromise]);
     console.log("pdf-parse completed successfully");
     console.log("pdf-parse result data keys:", Object.keys(data));
     console.log("pdf-parse metadata:", {
@@ -75,11 +81,24 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     console.error("Error message:", error instanceof Error ? error.message : 'Unknown error');
     console.error("=== PDF EXTRACTION ERROR END ===");
     
-    const errorMsg = `PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}. The file may be image-based, password-protected, or corrupted.`;
+    let specificError = "";
+    if (error instanceof Error) {
+      if (error.message.includes('Maximum call stack size exceeded')) {
+        specificError = "The PDF file is too complex or has recursive structures that cannot be processed. ";
+      } else if (error.message.includes('timeout')) {
+        specificError = "PDF processing timed out - the file may be too large or corrupted. ";
+      } else if (error.message.includes('Invalid PDF')) {
+        specificError = "The file is not a valid PDF or is corrupted. ";
+      } else {
+        specificError = `PDF parsing error: ${error.message}. `;
+      }
+    }
+    
+    const errorMsg = `PDF parsing failed: ${specificError}The file may be image-based, password-protected, or corrupted.`;
     profileLogger.extractionError('pdf-file', errorMsg);
     
     // Re-throw with more specific error information
-    throw new Error(`PDF content extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try converting to Word document format or ensure the PDF contains selectable text.`);
+    throw new Error(`${specificError}Please try converting to Word document format or ensure the PDF contains selectable text (not scanned images).`);
   }
 }
 
