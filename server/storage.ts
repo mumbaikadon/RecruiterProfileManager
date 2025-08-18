@@ -14,7 +14,7 @@ import {
   type ResumeContent, type InsertResumeContent
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, sql, gte, lte, or, ilike } from "drizzle-orm";
+import { eq, and, desc, count, sql, gte, lte, or, ilike, inArray } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -1068,7 +1068,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(jobs, eq(jobs.id, submissions.jobId))
       .where(
         and(
-          sql`${submissions.candidateId} = ANY(${candidateIds})`,
+          inArray(submissions.candidateId, candidateIds),
           eq(jobs.status, "active")
         )
       );
@@ -1096,7 +1096,7 @@ export class DatabaseStorage implements IStorage {
         fileSize: null,
         mimeType: null
       })
-      .where(sql`${resumeData.candidateId} = ANY(${candidatesForDeletion})`);
+      .where(inArray(resumeData.candidateId, candidatesForDeletion));
   }
 
   // Profile Resume operations implementation
