@@ -112,6 +112,8 @@ export function useDashboardStats() {
     totalSubmissions: number;
     assignedActiveJobs: number;
     submissionsThisWeek: number;
+    totalCandidates: number;
+    totalJobs: number;
   }>({
     queryKey: ["/api/dashboard/stats"]
   });

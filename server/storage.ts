@@ -846,6 +846,8 @@ export class DatabaseStorage implements IStorage {
     totalSubmissions: number;
     assignedActiveJobs: number;
     submissionsThisWeek: number;
+    totalCandidates: number;
+    totalJobs: number;
   }> {
     // Get active jobs count
     const [activeJobsResult] = await db
@@ -900,11 +902,23 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
+    // Get total candidates count
+    const [totalCandidatesResult] = await db
+      .select({ count: count() })
+      .from(candidates);
+    
+    // Get total jobs count (all statuses)
+    const [totalJobsResult] = await db
+      .select({ count: count() })
+      .from(jobs);
+    
     return {
       activeJobs: activeJobsResult?.count ?? 0,
       totalSubmissions: totalSubmissionsResult?.count ?? 0,
       assignedActiveJobs,
-      submissionsThisWeek: submissionsThisWeekResult?.count ?? 0
+      submissionsThisWeek: submissionsThisWeekResult?.count ?? 0,
+      totalCandidates: totalCandidatesResult?.count ?? 0,
+      totalJobs: totalJobsResult?.count ?? 0
     };
   }
 

@@ -14,6 +14,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useDashboardStats } from "@/hooks/use-submissions";
 import logo from "@/assets/images/logo.png";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +88,7 @@ const SidebarSection = ({ title }: { title: string }) => (
 const Sidebar = () => {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { data: statsData } = useDashboardStats();
 
   return (
     <div className="hidden md:flex md:flex-shrink-0">
@@ -118,7 +120,7 @@ const Sidebar = () => {
               href="/jobs"
               icon={<Briefcase />}
               isActive={location.startsWith("/jobs")}
-              badge={7}
+              badge={statsData?.totalJobs}
             >
               Jobs
             </SidebarLink>
@@ -127,7 +129,7 @@ const Sidebar = () => {
               href="/candidates"
               icon={<Users />}
               isActive={location.startsWith("/candidates")}
-              badge={12}
+              badge={statsData?.totalCandidates}
             >
               Candidates
             </SidebarLink>
@@ -136,7 +138,7 @@ const Sidebar = () => {
               href="/submissions"
               icon={<ClipboardList />}
               isActive={location.startsWith("/submissions")}
-              badge={5}
+              badge={statsData?.totalSubmissions}
             >
               Submissions
             </SidebarLink>
