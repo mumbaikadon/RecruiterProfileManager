@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Calendar, Building2, Clock } from "lucide-react";
 import { JobApplicationModal } from "./JobApplicationModal";
+import logo from "../assets/images/logo.png";
 
 interface PublicJob {
   id: number;
@@ -66,9 +67,40 @@ export function PublicJobs() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-md transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo aligned to the left */}
+            <div className="flex items-center">
+              <img 
+                src={logo} 
+                alt="Company Logo" 
+                className="h-10 w-auto object-contain filter brightness-0 invert" 
+              />
+            </div>
+            
+            {/* Navigation links - optional */}
+            <div className="hidden md:flex space-x-8">
+              <a href="#job-listings" className="text-white hover:text-blue-100 font-medium">Open Positions</a>
+              <a href="#why-us" className="text-white hover:text-blue-100 font-medium">Why Join Us</a>
+            </div>
+            
+            {/* Mobile menu button - optional */}
+            <div className="md:hidden">
+              <button className="text-white hover:text-blue-100">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+      
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white pt-16 pb-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-5xl font-bold mb-6">Join Our Team</h1>
             <p className="text-xl max-w-3xl mx-auto opacity-90">
@@ -173,7 +205,7 @@ export function PublicJobs() {
         </div>
       </div>
       {/* Company Values Section */}
-      <div className="bg-gray-50 py-16">
+      <div id="why-us" className="bg-gray-50 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Work With Us</h2>

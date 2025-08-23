@@ -28,102 +28,107 @@ function Router() {
       {/* Authentication routes */}
       <Route path="/auth" component={AuthPage} />
       <Route path="/signup" component={SignupPage} />
-      
+
       {/* Public job application routes */}
       <Route path="/public/jobs">
         <PublicJobs />
       </Route>
-      
+
       {/* Simple URL for public jobs access */}
       <Route path="/careers">
         <PublicJobs />
       </Route>
-      
-      {/* Public home route - redirect to dashboard if logged in */}
+
+      {/* Additional route to catch /careers/ with trailing slash */}
+      <Route path="/careers/">
+        <PublicJobs />
+      </Route>
+
+      {/* Public home route */}
       <Route path="/" component={PublicHome} />
-      
+
       {/* Protected admin/recruiter routes */}
-      <ProtectedRoute 
-        path="/dashboard" 
+      <ProtectedRoute
+        path="/dashboard"
         component={() => (
           <Layout>
             <Dashboard />
           </Layout>
-        )} 
+        )}
       />
-      <ProtectedRoute 
-        path="/jobs" 
+      <ProtectedRoute
+        path="/jobs"
         component={() => (
           <Layout>
             <JobsPage />
           </Layout>
-        )} 
+        )}
       />
-      <ProtectedRoute 
-        path="/jobs/:id" 
+      <ProtectedRoute
+        path="/jobs/:id"
         component={() => (
           <Layout>
             <JobDetailPage />
           </Layout>
-        )} 
+        )}
       />
-      <ProtectedRoute 
-        path="/candidates" 
+      <ProtectedRoute
+        path="/candidates"
         component={() => (
           <Layout>
             <CandidatesPage />
           </Layout>
-        )} 
+        )}
       />
-      <ProtectedRoute 
-        path="/candidates/:id" 
+      <ProtectedRoute
+        path="/candidates/:id"
         component={() => (
           <Layout>
             <CandidateDetailPage />
           </Layout>
-        )} 
+        )}
       />
-      <ProtectedRoute 
-        path="/submissions" 
+      <ProtectedRoute
+        path="/submissions"
         component={() => (
           <Layout>
             <SubmissionsPage />
           </Layout>
-        )} 
+        )}
       />
-      <ProtectedRoute 
-        path="/submissions/:id" 
+      <ProtectedRoute
+        path="/submissions/:id"
         component={() => (
           <Layout>
             <SubmissionDetailPage />
           </Layout>
-        )} 
+        )}
       />
-      <ProtectedRoute 
-        path="/profile-record" 
+      <ProtectedRoute
+        path="/profile-record"
         component={() => (
           <Layout>
             <ProfileRecordPage />
           </Layout>
-        )} 
+        )}
       />
-      <ProtectedRoute 
-        path="/organization" 
+      <ProtectedRoute
+        path="/organization"
         component={() => (
           <Layout>
             <OrganizationPage />
           </Layout>
-        )} 
+        )}
       />
-      <ProtectedRoute 
-        path="/reports" 
+      <ProtectedRoute
+        path="/reports"
         component={() => (
           <Layout>
             <ReportsPage />
           </Layout>
-        )} 
+        )}
       />
-      
+
       <Route component={NotFound} />
     </Switch>
   );
