@@ -3919,10 +3919,29 @@ Generated on: ${new Date().toLocaleString()}
         return res.status(400).json({ message: "Invalid resume ID" });
       }
 
-      const resume = await storage.getProfileResume(id);
-      if (!resume) {
+      // Get resume with fileData included (storage method excludes it for performance)
+      const resumeResult = await db
+        .select({
+          filename: profileResumes.filename,
+          fileType: profileResumes.fileType,
+          filePath: profileResumes.filePath,
+          fileData: profileResumes.fileData
+        })
+        .from(profileResumes)
+        .where(eq(profileResumes.id, id))
+        .limit(1);
+
+      if (!resumeResult[0]) {
         return res.status(404).json({ message: "Resume not found" });
       }
+
+      const resume = resumeResult[0];
+      console.log(`🔍 Download Debug - Resume ${id}:`, {
+        filename: resume.filename,
+        hasFilePath: !!resume.filePath,
+        hasFileData: !!resume.fileData,
+        fileDataLength: resume.fileData?.length || 0
+      });
 
       let fileBuffer: Buffer;
       
@@ -3943,6 +3962,7 @@ Generated on: ${new Date().toLocaleString()}
         // Legacy: read from database
         fileBuffer = Buffer.from(resume.fileData, 'base64');
       } else {
+        console.log(`❌ No file source available`);
         return res.status(404).json({ message: "Resume file not available" });
       }
 
@@ -3952,7 +3972,40 @@ Generated on: ${new Date().toLocaleString()}
       res.setHeader('Content-Disposition', `attachment; filename="${resume.filename}"`);
       res.setHeader('Content-Length', fileBuffer.length);
       res.send(fileBuffer);
+      
+      console.log(`✅ Download successful: ${resume.filename}, ${fileBuffer.length} bytes`);
     } catch (error) {
+      console.error(`❌ Download error:`, error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Phase 3: Migration test endpoint
+  app.post("/api/profile-resumes/migrate", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { resumeId, action } = req.body;
+
+      if (action === 'test-single' && resumeId) {
+        const { testMigration } = await import('./migration-utils');
+        const result = await testMigration(parseInt(resumeId));
+        return res.json(result);
+      }
+
+      if (action === 'migrate-single' && resumeId) {
+        const { migrateSingleResume } = await import('./migration-utils');
+        const result = await migrateSingleResume(parseInt(resumeId));
+        return res.json(result);
+      }
+
+      if (action === 'migrate-all') {
+        const { migrateAllLegacyResumes } = await import('./migration-utils');
+        const result = await migrateAllLegacyResumes();
+        return res.json(result);
+      }
+
+      res.status(400).json({ message: 'Invalid action' });
+    } catch (error) {
+      console.error('Migration error:', error);
       res.status(500).json({ message: (error as Error).message });
     }
   });
