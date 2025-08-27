@@ -260,14 +260,12 @@ export const profileResumes = pgTable("profile_resumes", {
   uploadedBy: integer("uploaded_by").references(() => users.id),
 });
 
-// Resume Content table - compressed text storage with full-text search
+// Resume Content table - text storage with full-text search (matches actual DB schema)
 export const resumeContent = pgTable("resume_content", {
   id: serial("id").primaryKey(),
   profileResumeId: integer("profile_resume_id").notNull().references(() => profileResumes.id, { onDelete: "cascade" }),
   extractedText: text("extracted_text").notNull(),
-  compressedText: text("compressed_text"), // Compressed version for storage optimization
   contentHash: text("content_hash").notNull(), // Hash for duplicate detection
-  wordCount: integer("word_count").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => {
   return {
