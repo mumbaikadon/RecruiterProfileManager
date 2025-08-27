@@ -3426,7 +3426,8 @@ Generated on: ${new Date().toLocaleString()}
         wordCount: content.wordCount,
         metadata: {
           duration,
-          textLength: content.extractedText.length
+          textLength: content.extractedText.length,
+          compressed: !!content.compressedText
         }
       });
     } catch (error) {

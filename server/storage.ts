@@ -1294,33 +1294,35 @@ export class DatabaseStorage implements IStorage {
   // Phase 1: Get FULL CONTENT only when explicitly requested (for View dialog)
   async getProfileResumeContent(id: number): Promise<{
     extractedText: string;
+    compressedText?: string;
     wordCount?: number;
   } | null> {
-    console.log(`🔍 Loading full content for profile resume ${id}`);
-    
     const [content] = await db
       .select({
         extractedText: resumeContent.extractedText,
+        compressedText: resumeContent.compressedText,
+        wordCount: resumeContent.wordCount,
       })
       .from(resumeContent)
       .where(eq(resumeContent.profileResumeId, id));
       
-    if (!content) {
-      console.log(`❌ No content found for profile resume ${id}`);
-      return null;
+    if (!content) return null;
+    
+    // If we have compressed text, decompress it, otherwise use extracted text
+    let finalText = content.extractedText;
+    if (content.compressedText) {
+      try {
+        const { decompressText } = await import('./file-utils');
+        finalText = await decompressText(content.compressedText);
+      } catch (error) {
+        console.warn(`Failed to decompress text for resume ${id}, using extracted text:`, error);
+      }
     }
     
-    // Calculate word count from text since it's not stored in DB
-    const wordCount = content.extractedText.split(/\s+/).filter(word => word.length > 0).length;
-    
-    console.log(`✅ Content loaded for profile resume ${id}:`, {
-      textLength: content.extractedText.length,
-      wordCount
-    });
-    
     return {
-      extractedText: content.extractedText,
-      wordCount
+      extractedText: finalText,
+      compressedText: content.compressedText,
+      wordCount: content.wordCount
     };
   }
   
