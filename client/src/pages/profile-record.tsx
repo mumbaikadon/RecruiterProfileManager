@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { FileText, Download, Search, Upload, Trash2, Eye, Filter, Calendar, User } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
+// Phase 1: Optimized interfaces - NO FULL TEXT!
 interface ProfileResume {
   id: number;
   filename: string;
@@ -19,15 +20,45 @@ interface ProfileResume {
   fileSize: number;
   candidateName: string | null;
   candidateEmail: string | null;
+  processingStatus?: string;
   uploadedAt: string;
   uploadedBy: number;
-  extractedText?: string;
-  rank?: number;
+  summaryText?: string; // Short summary instead of full text
+  filePath?: string;
+}
+
+interface PaginatedResponse<T> {
+  resumes?: T[];
+  results?: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+    pages: number;
+  };
+  metadata: {
+    searchQuery?: string | null;
+    resultCount: number;
+    totalCount: number;
+    duration: number;
+  };
 }
 
 interface SearchResult extends ProfileResume {
   rank: number;
+  snippets: string; // Only snippets, not full text!
+  highlightedSnippets: string;
+}
+
+interface ResumeContent {
   extractedText: string;
+  wordCount?: number;
+  metadata: {
+    duration: number;
+    textLength: number;
+    compressed: boolean;
+  };
 }
 
 export default function ProfileRecord() {
@@ -40,13 +71,43 @@ export default function ProfileRecord() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [viewingResume, setViewingResume] = useState<ProfileResume | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  
+  // Phase 1: Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchPage, setSearchPage] = useState(1);
+  const [itemsPerPage] = useState(20);
+  
+  // Phase 1: Content loading state  
+  const [loadingContent, setLoadingContent] = useState<number | null>(null);
+  const [resumeContent, setResumeContent] = useState<{[key: number]: ResumeContent}>({});
 
   const queryClient = useQueryClient();
 
-  // Fetch all resumes
-  const { data: resumes = [], isLoading } = useQuery<ProfileResume[]>({
-    queryKey: ["/api/profile-resumes"],
+  // Phase 1: Fetch resumes with pagination (NO FULL TEXT!)
+  const { data: resumesResponse, isLoading } = useQuery<PaginatedResponse<ProfileResume>>({
+    queryKey: ["/api/profile-resumes", currentPage, itemsPerPage],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+        includeFileData: 'false' // Exclude file data for list view
+      });
+      
+      const response = await fetch(`/api/profile-resumes?${params}`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch resumes');
+      }
+      
+      return response.json();
+    }
   });
+
+  // Extract resumes and pagination info
+  const resumes = resumesResponse?.resumes || [];
+  const pagination = resumesResponse?.pagination;
 
   // Upload mutation for multiple files with real-time updates
   const uploadMutation = useMutation({
@@ -258,44 +319,94 @@ export default function ProfileRecord() {
     },
   });
 
-  // Enhanced search function with debouncing
+  // Phase 1: CRITICAL - Snippet-based search (MASSIVE memory savings!)
   const searchMutation = useMutation({
-    mutationFn: async (searchQuery: string) => {
-      if (!searchQuery.trim()) {
-        return [];
-      }
-      
-      const response = await fetch(`/api/profile-resumes/search/${encodeURIComponent(searchQuery)}`, {
-        credentials: "include",
+    mutationFn: async ({ query, page }: { query: string; page: number }) => {
+      console.log("Starting snippet search for:", query, "page:", page);
+      const response = await fetch('/api/profile-resumes/search-snippets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          searchTerm: query,
+          page,
+          limit: itemsPerPage,
+          maxSnippetLength: 75 // Limit snippet size for performance
+        })
       });
       
       if (!response.ok) {
         throw new Error('Search failed');
       }
       
-      return response.json();
+      return response.json() as Promise<PaginatedResponse<SearchResult>>;
     },
-    onSuccess: (results) => {
-      setSearchResults(results);
+    onMutate: () => {
+      setIsSearching(true);
+    },
+    onSuccess: (data) => {
+      setSearchResults(data.results || []);
       setIsSearching(false);
+      console.log(`Snippet search completed: ${data.results?.length || 0} results (${data.metadata.totalCount} total)`);
     },
     onError: (error) => {
-      console.error("Search error:", error);
+      console.error("Search failed:", error);
       setSearchResults([]);
       setIsSearching(false);
-    },
+    }
   });
+  
+  // Phase 1: Load full content ONLY when viewing (on-demand)
+  const loadResumeContent = async (id: number) => {
+    if (resumeContent[id]) {
+      return resumeContent[id]; // Already loaded
+    }
+    
+    setLoadingContent(id);
+    
+    try {
+      const response = await fetch(`/api/profile-resumes/${id}/content`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load resume content');
+      }
+      
+      const content = await response.json() as ResumeContent;
+      setResumeContent(prev => ({ ...prev, [id]: content }));
+      return content;
+    } catch (error) {
+      console.error('Failed to load content:', error);
+      throw error;
+    } finally {
+      setLoadingContent(null);
+    }
+  };
 
-  // Debounced search function
-  const handleSearch = async () => {
+  // Phase 1: Updated search handler for pagination
+  const handleSearch = async (page: number = 1) => {
     if (!searchTerm.trim()) {
       setSearchResults([]);
       setIsSearching(false);
       return;
     }
-
-    setIsSearching(true);
-    searchMutation.mutate(searchTerm);
+    
+    setSearchPage(page);
+    searchMutation.mutate({ query: searchTerm.trim(), page });
+  };
+  
+  // Phase 1: Handle view resume with on-demand content loading
+  const handleViewResume = async (resume: ProfileResume | SearchResult) => {
+    setViewingResume(resume);
+    setIsViewDialogOpen(true);
+    
+    // Load full content asynchronously
+    try {
+      await loadResumeContent(resume.id);
+    } catch (error) {
+      console.error('Failed to load resume content:', error);
+    }
   };
 
   // Clear search
@@ -634,25 +745,31 @@ export default function ProfileRecord() {
                           </div>
                         )}
                         
-                        {searchTerm && (resume.highlightedText || resume.extractedText) && (
+                        {/* Phase 1: Show snippets for search results (memory optimized!) */}
+                        {'snippets' in resume && resume.snippets && (
                           <div className="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
                             <p className="text-sm text-gray-700">
-                              {resume.highlightedText ? (
-                                <span
-                                  dangerouslySetInnerHTML={{
-                                    __html: resume.highlightedText.replace(
-                                      /<mark>/g,
-                                      '<mark style="background-color: #fbbf24; padding: 2px 4px; border-radius: 3px; font-weight: 600;">'
-                                    )
-                                  }}
-                                />
-                              ) : (
-                                // Fallback for results without highlighting
-                                resume.extractedText && resume.extractedText.length > 200
-                                  ? `${resume.extractedText.substring(0, 200)}...`
-                                  : resume.extractedText
-                              )}
+                              <span
+                                dangerouslySetInnerHTML={{
+                                  __html: (resume.highlightedSnippets || resume.snippets).replace(
+                                    /<mark>/g,
+                                    '<mark style="background-color: #fbbf24; padding: 2px 4px; border-radius: 3px; font-weight: 600;">'
+                                  )
+                                }}
+                              />
                             </p>
+                            {'rank' in resume && (
+                              <div className="mt-2 text-xs text-yellow-700">
+                                Match Score: {(resume.rank * 100).toFixed(1)}%
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Phase 1: Show summary for regular results */}
+                        {!('snippets' in resume) && resume.summaryText && (
+                          <div className="mt-2 text-sm text-gray-600">
+                            <span className="font-medium">Summary:</span> {resume.summaryText}
                           </div>
                         )}
                       </div>
@@ -661,7 +778,7 @@ export default function ProfileRecord() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleView(resume)}
+                          onClick={() => handleViewResume(resume)}
                         >
                           <Eye className="h-3 w-3" />
                         </Button>
@@ -728,24 +845,62 @@ export default function ProfileRecord() {
                 
                 <div>
                   <Label>Extracted Text Content</Label>
-                  {searchTerm && viewingResume.highlightedText ? (
-                    <div className="mt-2 h-64 overflow-y-auto p-3 border rounded-md bg-gray-50">
-                      <div
-                        className="text-sm whitespace-pre-wrap"
-                        dangerouslySetInnerHTML={{
-                          __html: viewingResume.highlightedText.replace(
-                            /<mark>/g,
-                            '<mark style="background-color: #fbbf24; padding: 2px 4px; border-radius: 3px; font-weight: 600;">'
-                          )
-                        }}
+                  {/* Phase 1: On-demand content loading */}
+                  {loadingContent === viewingResume.id ? (
+                    <div className="mt-2 h-64 flex items-center justify-center border rounded-md bg-gray-50">
+                      <div className="text-center">
+                        <div className="animate-spin h-8 w-8 border-b-2 border-blue-500 rounded-full mx-auto mb-2"></div>
+                        <p className="text-sm text-gray-600">Loading full content...</p>
+                      </div>
+                    </div>
+                  ) : resumeContent[viewingResume.id] ? (
+                    <div className="mt-2">
+                      <div className="mb-2 text-xs text-gray-500 flex justify-between">
+                        <span>Word Count: {resumeContent[viewingResume.id].wordCount || 'Unknown'}</span>
+                        <span>Load Time: {resumeContent[viewingResume.id].metadata.duration}ms</span>
+                      </div>
+                      <Textarea
+                        value={resumeContent[viewingResume.id].extractedText}
+                        readOnly
+                        className="h-64 resize-none text-sm"
+                        placeholder="Full resume content..."
                       />
                     </div>
                   ) : (
-                    <Textarea
-                      value={viewingResume.extractedText || "No text content available"}
-                      readOnly
-                      className="mt-2 h-64 resize-none"
-                    />
+                    <div className="mt-2 h-64 flex items-center justify-center border rounded-md bg-gray-50">
+                      <div className="text-center">
+                        <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-600 mb-2">Click "Load Full Content" to view complete text</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loadResumeContent(viewingResume.id)}
+                        >
+                          Load Full Content
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Phase 1: Show snippets if available */}
+                  {'snippets' in viewingResume && viewingResume.snippets && (
+                    <div className="mt-2 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                      <Label className="text-xs text-yellow-800">Search Match Snippets:</Label>
+                      <div 
+                        className="text-sm mt-1"
+                        dangerouslySetInnerHTML={{
+                          __html: viewingResume.highlightedSnippets || viewingResume.snippets
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Phase 1: Show summary if available */}
+                  {viewingResume.summaryText && (
+                    <div className="mt-2 p-3 bg-blue-50 border-l-4 border-blue-400 rounded">
+                      <Label className="text-xs text-blue-800">Summary:</Label>
+                      <p className="text-sm mt-1 text-blue-700">{viewingResume.summaryText}</p>
+                    </div>
                   )}
                 </div>
                 

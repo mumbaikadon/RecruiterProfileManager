@@ -245,25 +245,29 @@ export type InsertCandidateValidation = z.infer<typeof insertCandidateValidation
 export type PublicApplication = typeof publicApplications.$inferSelect;
 export type InsertPublicApplication = z.infer<typeof insertPublicApplicationSchema>;
 
-// Profile Resumes table - for resume library/database
+// Profile Resumes table - optimized for file system storage
 export const profileResumes = pgTable("profile_resumes", {
   id: serial("id").primaryKey(),
   filename: text("filename").notNull(),
   fileType: text("file_type", { enum: ["pdf", "docx"] }).notNull(),
   fileSize: integer("file_size").notNull(),
-  fileData: text("file_data").notNull(), // Base64 encoded file data
+  filePath: text("file_path"), // File system path instead of base64 data
+  fileData: text("file_data"), // Optional: for backward compatibility, will be phased out
   candidateName: text("candidate_name"),
   candidateEmail: text("candidate_email"),
+  processingStatus: text("processing_status", { enum: ["uploading", "processing", "completed", "failed"] }).default("completed"),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
   uploadedBy: integer("uploaded_by").references(() => users.id),
 });
 
-// Resume Content table - extracted text content with full-text search
+// Resume Content table - compressed text storage with full-text search
 export const resumeContent = pgTable("resume_content", {
   id: serial("id").primaryKey(),
   profileResumeId: integer("profile_resume_id").notNull().references(() => profileResumes.id, { onDelete: "cascade" }),
   extractedText: text("extracted_text").notNull(),
+  compressedText: text("compressed_text"), // Compressed version for storage optimization
   contentHash: text("content_hash").notNull(), // Hash for duplicate detection
+  wordCount: integer("word_count").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => {
   return {
@@ -274,17 +278,76 @@ export const resumeContent = pgTable("resume_content", {
   };
 });
 
+// Resume Metadata table - structured fields for fast filtering without text search
+export const resumeMetadata = pgTable("resume_metadata", {
+  id: serial("id").primaryKey(),
+  profileResumeId: integer("profile_resume_id").notNull().references(() => profileResumes.id, { onDelete: "cascade" }),
+  candidateNameNormalized: text("candidate_name_normalized"),
+  candidateEmailNormalized: text("candidate_email_normalized"),
+  candidatePhone: text("candidate_phone"),
+  candidatePhoneLast4: text("candidate_phone_last4"), // Last 4 digits for quick lookup
+  skills: text("skills").array().default(sql`'{}'::text[]`), // Array of skills
+  companies: text("companies").array().default(sql`'{}'::text[]`), // Array of company names
+  jobTitles: text("job_titles").array().default(sql`'{}'::text[]`), // Array of job titles
+  yearsExperience: integer("years_experience"),
+  location: text("location"),
+  education: text("education").array().default(sql`'{}'::text[]`), // Array of education entries
+  summaryText: text("summary_text"), // Short summary (max 500 chars)
+  extractedAt: timestamp("extracted_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Indexes for fast filtering
+    nameIdx: index("resume_metadata_name_idx").on(table.candidateNameNormalized),
+    emailIdx: index("resume_metadata_email_idx").on(table.candidateEmailNormalized),
+    phoneIdx: index("resume_metadata_phone_idx").on(table.candidatePhone),
+    phoneLast4Idx: index("resume_metadata_phone_last4_idx").on(table.candidatePhoneLast4),
+    skillsIdx: index("resume_metadata_skills_idx").using("gin", table.skills),
+    companiesIdx: index("resume_metadata_companies_idx").using("gin", table.companies),
+    jobTitlesIdx: index("resume_metadata_job_titles_idx").using("gin", table.jobTitles),
+    yearsExpIdx: index("resume_metadata_years_exp_idx").on(table.yearsExperience),
+  };
+});
+
+// Search Cache table - for caching frequent searches (Phase 3)
+export const searchCache = pgTable("search_cache", {
+  id: serial("id").primaryKey(),
+  searchQuery: text("search_query").notNull(),
+  queryHash: text("query_hash").notNull().unique(), // Hash of normalized query
+  resultIds: integer("result_ids").array().default(sql`'{}'::integer[]`), // Array of profile resume IDs
+  resultCount: integer("result_count").default(0),
+  hitCount: integer("hit_count").default(1), // How many times this search was performed
+  lastUsed: timestamp("last_used").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(), // Cache expiration
+}, (table) => {
+  return {
+    queryHashIdx: index("search_cache_query_hash_idx").on(table.queryHash),
+    lastUsedIdx: index("search_cache_last_used_idx").on(table.lastUsed),
+    expiresAtIdx: index("search_cache_expires_at_idx").on(table.expiresAt),
+  };
+});
+
 // Create insert schemas
 export const insertProfileResumeSchema = createInsertSchema(profileResumes).omit({ id: true, uploadedAt: true });
 export const insertResumeContentSchema = createInsertSchema(resumeContent).omit({ id: true, createdAt: true });
+export const insertResumeMetadataSchema = createInsertSchema(resumeMetadata).omit({ id: true, extractedAt: true });
+export const insertSearchCacheSchema = createInsertSchema(searchCache).omit({ id: true, createdAt: true });
 
 // Export types
 export type ProfileResume = typeof profileResumes.$inferSelect & {
   extractedText?: string;
   rank?: number;
   highlightedText?: string;
+  summaryText?: string;
+  processingStatus?: string;
 };
 export type InsertProfileResume = z.infer<typeof insertProfileResumeSchema>;
 
 export type ResumeContent = typeof resumeContent.$inferSelect;
 export type InsertResumeContent = z.infer<typeof insertResumeContentSchema>;
+
+export type ResumeMetadata = typeof resumeMetadata.$inferSelect;
+export type InsertResumeMetadata = z.infer<typeof insertResumeMetadataSchema>;
+
+export type SearchCache = typeof searchCache.$inferSelect;
+export type InsertSearchCache = z.infer<typeof insertSearchCacheSchema>;

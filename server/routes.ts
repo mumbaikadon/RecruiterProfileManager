@@ -3353,7 +3353,7 @@ Generated on: ${new Date().toLocaleString()}
     }
   });
 
-  // Profile Resume API routes (Resume Database)
+  // Phase 1: Optimized Profile Resume API routes (NO FULL TEXT!)
   app.get("/api/profile-resumes", requireAuth, async (req: Request, res: Response) => {
     const startTime = Date.now();
     const { profileLogger } = await import('./logger');
@@ -3361,17 +3361,187 @@ Generated on: ${new Date().toLocaleString()}
     try {
       profileLogger.apiRequest('GET', '/api/profile-resumes', (req as any).user?.id);
       
-      const { search } = req.query;
-      const filters = search ? { searchTerm: search as string } : undefined;
-      const resumes = await storage.getProfileResumes(filters);
+      const { search, page, limit, includeFileData } = req.query;
+      
+      const filters = {
+        searchTerm: search as string,
+        page: page ? parseInt(page as string) : 1,
+        limit: limit ? parseInt(limit as string) : 20,
+        includeFileData: includeFileData === 'true'
+      };
+      
+      // Use optimized method - NO FULL TEXT!
+      const result = await storage.getProfileResumes(filters);
       
       const duration = Date.now() - startTime;
       profileLogger.apiResponse('GET', '/api/profile-resumes', 200, duration);
-      res.json(resumes);
+      
+      res.json({
+        resumes: result.resumes,
+        pagination: {
+          page: filters.page,
+          limit: filters.limit,
+          total: result.totalCount,
+          hasMore: result.hasMore,
+          pages: Math.ceil(result.totalCount / filters.limit)
+        },
+        metadata: {
+          searchQuery: search || null,
+          resultCount: result.resumes.length,
+          totalCount: result.totalCount,
+          duration
+        }
+      });
     } catch (error) {
       const duration = Date.now() - startTime;
       const errorMsg = (error as Error).message;
       profileLogger.apiError('GET', '/api/profile-resumes', errorMsg, 500);
+      res.status(500).json({ message: errorMsg });
+    }
+  });
+  
+  // Phase 1: Get FULL CONTENT only when needed (for View dialog)
+  app.get("/api/profile-resumes/:id/content", requireAuth, async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const { profileLogger } = await import('./logger');
+    
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid resume ID" });
+      }
+      
+      profileLogger.apiRequest('GET', `/api/profile-resumes/${id}/content`, (req as any).user?.id);
+      
+      const content = await storage.getProfileResumeContent(id);
+      if (!content) {
+        return res.status(404).json({ message: "Resume content not found" });
+      }
+      
+      const duration = Date.now() - startTime;
+      profileLogger.apiResponse('GET', `/api/profile-resumes/${id}/content`, 200, duration);
+      
+      res.json({
+        extractedText: content.extractedText,
+        wordCount: content.wordCount,
+        metadata: {
+          duration,
+          textLength: content.extractedText.length,
+          compressed: !!content.compressedText
+        }
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      const errorMsg = (error as Error).message;
+      profileLogger.apiError('GET', `/api/profile-resumes/${req.params.id}/content`, errorMsg, 500);
+      res.status(500).json({ message: errorMsg });
+    }
+  });
+  
+  // Phase 1: CRITICAL - Search with SNIPPETS only!
+  app.post("/api/profile-resumes/search-snippets", requireAuth, async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const { profileLogger } = await import('./logger');
+    
+    try {
+      const { searchTerm, page, limit, maxSnippetLength } = req.body;
+      
+      if (!searchTerm || searchTerm.trim().length === 0) {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+      
+      profileLogger.apiRequest('POST', '/api/profile-resumes/search-snippets', (req as any).user?.id);
+      profileLogger.searchStart(searchTerm, (req as any).user?.id);
+      
+      const options = {
+        page: page || 1,
+        limit: limit || 20,
+        maxSnippetLength: maxSnippetLength || 50
+      };
+      
+      // Use snippet-based search - MASSIVE MEMORY SAVINGS!
+      const result = await storage.searchProfileResumesWithSnippets(searchTerm, options);
+      
+      const duration = Date.now() - startTime;
+      profileLogger.searchSuccess(searchTerm, result.results.length, duration);
+      profileLogger.apiResponse('POST', '/api/profile-resumes/search-snippets', 200, duration);
+      
+      res.json({
+        results: result.results,
+        pagination: {
+          page: options.page,
+          limit: options.limit,
+          total: result.totalCount,
+          hasMore: result.hasMore,
+          pages: Math.ceil(result.totalCount / options.limit)
+        },
+        metadata: {
+          searchQuery: searchTerm,
+          resultCount: result.results.length,
+          totalCount: result.totalCount,
+          maxSnippetLength: options.maxSnippetLength,
+          duration
+        }
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      const errorMsg = (error as Error).message;
+      profileLogger.searchError(req.body.searchTerm || 'unknown', errorMsg);
+      profileLogger.apiError('POST', '/api/profile-resumes/search-snippets', errorMsg, 500);
+      res.status(500).json({ message: errorMsg });
+    }
+  });
+  
+  // Phase 1: Fast metadata-based filtering (no text search)
+  app.get("/api/profile-resumes/metadata", requireAuth, async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const { profileLogger } = await import('./logger');
+    
+    try {
+      profileLogger.apiRequest('GET', '/api/profile-resumes/metadata', (req as any).user?.id);
+      
+      const { skills, companies, yearsExperience, location, page, limit } = req.query;
+      
+      const filters = {
+        skills: skills ? (skills as string).split(',') : undefined,
+        companies: companies ? (companies as string).split(',') : undefined,
+        yearsExperience: yearsExperience ? parseInt(yearsExperience as string) : undefined,
+        location: location as string,
+        page: page ? parseInt(page as string) : 1,
+        limit: limit ? parseInt(limit as string) : 20
+      };
+      
+      // Ultra-fast structured data search
+      const result = await storage.getProfileResumeMetadata(filters);
+      
+      const duration = Date.now() - startTime;
+      profileLogger.apiResponse('GET', '/api/profile-resumes/metadata', 200, duration);
+      
+      res.json({
+        resumes: result.resumes,
+        pagination: {
+          page: filters.page,
+          limit: filters.limit,
+          total: result.totalCount,
+          hasMore: result.hasMore,
+          pages: Math.ceil(result.totalCount / filters.limit)
+        },
+        filters: {
+          skills: filters.skills,
+          companies: filters.companies,
+          yearsExperience: filters.yearsExperience,
+          location: filters.location
+        },
+        metadata: {
+          resultCount: result.resumes.length,
+          totalCount: result.totalCount,
+          duration
+        }
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      const errorMsg = (error as Error).message;
+      profileLogger.apiError('GET', '/api/profile-resumes/metadata', errorMsg, 500);
       res.status(500).json({ message: errorMsg });
     }
   });

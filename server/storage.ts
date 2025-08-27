@@ -1,6 +1,6 @@
 import { 
   users, jobs, jobAssignments, candidates, resumeData, submissions, activities, candidateValidations, publicApplications,
-  profileResumes, resumeContent,
+  profileResumes, resumeContent, resumeMetadata, searchCache,
   type User, type InsertUser, 
   type Job, type InsertJob, 
   type JobAssignment, type InsertJobAssignment, 
@@ -11,7 +11,9 @@ import {
   type CandidateValidation, type InsertCandidateValidation,
   type PublicApplication, type InsertPublicApplication,
   type ProfileResume, type InsertProfileResume,
-  type ResumeContent, type InsertResumeContent
+  type ResumeContent, type InsertResumeContent,
+  type ResumeMetadata, type InsertResumeMetadata,
+  type SearchCache, type InsertSearchCache
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql, gte, lte, or, ilike, inArray } from "drizzle-orm";
@@ -1113,39 +1115,318 @@ export class DatabaseStorage implements IStorage {
       .where(inArray(resumeData.candidateId, candidatesForDeletion));
   }
 
-  // Profile Resume operations implementation
-  async getProfileResumes(filters?: { searchTerm?: string }): Promise<Array<ProfileResume & { extractedText?: string }>> {
+  // Phase 1: Optimized Profile Resume operations (NO FULL TEXT)
+  async getProfileResumes(filters?: { 
+    searchTerm?: string;
+    page?: number;
+    limit?: number;
+    includeFileData?: boolean;
+  }): Promise<{
+    resumes: Array<ProfileResume>;
+    totalCount: number;
+    hasMore: boolean;
+  }> {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    const offset = (page - 1) * limit;
+    
+    // Select ONLY metadata - NO extractedText, minimal fileData
     let query = db
       .select({
         id: profileResumes.id,
         filename: profileResumes.filename,
         fileType: profileResumes.fileType,
         fileSize: profileResumes.fileSize,
-        fileData: profileResumes.fileData,
+        filePath: profileResumes.filePath,
+        fileData: filters?.includeFileData ? profileResumes.fileData : sql`NULL`,
         candidateName: profileResumes.candidateName,
         candidateEmail: profileResumes.candidateEmail,
+        processingStatus: profileResumes.processingStatus,
         uploadedAt: profileResumes.uploadedAt,
         uploadedBy: profileResumes.uploadedBy,
-        extractedText: resumeContent.extractedText,
+        // Get summary from metadata table instead of full text
+        summaryText: resumeMetadata.summaryText,
       })
       .from(profileResumes)
-      .leftJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id));
+      .leftJoin(resumeMetadata, eq(resumeMetadata.profileResumeId, profileResumes.id));
 
     if (filters?.searchTerm) {
-      query = query.where(
-        sql`to_tsvector('english', ${resumeContent.extractedText}) @@ plainto_tsquery('english', ${filters.searchTerm})`
-      );
+      // Search in metadata first, fallback to content search
+      query = query
+        .leftJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
+        .where(
+          or(
+            // Fast metadata search
+            sql`${resumeMetadata.candidateNameNormalized} ILIKE ${`%${filters.searchTerm}%`}`,
+            sql`${resumeMetadata.candidateEmailNormalized} ILIKE ${`%${filters.searchTerm}%`}`,
+            sql`${profileResumes.filename} ILIKE ${`%${filters.searchTerm}%`}`,
+            // Full-text search as fallback
+            sql`to_tsvector('english', ${resumeContent.extractedText}) @@ plainto_tsquery('english', ${filters.searchTerm})`
+          )
+        );
     }
 
-    return query.orderBy(desc(profileResumes.uploadedAt));
+    const [resumes, [{ totalCount }]] = await Promise.all([
+      query
+        .orderBy(desc(profileResumes.uploadedAt))
+        .limit(limit)
+        .offset(offset),
+      
+      // Get total count for pagination
+      db
+        .select({ totalCount: count() })
+        .from(profileResumes)
+    ]);
+
+    return {
+      resumes: resumes as Array<ProfileResume>,
+      totalCount: Number(totalCount),
+      hasMore: (page * limit) < Number(totalCount)
+    };
   }
 
+  // Get profile resume metadata ONLY (ultra-fast)
+  async getProfileResumeMetadata(filters?: {
+    skills?: string[];
+    companies?: string[];
+    yearsExperience?: number;
+    location?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    resumes: Array<ProfileResume & ResumeMetadata>;
+    totalCount: number;
+    hasMore: boolean;
+  }> {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    const offset = (page - 1) * limit;
+    
+    let query = db
+      .select({
+        // Resume basic info
+        id: profileResumes.id,
+        filename: profileResumes.filename,
+        fileType: profileResumes.fileType,
+        fileSize: profileResumes.fileSize,
+        candidateName: profileResumes.candidateName,
+        candidateEmail: profileResumes.candidateEmail,
+        processingStatus: profileResumes.processingStatus,
+        uploadedAt: profileResumes.uploadedAt,
+        uploadedBy: profileResumes.uploadedBy,
+        // Structured metadata
+        candidateNameNormalized: resumeMetadata.candidateNameNormalized,
+        candidateEmailNormalized: resumeMetadata.candidateEmailNormalized,
+        candidatePhone: resumeMetadata.candidatePhone,
+        skills: resumeMetadata.skills,
+        companies: resumeMetadata.companies,
+        jobTitles: resumeMetadata.jobTitles,
+        yearsExperience: resumeMetadata.yearsExperience,
+        location: resumeMetadata.location,
+        education: resumeMetadata.education,
+        summaryText: resumeMetadata.summaryText,
+      })
+      .from(profileResumes)
+      .innerJoin(resumeMetadata, eq(resumeMetadata.profileResumeId, profileResumes.id));
+
+    // Apply filters using structured data (FAST!)
+    const conditions = [];
+    if (filters?.skills?.length) {
+      conditions.push(sql`${resumeMetadata.skills} && ${filters.skills}`);
+    }
+    if (filters?.companies?.length) {
+      conditions.push(sql`${resumeMetadata.companies} && ${filters.companies}`);
+    }
+    if (filters?.yearsExperience) {
+      conditions.push(sql`${resumeMetadata.yearsExperience} >= ${filters.yearsExperience}`);
+    }
+    if (filters?.location) {
+      conditions.push(sql`${resumeMetadata.location} ILIKE ${`%${filters.location}%`}`);
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    const [resumes, [{ totalCount }]] = await Promise.all([
+      query
+        .orderBy(desc(profileResumes.uploadedAt))
+        .limit(limit)
+        .offset(offset),
+      
+      db
+        .select({ totalCount: count() })
+        .from(profileResumes)
+        .innerJoin(resumeMetadata, eq(resumeMetadata.profileResumeId, profileResumes.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+    ]);
+
+    return {
+      resumes: resumes as Array<ProfileResume & ResumeMetadata>,
+      totalCount: Number(totalCount),
+      hasMore: (page * limit) < Number(totalCount)
+    };
+  }
+
+  // Get profile resume metadata only (NO file data, NO full text)
   async getProfileResume(id: number): Promise<ProfileResume | undefined> {
     const [resume] = await db
-      .select()
+      .select({
+        id: profileResumes.id,
+        filename: profileResumes.filename,
+        fileType: profileResumes.fileType,
+        fileSize: profileResumes.fileSize,
+        filePath: profileResumes.filePath,
+        candidateName: profileResumes.candidateName,
+        candidateEmail: profileResumes.candidateEmail,
+        processingStatus: profileResumes.processingStatus,
+        uploadedAt: profileResumes.uploadedAt,
+        uploadedBy: profileResumes.uploadedBy,
+        // Get summary instead of full text
+        summaryText: resumeMetadata.summaryText,
+      })
       .from(profileResumes)
+      .leftJoin(resumeMetadata, eq(resumeMetadata.profileResumeId, profileResumes.id))
       .where(eq(profileResumes.id, id));
     return resume;
+  }
+  
+  // Phase 1: Get FULL CONTENT only when explicitly requested (for View dialog)
+  async getProfileResumeContent(id: number): Promise<{
+    extractedText: string;
+    compressedText?: string;
+    wordCount?: number;
+  } | null> {
+    const [content] = await db
+      .select({
+        extractedText: resumeContent.extractedText,
+        compressedText: resumeContent.compressedText,
+        wordCount: resumeContent.wordCount,
+      })
+      .from(resumeContent)
+      .where(eq(resumeContent.profileResumeId, id));
+      
+    if (!content) return null;
+    
+    // If we have compressed text, decompress it, otherwise use extracted text
+    let finalText = content.extractedText;
+    if (content.compressedText) {
+      try {
+        const { decompressText } = await import('./file-utils');
+        finalText = await decompressText(content.compressedText);
+      } catch (error) {
+        console.warn(`Failed to decompress text for resume ${id}, using extracted text:`, error);
+      }
+    }
+    
+    return {
+      extractedText: finalText,
+      compressedText: content.compressedText,
+      wordCount: content.wordCount
+    };
+  }
+  
+  // Phase 1: CRITICAL - Search with SNIPPETS only (massive memory savings)
+  async searchProfileResumesWithSnippets(searchTerm: string, options?: {
+    page?: number;
+    limit?: number;
+    maxSnippetLength?: number;
+  }): Promise<{
+    results: Array<ProfileResume & {
+      rank: number;
+      snippets: string;
+      highlightedSnippets: string;
+    }>;
+    totalCount: number;
+    hasMore: boolean;
+  }> {
+    const page = options?.page || 1;
+    const limit = options?.limit || 20;
+    const offset = (page - 1) * limit;
+    const maxWords = options?.maxSnippetLength || 50;
+    
+    console.log("Snippet-based search starting for:", searchTerm);
+    
+    // Parse the search query
+    const { parseSearchQuery, sanitizeTsquery } = await import('./search-parser');
+    const parsed = parseSearchQuery(searchTerm);
+    const sanitizedQuery = sanitizeTsquery(parsed.tsquery);
+    const searchQuery = parsed.hasComplexLogic ? sanitizedQuery : searchTerm;
+    
+    // Use ts_headline for snippets - NO FULL TEXT!
+    const tsHeadlineOptions = `'MaxWords=${maxWords}, MinWords=15, MaxFragments=3, StartSel=<mark>, StopSel=</mark>'`;
+    
+    let results;
+    if (parsed.hasComplexLogic) {
+      results = await db
+        .select({
+          // Basic resume info (NO fileData)
+          id: profileResumes.id,
+          filename: profileResumes.filename,
+          fileType: profileResumes.fileType,
+          fileSize: profileResumes.fileSize,
+          candidateName: profileResumes.candidateName,
+          candidateEmail: profileResumes.candidateEmail,
+          processingStatus: profileResumes.processingStatus,
+          uploadedAt: profileResumes.uploadedAt,
+          uploadedBy: profileResumes.uploadedBy,
+          // Search ranking and SNIPPETS ONLY
+          rank: sql<number>`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), to_tsquery('english', ${searchQuery}))`,
+          snippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, to_tsquery('english', ${searchQuery}), ${tsHeadlineOptions})`,
+          highlightedSnippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, to_tsquery('english', ${searchQuery}), ${tsHeadlineOptions})`,
+        })
+        .from(profileResumes)
+        .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
+        .where(
+          sql`to_tsvector('english', ${resumeContent.extractedText}) @@ to_tsquery('english', ${searchQuery})`
+        )
+        .orderBy(sql`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), to_tsquery('english', ${searchQuery})) DESC`)
+        .limit(limit)
+        .offset(offset);
+    } else {
+      results = await db
+        .select({
+          id: profileResumes.id,
+          filename: profileResumes.filename,
+          fileType: profileResumes.fileType,
+          fileSize: profileResumes.fileSize,
+          candidateName: profileResumes.candidateName,
+          candidateEmail: profileResumes.candidateEmail,
+          processingStatus: profileResumes.processingStatus,
+          uploadedAt: profileResumes.uploadedAt,
+          uploadedBy: profileResumes.uploadedBy,
+          rank: sql<number>`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), plainto_tsquery('english', ${searchTerm}))`,
+          snippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, plainto_tsquery('english', ${searchTerm}), ${tsHeadlineOptions})`,
+          highlightedSnippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, plainto_tsquery('english', ${searchTerm}), ${tsHeadlineOptions})`,
+        })
+        .from(profileResumes)
+        .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
+        .where(
+          sql`to_tsvector('english', ${resumeContent.extractedText}) @@ plainto_tsquery('english', ${searchTerm})`
+        )
+        .orderBy(sql`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), plainto_tsquery('english', ${searchTerm})) DESC`)
+        .limit(limit)
+        .offset(offset);
+    }
+
+    // Get total count for pagination
+    const countQuery = parsed.hasComplexLogic
+      ? sql`to_tsvector('english', ${resumeContent.extractedText}) @@ to_tsquery('english', ${searchQuery})`
+      : sql`to_tsvector('english', ${resumeContent.extractedText}) @@ plainto_tsquery('english', ${searchTerm})`;
+      
+    const [{ totalCount }] = await db
+      .select({ totalCount: count() })
+      .from(profileResumes)
+      .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
+      .where(countQuery);
+
+    console.log(`Snippet search found ${results.length} results (${totalCount} total)`);
+    
+    return {
+      results: results as Array<ProfileResume & { rank: number; snippets: string; highlightedSnippets: string; }>,
+      totalCount: Number(totalCount),
+      hasMore: (page * limit) < Number(totalCount)
+    };
   }
 
   async createProfileResume(resume: InsertProfileResume, extractedText: string): Promise<ProfileResume> {
