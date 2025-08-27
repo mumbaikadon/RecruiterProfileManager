@@ -3648,22 +3648,21 @@ Generated on: ${new Date().toLocaleString()}
               throw new Error("No text content found in the document");
             }
 
-            // Convert file to base64
-            const fileData = file.buffer.toString('base64');
+            // Prepare resume data for filesystem storage (no fileData needed)
             const fileType = file.mimetype === 'application/pdf' ? 'pdf' : 'docx';
 
             const resumeData = {
               filename: file.originalname,
               fileType,
               fileSize: file.size,
-              fileData,
               candidateName: candidateName || null,
               candidateEmail: candidateEmail || null,
               uploadedBy: (req as any).user.id,
             };
 
             const validatedData = insertProfileResumeSchema.parse(resumeData);
-            const resume = await storage.createProfileResume(validatedData, extractedText);
+            // Pass file buffer for filesystem storage
+            const resume = await storage.createProfileResume(validatedData, extractedText, file.buffer);
             
             profileLogger.uploadSuccess(file.originalname, (req as any).user?.id, extractedText.length);
             
@@ -3758,22 +3757,21 @@ Generated on: ${new Date().toLocaleString()}
         return res.status(400).json({ message: "No text content found in the document" });
       }
 
-      // Convert file to base64
-      const fileData = file.buffer.toString('base64');
+      // Prepare resume data for filesystem storage (no fileData needed)
       const fileType = file.mimetype === 'application/pdf' ? 'pdf' : 'docx';
 
       const resumeData = {
         filename: file.originalname,
         fileType,
         fileSize: file.size,
-        fileData,
         candidateName: candidateName || null,
         candidateEmail: candidateEmail || null,
         uploadedBy: (req as any).user.id,
       };
 
       const validatedData = insertProfileResumeSchema.parse(resumeData);
-      const resume = await storage.createProfileResume(validatedData, extractedText);
+      // Pass file buffer for filesystem storage
+      const resume = await storage.createProfileResume(validatedData, extractedText, file.buffer);
       
       // Create activity for resume upload
       await storage.createActivity({
@@ -3926,8 +3924,28 @@ Generated on: ${new Date().toLocaleString()}
         return res.status(404).json({ message: "Resume not found" });
       }
 
-      // Decode base64 file data
-      const fileBuffer = Buffer.from(resume.fileData, 'base64');
+      let fileBuffer: Buffer;
+      
+      // Try filesystem first (new approach), fallback to database (legacy)
+      if (resume.filePath) {
+        try {
+          const { readFile } = await import('./file-utils');
+          fileBuffer = await readFile(resume.filePath);
+        } catch (fileError) {
+          // If file doesn't exist, try database fallback
+          if (resume.fileData) {
+            fileBuffer = Buffer.from(resume.fileData, 'base64');
+          } else {
+            return res.status(404).json({ message: "Resume file not found" });
+          }
+        }
+      } else if (resume.fileData) {
+        // Legacy: read from database
+        fileBuffer = Buffer.from(resume.fileData, 'base64');
+      } else {
+        return res.status(404).json({ message: "Resume file not available" });
+      }
+
       const mimeType = resume.fileType === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
       res.setHeader('Content-Type', mimeType);

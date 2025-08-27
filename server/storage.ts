@@ -110,7 +110,7 @@ export interface IStorage {
   // Profile Resume operations (Resume Database)
   getProfileResumes(filters?: { searchTerm?: string }): Promise<Array<ProfileResume & { extractedText?: string }>>;
   getProfileResume(id: number): Promise<ProfileResume | undefined>;
-  createProfileResume(resume: InsertProfileResume, extractedText: string): Promise<ProfileResume>;
+  createProfileResume(resume: InsertProfileResume, extractedText: string, fileBuffer?: Buffer): Promise<ProfileResume>;
   deleteProfileResume(id: number): Promise<void>;
   searchProfileResumesByContent(searchTerm: string): Promise<Array<ProfileResume & { extractedText: string; rank: number }>>;
   searchProfileResumesByPhone(phonePattern: string): Promise<Array<ProfileResume & { extractedText?: string; highlightedText?: string; rank?: number }>>;
@@ -1462,13 +1462,42 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createProfileResume(resume: InsertProfileResume, extractedText: string): Promise<ProfileResume> {
+  async createProfileResume(resume: InsertProfileResume, extractedText: string, fileBuffer?: Buffer): Promise<ProfileResume> {
     return await db.transaction(async (tx) => {
+      let finalResume = { ...resume };
+
+      // Save file to filesystem if fileBuffer provided
+      if (fileBuffer) {
+        try {
+          const { saveFile, hashContent, compressText } = await import('./file-utils');
+          const contentHash = hashContent(fileBuffer);
+          const filePath = await saveFile(fileBuffer, resume.filename, contentHash);
+          finalResume.filePath = filePath;
+        } catch (error) {
+          console.warn('Failed to save file to filesystem, falling back to database:', error);
+          // Fallback to database storage for backward compatibility
+          if (fileBuffer) {
+            finalResume.fileData = fileBuffer.toString('base64');
+          }
+        }
+      }
+
       // Create the profile resume
       const [createdResume] = await tx
         .insert(profileResumes)
-        .values(resume)
+        .values(finalResume)
         .returning();
+
+      // Compress extracted text for better storage efficiency
+      let finalExtractedText = extractedText;
+      let compressedText: string | undefined;
+      
+      try {
+        const { compressText } = await import('./file-utils');
+        compressedText = await compressText(extractedText);
+      } catch (error) {
+        console.warn('Text compression failed, storing uncompressed:', error);
+      }
 
       // Create content hash for duplicate detection
       const crypto = await import('crypto');
@@ -1479,7 +1508,8 @@ export class DatabaseStorage implements IStorage {
         .insert(resumeContent)
         .values({
           profileResumeId: createdResume.id,
-          extractedText,
+          extractedText: finalExtractedText,
+          compressedText,
           contentHash,
         });
 
@@ -1489,10 +1519,23 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProfileResume(id: number): Promise<void> {
     await db.transaction(async (tx) => {
+      // Get resume info before deleting to clean up filesystem file
+      const resume = await tx.select().from(profileResumes).where(eq(profileResumes.id, id)).limit(1);
+      
       // Delete content first (cascade should handle this, but being explicit)
       await tx.delete(resumeContent).where(eq(resumeContent.profileResumeId, id));
       // Delete the resume
       await tx.delete(profileResumes).where(eq(profileResumes.id, id));
+      
+      // Clean up filesystem file if it exists
+      if (resume[0]?.filePath) {
+        try {
+          const { deleteFile } = await import('./file-utils');
+          await deleteFile(resume[0].filePath);
+        } catch (error) {
+          console.warn(`Failed to delete file ${resume[0].filePath}:`, error);
+        }
+      }
     });
   }
 
