@@ -1354,7 +1354,7 @@ export class DatabaseStorage implements IStorage {
     const searchQuery = parsed.hasComplexLogic ? sanitizedQuery : searchTerm;
     
     // Use ts_headline for snippets - NO FULL TEXT!
-    const tsHeadlineOptions = `'MaxWords=${maxWords}, MinWords=15, MaxFragments=3, StartSel=<mark>, StopSel=</mark>'`;
+    const tsHeadlineOptions = `MaxWords=${maxWords}, MinWords=15, MaxFragments=3, StartSel=<mark>, StopSel=</mark>`;
     
     let results;
     if (parsed.hasComplexLogic) {
