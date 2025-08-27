@@ -779,6 +779,7 @@ export default function ProfileRecord() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleViewResume(resume)}
+                          title="View resume details"
                         >
                           <Eye className="h-3 w-3" />
                         </Button>
@@ -786,6 +787,7 @@ export default function ProfileRecord() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleDownload(resume)}
+                          title="Download resume file"
                         >
                           <Download className="h-3 w-3" />
                         </Button>
@@ -794,6 +796,7 @@ export default function ProfileRecord() {
                           variant="outline"
                           onClick={() => deleteMutation.mutate(resume.id)}
                           disabled={deleteMutation.isPending}
+                          title="Delete resume"
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
