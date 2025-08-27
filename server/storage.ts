@@ -1345,7 +1345,7 @@ export class DatabaseStorage implements IStorage {
     const offset = (page - 1) * limit;
     const maxWords = options?.maxSnippetLength || 50;
     
-    console.log("🔍 [SNIPPET SEARCH] Starting search for:", searchTerm, "| Page:", page, "| Limit:", limit, "| MaxWords:", maxWords);
+    console.log("Snippet-based search starting for:", searchTerm);
     
     // Parse the search query
     const { parseSearchQuery, sanitizeTsquery } = await import('./search-parser');
@@ -1372,8 +1372,8 @@ export class DatabaseStorage implements IStorage {
           uploadedBy: profileResumes.uploadedBy,
           // Search ranking and SNIPPETS ONLY
           rank: sql<number>`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), to_tsquery('english', ${searchQuery}))`,
-          snippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, to_tsquery('english', ${searchQuery}), 'MaxWords=75, MinWords=15, MaxFragments=3, StartSel=<mark>, StopSel=</mark>')`,
-          highlightedSnippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, to_tsquery('english', ${searchQuery}), 'MaxWords=75, MinWords=15, MaxFragments=3, StartSel=<mark>, StopSel=</mark>')`,
+          snippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, to_tsquery('english', ${searchQuery}), ${tsHeadlineOptions})`,
+          highlightedSnippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, to_tsquery('english', ${searchQuery}), ${tsHeadlineOptions})`,
         })
         .from(profileResumes)
         .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
@@ -1396,8 +1396,8 @@ export class DatabaseStorage implements IStorage {
           uploadedAt: profileResumes.uploadedAt,
           uploadedBy: profileResumes.uploadedBy,
           rank: sql<number>`ts_rank(to_tsvector('english', ${resumeContent.extractedText}), plainto_tsquery('english', ${searchTerm}))`,
-          snippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, plainto_tsquery('english', ${searchTerm}), 'MaxWords=75, MinWords=15, MaxFragments=3, StartSel=<mark>, StopSel=</mark>')`,
-          highlightedSnippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, plainto_tsquery('english', ${searchTerm}), 'MaxWords=75, MinWords=15, MaxFragments=3, StartSel=<mark>, StopSel=</mark>')`,
+          snippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, plainto_tsquery('english', ${searchTerm}), ${tsHeadlineOptions})`,
+          highlightedSnippets: sql<string>`ts_headline('english', ${resumeContent.extractedText}, plainto_tsquery('english', ${searchTerm}), ${tsHeadlineOptions})`,
         })
         .from(profileResumes)
         .innerJoin(resumeContent, eq(resumeContent.profileResumeId, profileResumes.id))
