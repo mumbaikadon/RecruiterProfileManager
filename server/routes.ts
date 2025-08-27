@@ -17,7 +17,7 @@ import {
   profileResumes,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
 import { parseJobRequirements } from "./job-parser";
@@ -3980,35 +3980,7 @@ Generated on: ${new Date().toLocaleString()}
     }
   });
 
-  // Phase 3: Migration test endpoint
-  app.post("/api/profile-resumes/migrate", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { resumeId, action } = req.body;
-
-      if (action === 'test-single' && resumeId) {
-        const { testMigration } = await import('./migration-utils');
-        const result = await testMigration(parseInt(resumeId));
-        return res.json(result);
-      }
-
-      if (action === 'migrate-single' && resumeId) {
-        const { migrateSingleResume } = await import('./migration-utils');
-        const result = await migrateSingleResume(parseInt(resumeId));
-        return res.json(result);
-      }
-
-      if (action === 'migrate-all') {
-        const { migrateAllLegacyResumes } = await import('./migration-utils');
-        const result = await migrateAllLegacyResumes();
-        return res.json(result);
-      }
-
-      res.status(400).json({ message: 'Invalid action' });
-    } catch (error) {
-      console.error('Migration error:', error);
-      res.status(500).json({ message: (error as Error).message });
-    }
-  });
+  // Migration endpoint removed - Phase 3 complete
 
   const httpServer = createServer(app);
   return httpServer;
