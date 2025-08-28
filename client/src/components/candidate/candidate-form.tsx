@@ -1332,7 +1332,18 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                   <FormItem>
                     <FormLabel>Birth Month (1-12) <span className="text-gray-500 text-sm">(Optional)</span></FormLabel>
                     <FormControl>
-                      <Input {...field} type="number" min="1" max="12" placeholder="MM" />
+                      <Input 
+                        {...field} 
+                        type="number" 
+                        min="1" 
+                        max="12" 
+                        placeholder="MM" 
+                        onChange={(e) => {
+                          const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                          field.onChange(value);
+                        }}
+                        value={field.value || ''}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1348,7 +1359,18 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
                   <FormItem>
                     <FormLabel>Birth Day (1-31) <span className="text-gray-500 text-sm">(Optional)</span></FormLabel>
                     <FormControl>
-                      <Input {...field} type="number" min="1" max="31" placeholder="DD" />
+                      <Input 
+                        {...field} 
+                        type="number" 
+                        min="1" 
+                        max="31" 
+                        placeholder="DD" 
+                        onChange={(e) => {
+                          const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                          field.onChange(value);
+                        }}
+                        value={field.value || ''}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
