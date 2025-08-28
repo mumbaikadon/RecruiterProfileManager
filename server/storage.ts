@@ -1473,6 +1473,10 @@ export class DatabaseStorage implements IStorage {
           const contentHash = hashContent(fileBuffer);
           const filePath = await saveFile(fileBuffer, resume.filename, contentHash);
           finalResume.filePath = filePath;
+          
+          // Always set fileData even when using filesystem storage
+          // This is needed because the database has a not-null constraint on this field
+          finalResume.fileData = fileBuffer.toString('base64');
         } catch (error) {
           console.warn('Failed to save file to filesystem, falling back to database:', error);
           // Fallback to database storage for backward compatibility
@@ -1480,8 +1484,11 @@ export class DatabaseStorage implements IStorage {
             finalResume.fileData = fileBuffer.toString('base64');
           }
         }
+      } else {
+        // If no file buffer is provided, set an empty string to satisfy not-null constraint
+        finalResume.fileData = '';
       }
-
+      
       // Create the profile resume
       const [createdResume] = await tx
         .insert(profileResumes)
@@ -1509,8 +1516,8 @@ export class DatabaseStorage implements IStorage {
         .values({
           profileResumeId: createdResume.id,
           extractedText: finalExtractedText,
-          compressedText,
-          contentHash,
+          compressedText: compressedText,
+          contentHash: contentHash,
         });
 
       return createdResume;
