@@ -1,14 +1,14 @@
-import { parseDocument } from '../server/document-parser';
+import { extractTextFromDocument } from '../server/document-parser';
 import fs from 'fs/promises';
 import path from 'path';
 
 describe('Document Parser Service', () => {
-  describe('parseDocument', () => {
+  describe('extractTextFromDocument', () => {
     it('should throw error for unsupported file types', async () => {
       const buffer = Buffer.from('test content');
       const filename = 'test.txt';
 
-      await expect(parseDocument(buffer, filename)).rejects.toThrow('Unsupported file type');
+      await expect(extractTextFromDocument(buffer, filename)).rejects.toThrow('Unsupported file type');
     });
 
     it('should handle PDF parsing', async () => {
@@ -16,7 +16,7 @@ describe('Document Parser Service', () => {
       const pdfBuffer = Buffer.from('%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n>>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000074 00000 n \n0000000120 00000 n \ntrailer\n<<\n/Size 4\n/Root 1 0 R\n>>\nstartxref\n174\n%%EOF');
       
       try {
-        const result = await parseDocument(pdfBuffer, 'test.pdf');
+        const result = await extractTextFromDocument(pdfBuffer, 'test.pdf');
         expect(typeof result).toBe('string');
       } catch (error) {
         // PDF parsing might fail with minimal buffer, but should not throw unsupported file type error
@@ -29,7 +29,7 @@ describe('Document Parser Service', () => {
       const docxBuffer = Buffer.from('PK'); // DOCX files start with PK (ZIP signature)
       
       try {
-        const result = await parseDocument(docxBuffer, 'test.docx');
+        const result = await extractTextFromDocument(docxBuffer, 'test.docx');
         expect(typeof result).toBe('string');
       } catch (error) {
         // DOCX parsing might fail with minimal buffer, but should not throw unsupported file type error
@@ -40,15 +40,15 @@ describe('Document Parser Service', () => {
     it('should throw error for empty buffer', async () => {
       const emptyBuffer = Buffer.alloc(0);
       
-      await expect(parseDocument(emptyBuffer, 'test.pdf')).rejects.toThrow();
+      await expect(extractTextFromDocument(emptyBuffer, 'test.pdf')).rejects.toThrow();
     });
 
     it('should throw error for null buffer', async () => {
-      await expect(parseDocument(null as any, 'test.pdf')).rejects.toThrow();
+      await expect(extractTextFromDocument(null as any, 'test.pdf')).rejects.toThrow();
     });
 
     it('should throw error for undefined buffer', async () => {
-      await expect(parseDocument(undefined as any, 'test.pdf')).rejects.toThrow();
+      await expect(extractTextFromDocument(undefined as any, 'test.pdf')).rejects.toThrow();
     });
 
     it('should handle large files gracefully', async () => {
@@ -56,7 +56,7 @@ describe('Document Parser Service', () => {
       const largeBuffer = Buffer.alloc(10 * 1024 * 1024, 'A');
       
       try {
-        await parseDocument(largeBuffer, 'large.pdf');
+        await extractTextFromDocument(largeBuffer, 'large.pdf');
       } catch (error) {
         // Should handle large files without crashing
         expect(error).toBeDefined();
@@ -75,7 +75,7 @@ describe('Document Parser Service', () => {
         const buffer = Buffer.from('test content');
         
         try {
-          await parseDocument(buffer, testFile.filename);
+          await extractTextFromDocument(buffer, testFile.filename);
         } catch (error) {
           // Should recognize the file type even if parsing fails
           expect((error as Error).message).not.toContain('Unsupported file type');
@@ -87,7 +87,7 @@ describe('Document Parser Service', () => {
       const corruptedPdf = Buffer.from('This is not a valid PDF file');
       
       try {
-        await parseDocument(corruptedPdf, 'corrupted.pdf');
+        await extractTextFromDocument(corruptedPdf, 'corrupted.pdf');
       } catch (error) {
         expect(error).toBeDefined();
         expect((error as Error).message).not.toContain('Unsupported file type');
@@ -98,7 +98,7 @@ describe('Document Parser Service', () => {
       const corruptedDocx = Buffer.from('This is not a valid DOCX file');
       
       try {
-        await parseDocument(corruptedDocx, 'corrupted.docx');
+        await extractTextFromDocument(corruptedDocx, 'corrupted.docx');
       } catch (error) {
         expect(error).toBeDefined();
         expect((error as Error).message).not.toContain('Unsupported file type');
@@ -111,7 +111,7 @@ describe('Document Parser Service', () => {
       
       for (const extension of ['pdf', 'docx']) {
         try {
-          const result = await parseDocument(testBuffer, `test.${extension}`);
+          const result = await extractTextFromDocument(testBuffer, `test.${extension}`);
           expect(typeof result).toBe('string');
         } catch (error) {
           // If parsing fails, that's expected with simple buffer
@@ -133,7 +133,7 @@ describe('Document Parser Service', () => {
 
       for (const filename of specialFilenames) {
         try {
-          await parseDocument(buffer, filename);
+          await extractTextFromDocument(buffer, filename);
         } catch (error) {
           // Should handle special characters in filenames
           expect((error as Error).message).not.toContain('Unsupported file type');
@@ -144,7 +144,7 @@ describe('Document Parser Service', () => {
     it('should handle files without extensions', async () => {
       const buffer = Buffer.from('test content');
       
-      await expect(parseDocument(buffer, 'fileWithoutExtension')).rejects.toThrow('Unsupported file type');
+      await expect(extractTextFromDocument(buffer, 'fileWithoutExtension')).rejects.toThrow('Unsupported file type');
     });
 
     it('should be case-insensitive for file extensions', async () => {
@@ -160,7 +160,7 @@ describe('Document Parser Service', () => {
 
       for (const filename of variations) {
         try {
-          await parseDocument(buffer, filename);
+          await extractTextFromDocument(buffer, filename);
         } catch (error) {
           // Should recognize the file type regardless of case
           expect((error as Error).message).not.toContain('Unsupported file type');
@@ -174,7 +174,7 @@ describe('Document Parser Service', () => {
       const buffer = Buffer.from('test');
       
       try {
-        await parseDocument(buffer, 'test.xyz');
+        await extractTextFromDocument(buffer, 'test.xyz');
       } catch (error) {
         expect((error as Error).message).toContain('Unsupported file type');
         expect((error as Error).message).toContain('.xyz');
@@ -185,7 +185,7 @@ describe('Document Parser Service', () => {
       // Test with extremely large buffer
       try {
         const hugeBuffer = Buffer.alloc(100 * 1024 * 1024); // 100MB
-        await parseDocument(hugeBuffer, 'huge.pdf');
+        await extractTextFromDocument(hugeBuffer, 'huge.pdf');
       } catch (error) {
         // Should either succeed or fail gracefully
         expect(error).toBeDefined();
@@ -198,7 +198,7 @@ describe('Document Parser Service', () => {
 
       // Create multiple concurrent parsing requests
       for (let i = 0; i < 5; i++) {
-        promises.push(parseDocument(buffer, `test${i}.pdf`));
+        promises.push(extractTextFromDocument(buffer, `test${i}.pdf`).catch(err => err));
       }
 
       try {
@@ -216,7 +216,7 @@ describe('Document Parser Service', () => {
       const startTime = Date.now();
 
       try {
-        await parseDocument(buffer, 'timing-test.pdf');
+        await extractTextFromDocument(buffer, 'timing-test.pdf');
       } catch (error) {
         // Even if parsing fails, it should complete quickly
       }
@@ -235,7 +235,7 @@ describe('Document Parser Service', () => {
       const startTime = Date.now();
 
       const promises = fileTypes.map(filename => 
-        parseDocument(buffer, filename).catch(() => 'error')
+        extractTextFromDocument(buffer, filename).catch(() => 'error')
       );
 
       await Promise.all(promises);
