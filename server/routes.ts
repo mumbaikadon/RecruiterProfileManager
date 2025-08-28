@@ -28,12 +28,12 @@ import multer from "multer";
 const multerStorage = multer.memoryStorage();
 const fileUpload = multer({ storage: multerStorage });
 
-// Configure multer for bulk uploads with higher limits
+// Configure multer for optimized bulk uploads with reduced limits
 const bulkUpload = multer({ 
   storage: multerStorage,
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB per file
-    files: 200 // Maximum 200 files
+    files: 10 // Reduced from 200 to 10 files for better memory management
   }
 });
 
@@ -3588,8 +3588,8 @@ Generated on: ${new Date().toLocaleString()}
     }
   });
 
-  // Bulk upload endpoint for parallel processing
-  app.post("/api/profile-resumes/bulk-upload", requireAuth, bulkUpload.array('resumes', 200), async (req: Request, res: Response) => {
+  // Enhanced bulk upload endpoint with memory optimization
+  app.post("/api/profile-resumes/bulk-upload", requireAuth, bulkUpload.array('resumes', 10), async (req: Request, res: Response) => {
     const startTime = Date.now();
     const { profileLogger } = await import('./logger');
     
@@ -3604,26 +3604,32 @@ Generated on: ${new Date().toLocaleString()}
       const files = req.files as Express.Multer.File[];
       const { candidateName, candidateEmail } = req.body;
       
-      console.log(`Starting bulk upload of ${files.length} files`);
+      console.log(`Starting optimized bulk upload of ${files.length} files`);
       
       const results = {
         successful: [] as any[],
         failed: [] as any[],
-        total: files.length
+        total: files.length,
+        memoryUsage: {
+          start: process.memoryUsage().heapUsed,
+          peak: process.memoryUsage().heapUsed
+        }
       };
 
-      // Process files in parallel chunks of 10
-      const CHUNK_SIZE = 10;
+      // Reduced backend chunk size for better memory management
+      const BACKEND_CHUNK_SIZE = 3; // Smaller chunks for better memory usage
       const chunks = [];
       
-      for (let i = 0; i < files.length; i += CHUNK_SIZE) {
-        chunks.push(files.slice(i, i + CHUNK_SIZE));
+      for (let i = 0; i < files.length; i += BACKEND_CHUNK_SIZE) {
+        chunks.push(files.slice(i, i + BACKEND_CHUNK_SIZE));
       }
 
-      // Process each chunk in parallel
+      // Process each chunk with memory monitoring
       for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
         const chunk = chunks[chunkIndex];
-        console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} files`);
+        const memBefore = process.memoryUsage().heapUsed;
+        
+        console.log(`Processing backend chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} files (Memory: ${(memBefore / 1024 / 1024).toFixed(1)}MB)`);
         
         // Process files in current chunk concurrently
         const chunkPromises = chunk.map(async (file) => {
@@ -3687,6 +3693,13 @@ Generated on: ${new Date().toLocaleString()}
         // Wait for current chunk to complete
         const chunkResults = await Promise.all(chunkPromises);
         
+        // Memory monitoring after chunk processing
+        const memAfter = process.memoryUsage().heapUsed;
+        results.memoryUsage.peak = Math.max(results.memoryUsage.peak, memAfter);
+        
+        const chunkMemUsage = (memAfter - memBefore) / 1024 / 1024;
+        console.log(`Chunk ${chunkIndex + 1} completed. Memory used: ${chunkMemUsage.toFixed(1)}MB, Peak: ${(results.memoryUsage.peak / 1024 / 1024).toFixed(1)}MB`);
+        
         // Categorize results
         chunkResults.forEach(result => {
           if (result.success) {
@@ -3695,7 +3708,21 @@ Generated on: ${new Date().toLocaleString()}
             results.failed.push(result);
           }
         });
+        
+        // Brief pause between backend chunks to allow garbage collection
+        if (chunkIndex < chunks.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Force garbage collection if available (helps with memory management)
+          if (global.gc) {
+            global.gc();
+          }
+        }
       }
+
+      // Log final memory usage
+      const totalMemUsed = (results.memoryUsage.peak - results.memoryUsage.start) / 1024 / 1024;
+      console.log(`Total memory usage for ${files.length} files: ${totalMemUsed.toFixed(1)}MB`);
 
       // Create activity for bulk upload
       await storage.createActivity({

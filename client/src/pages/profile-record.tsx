@@ -109,9 +109,31 @@ export default function ProfileRecord() {
   const resumes = resumesResponse?.resumes || [];
   const pagination = resumesResponse?.pagination;
 
-  // Upload mutation for multiple files with real-time updates
+  // Enhanced upload state for progress tracking
+  const [uploadProgress, setUploadProgress] = useState({
+    currentChunk: 0,
+    totalChunks: 0,
+    filesCompleted: 0,
+    totalFiles: 0,
+    isProcessing: false,
+    currentChunkFiles: 0,
+    failedChunks: [] as any[]
+  });
+
+  // Upload mutation with sequential chunk processing for better performance
   const uploadMutation = useMutation({
     mutationFn: async (files: { file: File; candidateName: string; candidateEmail: string }[]) => {
+      const startTime = Date.now();
+      setUploadProgress({
+        currentChunk: 0,
+        totalChunks: 0,
+        filesCompleted: 0,
+        totalFiles: files.length,
+        isProcessing: true,
+        currentChunkFiles: 0,
+        failedChunks: []
+      });
+
       // Step 1: Check for duplicates
       const filenames = files.map(f => f.file.name);
       const duplicateResponse = await fetch("/api/profile-resumes/check-duplicates", {
@@ -135,6 +157,7 @@ export default function ProfileRecord() {
       }
 
       if (newFiles.length === 0) {
+        setUploadProgress(prev => ({ ...prev, isProcessing: false }));
         return { 
           successful: [], 
           failed: [], 
@@ -144,32 +167,160 @@ export default function ProfileRecord() {
         };
       }
 
-      // Step 3: Bulk upload remaining files
-      const formData = new FormData();
-      newFiles.forEach(({ file }) => {
-        formData.append('resumes', file);
-      });
+      // Step 3: Sequential chunk processing for better memory usage
+      const FRONTEND_CHUNK_SIZE = 5; // Reduced from unlimited to 5 files per request
+      const chunks = [];
       
-      // Use the candidate name/email from the first file (they should all be the same)
-      if (newFiles[0]?.candidateName) formData.append('candidateName', newFiles[0].candidateName);
-      if (newFiles[0]?.candidateEmail) formData.append('candidateEmail', newFiles[0].candidateEmail);
-      
-      const response = await fetch("/api/profile-resumes/bulk-upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message);
+      for (let i = 0; i < newFiles.length; i += FRONTEND_CHUNK_SIZE) {
+        chunks.push(newFiles.slice(i, i + FRONTEND_CHUNK_SIZE));
       }
-      
-      const result = await response.json();
-      return {
-        ...result,
-        duplicatesRemoved: duplicates.length
+
+      setUploadProgress(prev => ({ 
+        ...prev, 
+        totalChunks: chunks.length,
+        totalFiles: newFiles.length 
+      }));
+
+      const aggregatedResults = {
+        successful: [] as any[],
+        failed: [] as any[],
+        total: newFiles.length,
+        duplicatesRemoved: duplicates.length,
+        chunksProcessed: 0,
+        failedChunks: [] as any[]
       };
+
+      // Process chunks sequentially to reduce memory overhead
+      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+        const chunk = chunks[chunkIndex];
+        
+        setUploadProgress(prev => ({
+          ...prev,
+          currentChunk: chunkIndex + 1,
+          currentChunkFiles: chunk.length
+        }));
+
+        try {
+          const formData = new FormData();
+          chunk.forEach(({ file }) => {
+            formData.append('resumes', file);
+          });
+          
+          // Use candidate info from first file
+          if (chunk[0]?.candidateName) formData.append('candidateName', chunk[0].candidateName);
+          if (chunk[0]?.candidateEmail) formData.append('candidateEmail', chunk[0].candidateEmail);
+          
+          console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} files`);
+          
+          const response = await fetch("/api/profile-resumes/bulk-upload", {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message);
+          }
+          
+          const chunkResult = await response.json();
+          
+          // Aggregate results
+          aggregatedResults.successful.push(...chunkResult.successful);
+          aggregatedResults.failed.push(...chunkResult.failed);
+          aggregatedResults.chunksProcessed++;
+          
+          // Update progress
+          setUploadProgress(prev => ({
+            ...prev,
+            filesCompleted: aggregatedResults.successful.length
+          }));
+          
+          // Brief delay between chunks to prevent server overload
+          if (chunkIndex < chunks.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+          }
+          
+        } catch (error) {
+          console.error(`Chunk ${chunkIndex + 1} failed:`, error);
+          
+          // Add failed chunk for retry capability
+          const failedChunk = {
+            id: chunkIndex,
+            files: chunk,
+            error: (error as Error).message
+          };
+          
+          aggregatedResults.failedChunks.push(failedChunk);
+          
+          // Mark individual files as failed initially (will retry)
+          const chunkFailures = chunk.map(fileData => ({
+            filename: fileData.file.name,
+            error: (error as Error).message
+          }));
+          aggregatedResults.failed.push(...chunkFailures);
+        }
+      }
+
+      // Retry failed chunks once
+      if (aggregatedResults.failedChunks.length > 0) {
+        console.log(`Retrying ${aggregatedResults.failedChunks.length} failed chunks...`);
+        
+        setUploadProgress(prev => ({
+          ...prev,
+          currentChunk: 0,
+          totalChunks: aggregatedResults.failedChunks.length
+        }));
+
+        for (let retryIndex = 0; retryIndex < aggregatedResults.failedChunks.length; retryIndex++) {
+          const failedChunk = aggregatedResults.failedChunks[retryIndex];
+          
+          setUploadProgress(prev => ({
+            ...prev,
+            currentChunk: retryIndex + 1
+          }));
+
+          try {
+            const formData = new FormData();
+            failedChunk.files.forEach(({ file }: any) => {
+              formData.append('resumes', file);
+            });
+            
+            if (failedChunk.files[0]?.candidateName) formData.append('candidateName', failedChunk.files[0].candidateName);
+            if (failedChunk.files[0]?.candidateEmail) formData.append('candidateEmail', failedChunk.files[0].candidateEmail);
+            
+            console.log(`Retrying chunk ${retryIndex + 1}/${aggregatedResults.failedChunks.length}`);
+            
+            const response = await fetch("/api/profile-resumes/bulk-upload", {
+              method: "POST",
+              body: formData,
+              credentials: "include",
+            });
+            
+            if (response.ok) {
+              const retryResult = await response.json();
+              
+              // Remove from failed and add to successful
+              const failedFileNames = failedChunk.files.map((f: any) => f.file.name);
+              aggregatedResults.failed = aggregatedResults.failed.filter(f => !failedFileNames.includes(f.filename));
+              aggregatedResults.successful.push(...retryResult.successful);
+              
+              console.log(`Retry successful for chunk ${retryIndex + 1}`);
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+          } catch (retryError) {
+            console.error(`Retry failed for chunk ${retryIndex + 1}:`, retryError);
+          }
+        }
+      }
+
+      const duration = Date.now() - startTime;
+      console.log(`Optimized bulk upload completed in ${duration}ms. Success: ${aggregatedResults.successful.length}, Failed: ${aggregatedResults.failed.length}`);
+      
+      setUploadProgress(prev => ({ ...prev, isProcessing: false }));
+      return aggregatedResults;
     },
     onMutate: async (files) => {
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
@@ -589,19 +740,22 @@ export default function ProfileRecord() {
                   <div className="flex gap-3 pt-2">
                     <Button
                       onClick={handleUpload}
-                      disabled={selectedFiles.length === 0 || uploadMutation.isPending}
+                      disabled={selectedFiles.length === 0 || uploadProgress.isProcessing}
                       className="flex-1"
                       size="lg"
                     >
-                      {uploadMutation.isPending ? (
+                      {uploadProgress.isProcessing ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                          Processing {selectedFiles.length} file(s)...
+                          {uploadProgress.currentChunk === 0 ? 
+                            `Preparing ${selectedFiles.length} file(s)...` : 
+                            `Processing chunk ${uploadProgress.currentChunk}/${uploadProgress.totalChunks}...`
+                          }
                         </>
                       ) : (
                         <>
                           <Upload className="h-4 w-4 mr-2" />
-                          Smart Upload {selectedFiles.length} file(s)
+                          Optimized Upload {selectedFiles.length} file(s)
                         </>
                       )}
                     </Button>
@@ -623,12 +777,40 @@ export default function ProfileRecord() {
                   </Alert>
                 )}
                 
-                {uploadMutation.isPending && (
+                {uploadProgress.isProcessing && (
                   <Alert>
                     <AlertDescription>
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-                        <span>Checking for duplicates and processing files in parallel chunks...</span>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                          <span>
+                            {uploadProgress.currentChunk === 0 ? 
+                              "Checking for duplicates..." : 
+                              `Processing chunk ${uploadProgress.currentChunk} of ${uploadProgress.totalChunks} (${uploadProgress.currentChunkFiles} files)`
+                            }
+                          </span>
+                        </div>
+                        
+                        {uploadProgress.totalChunks > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm text-gray-600">
+                              <span>{uploadProgress.filesCompleted} / {uploadProgress.totalFiles} files completed</span>
+                              <span>{Math.round((uploadProgress.filesCompleted / uploadProgress.totalFiles) * 100)}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                                style={{ width: `${(uploadProgress.filesCompleted / uploadProgress.totalFiles) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        
+                        {uploadProgress.failedChunks.length > 0 && (
+                          <div className="text-sm text-yellow-600">
+                            ⚠️ {uploadProgress.failedChunks.length} chunk(s) failed - will retry automatically
+                          </div>
+                        )}
                       </div>
                     </AlertDescription>
                   </Alert>
