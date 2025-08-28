@@ -334,17 +334,13 @@ export default function ProfileRecord() {
       setCandidateName("");
       setCandidateEmail("");
       
-      const { successful, failed, duplicatesRemoved, message } = result;
+      const { successful, failed } = result;
       
-      if (message) {
-        // All files were duplicates
-        console.log(message);
-      } else {
-        const successMsg = `Successfully uploaded ${successful.length} resume(s)`;
-        const duplicateMsg = duplicatesRemoved > 0 ? ` (${duplicatesRemoved} duplicates removed)` : '';
-        const failMsg = failed.length > 0 ? `, ${failed.length} failed` : '';
-        
-        // Determine alert type based on results
+      const successMsg = `Successfully uploaded ${successful.length} resume(s)`;
+      const failMsg = failed.length > 0 ? `, ${failed.length} failed` : '';
+      
+      // Determine alert type based on results
+      if (successful.length > 0 || failed.length > 0) {
         const isSuccess = successful.length > 0;
         const hasFailures = failed.length > 0;
         
@@ -353,11 +349,11 @@ export default function ProfileRecord() {
         if (isSuccess && !hasFailures) {
           // All successful
           alertType = 'bg-green-500';
-          alertMessage = successMsg + duplicateMsg;
+          alertMessage = successMsg;
         } else if (isSuccess && hasFailures) {
           // Mixed results
           alertType = 'bg-yellow-500';
-          alertMessage = `Partial success: ${successMsg}${duplicateMsg}${failMsg}`;
+          alertMessage = `Partial success: ${successMsg}${failMsg}`;
         } else {
           // All failed
           alertType = 'bg-red-500';

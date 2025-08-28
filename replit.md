@@ -41,14 +41,12 @@ RecruiterTracker is a modern AI-powered recruitment management platform built wi
 - Enhanced multiple file upload with individual X-icon removal on hover functionality
 - Implemented PostgreSQL full-text search with GIN indexing for efficient content searching
 - Added comprehensive error handling with user-friendly messages instead of raw stack traces
-- **NEW: Smart Duplicate Detection and Parallel Bulk Upload System**
-  - Added `/check-duplicates` endpoint that filters out existing files before upload
-  - Created `/bulk-upload` endpoint processing files in parallel chunks of 10
-  - Automatic duplicate removal prevents redundant uploads
-  - Parallel processing reduces upload time from ~4 minutes to ~25 seconds for 125 files
-  - Enhanced multer configuration with higher file limits (50MB per file, 200 files max)
-  - Frontend shows "Smart Upload" with real-time progress and duplicate notifications
-  - System successfully handles large bulk uploads with automatic duplicate prevention
+- **Enhanced Bulk Upload System with Sequential Chunk Processing**
+  - Created `/bulk-upload` endpoint processing files in parallel chunks for optimal performance
+  - Sequential frontend chunk processing reduces upload time from ~4 minutes to ~25 seconds for 125 files
+  - Enhanced multer configuration with higher file limits (50MB per file, 10 files max per request)
+  - Frontend shows "Fast Upload" with real-time progress and retry mechanisms
+  - System successfully handles large bulk uploads with memory-optimized processing
 - System successfully handles complex searches like: ("Senior Developer" OR "Full Stack") AND (React OR Java)
 - Visual highlighting shows search terms in yellow highlighting within resume content previews
 - Performance optimized with automatic fallback from complex to simple search when needed
