@@ -23,6 +23,7 @@ import { analyzeResumeText, matchResumeToJob } from "./openai";
 import { parseJobRequirements } from "./job-parser";
 import fs from "fs";
 import multer from "multer";
+import { sendEmail, createEmailTemplate } from "./email";
 
 // Configure multer for file uploads 
 const multerStorage = multer.memoryStorage();
@@ -374,6 +375,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id,
         validRecruiterIds,
       );
+
+      // Send email notifications to assigned recruiters
+      for (const recruiterId of validRecruiterIds) {
+        try {
+          const recruiter = await storage.getUser(recruiterId);
+          if (recruiter && recruiter.email) {
+            const subject = `New Job Assignment: ${job.title} (${job.jobId})`;
+            
+            const emailContent = createEmailTemplate(
+              "New Job Assignment",
+              `
+                <p>Hello ${recruiter.name},</p>
+                <p>You have been assigned to a new job:</p>
+                <h3>${job.title}</h3>
+                <p><strong>Job ID:</strong> ${job.jobId}</p>
+                <p><strong>Client:</strong> ${job.client || 'Not specified'}</p>
+                <p><strong>Location:</strong> ${job.city ? `${job.city}, ${job.state}` : 'Not specified'}</p>
+                <p><strong>Job Type:</strong> ${job.jobType || 'Not specified'}</p>
+                <p><strong>Rate:</strong> ${job.rate || 'Not specified'}</p>
+                ${job.requiredSkills && job.requiredSkills.length > 0 ? 
+                  `<p><strong>Required Skills:</strong> ${job.requiredSkills.join(', ')}</p>` : ''
+                }
+                <p><strong>Description:</strong></p>
+                <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">
+                  ${job.description.replace(/\n/g, '<br>')}
+                </div>
+                <p>Please log into the RecruiterTracker system to start working on this assignment.</p>
+              `,
+              "View Job Details",
+              `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/jobs/${job.id}`
+            );
+
+            await sendEmail(recruiter.email, subject, emailContent);
+            console.log(`Email notification sent to ${recruiter.name} (${recruiter.email}) for job assignment: ${job.jobId}`);
+          }
+        } catch (emailError) {
+          console.error(`Failed to send email notification to recruiter ${recruiterId}:`, emailError);
+          // Continue processing other assignments even if email fails
+        }
+      }
+
       res.status(201).json(assignments);
     } catch (error) {
       console.error("Error assigning recruiters:", error);
