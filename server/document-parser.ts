@@ -2,45 +2,99 @@
  * Document parser utility for handling different document formats
  */
 
-import type { Buffer } from 'node:buffer';
-import { createRequire } from 'node:module';
+import { Buffer } from 'node:buffer';
 import { profileLogger } from './logger';
 
 /**
- * Extract text from a PDF file using pdf-parse library
+ * Extract text from a PDF file using PDF.js library
  * @param buffer PDF file buffer
  * @returns Extracted text
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
     profileLogger.extractionStart('pdf-file', 'pdf');
-    console.log("Starting PDF text extraction, buffer size:", buffer.length);
+    console.log("Starting PDF text extraction with PDF.js, buffer size:", buffer.length);
     console.log("Buffer type:", typeof buffer);
     console.log("Is Buffer instance:", Buffer.isBuffer(buffer));
-    
-    // Use createRequire to avoid debug mode issue with dynamic imports
-    // pdf-parse enters debug mode when module.parent is undefined (which happens with dynamic imports)
-    console.log("Loading pdf-parse using createRequire to avoid debug mode...");
-    const require = createRequire(import.meta.url);
-    const pdfParse = require('pdf-parse');
-    console.log("pdf-parse loaded successfully");
-    
-    console.log("pdf-parse type:", typeof pdfParse);
-    console.log("Calling pdf-parse with buffer...");
     
     // Ensure we have a clean buffer
     if (!Buffer.isBuffer(buffer)) {
       throw new Error("Input is not a valid buffer");
     }
     
-    const data = await pdfParse(buffer);
-    console.log("pdf-parse completed, data keys:", Object.keys(data));
+    // Check file size limit (50MB)
+    const maxFileSize = 50 * 1024 * 1024;
+    if (buffer.length > maxFileSize) {
+      throw new Error(`PDF file too large (${Math.round(buffer.length / 1024 / 1024)}MB). Maximum size is 50MB.`);
+    }
     
-    let extractedText = data.text?.trim() || "";
-    console.log("Extracted text length:", extractedText.length);
+    console.log("Loading PDF.js library...");
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    console.log("PDF.js loaded successfully");
+    
+    // Configure PDF.js for Node.js environment  
+    pdfjsLib.GlobalWorkerOptions.workerSrc = null as any;
+    
+    console.log("Parsing PDF document...");
+    const uint8Array = new Uint8Array(buffer);
+    
+    // Load the PDF document with options to prevent stack overflow
+    const loadingTask = pdfjsLib.getDocument({
+      data: uint8Array,
+      useSystemFonts: true,
+      disableFontFace: true,
+      verbosity: 0, // Reduce logging
+      cMapUrl: undefined,
+      cMapPacked: false,
+      standardFontDataUrl: undefined
+    });
+    
+    // Set timeout for PDF loading
+    const pdfDoc = await Promise.race([
+      loadingTask.promise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('PDF loading timeout')), 30000)
+      )
+    ]) as any;
+    
+    console.log(`PDF loaded successfully. Pages: ${pdfDoc.numPages}`);
+    
+    // Limit number of pages to process (prevent excessive processing)
+    const maxPages = Math.min(pdfDoc.numPages, 50);
+    let extractedText = '';
+    
+    // Extract text from each page
+    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+      try {
+        console.log(`Processing page ${pageNum}/${maxPages}`);
+        const page = await pdfDoc.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        // Extract text items and join them
+        const pageText = textContent.items
+          .map((item: any) => item.str || '')
+          .join(' ')
+          .trim();
+        
+        if (pageText) {
+          extractedText += pageText + '\n';
+        }
+        
+        // Clean up page resources
+        page.cleanup();
+      } catch (pageError) {
+        console.warn(`Error processing page ${pageNum}:`, pageError);
+        // Continue with other pages
+      }
+    }
+    
+    // Clean up PDF document
+    pdfDoc.destroy();
+    
+    extractedText = extractedText.trim();
+    console.log(`PDF extraction completed: ${extractedText.length} characters extracted`);
     
     if (extractedText && extractedText.length > 20) {
-      console.log(`PDF extraction successful: ${extractedText.length} characters extracted`);
       console.log("First 200 chars:", extractedText.substring(0, 200));
       profileLogger.extractionSuccess('pdf-file', extractedText.length);
       return extractedText;

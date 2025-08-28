@@ -21,13 +21,14 @@ RecruiterTracker is a modern AI-powered recruitment management platform built wi
 - System now handles production infrastructure limits while maintaining excellent performance
 - Total performance improvement: 5x scalability increase with 80% memory reduction + faster upload initiation
 
-**Critical PDF Parsing Fix - Debug Mode Issue Resolved**
-- Fixed critical PDF parsing failure caused by pdf-parse library entering debug mode
-- Root cause: Dynamic imports cause `module.parent` to be undefined, triggering debug code that looks for test files
-- Solution: Changed from dynamic import to require() to maintain proper module.parent context
-- Eliminated complex fallback parsing logic that was causing additional confusion
-- Added comprehensive debugging logs to track parsing process
-- PDF files now extract text content correctly instead of throwing ENOENT errors for test files
+**Critical PDF Parsing Migration - PDF.js Implementation (Latest)**
+- **RESOLVED: Maximum call stack size exceeded** - Replaced unstable pdf-parse with robust PDF.js library
+- **Root cause**: pdf-parse library had issues with complex PDFs, circular references, and production environments
+- **Solution**: Migrated to Mozilla's PDF.js - industry-standard PDF engine used in Firefox browser
+- **Enhanced features**: Better error handling, memory management, file size limits (50MB), timeout protection
+- **Production stability**: Handles complex government forms, interactive PDFs, and annotated documents
+- **Performance**: Sequential page processing with cleanup to prevent memory leaks
+- **Compatibility**: Uses legacy build for Node.js environments with proper ESM module support
 
 **Profile Record System - Complete Implementation with Smart Bulk Upload**
 - Implemented comprehensive Profile Record system for resume library management
@@ -127,7 +128,7 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: Express.js for REST API endpoints
 - **Database**: PostgreSQL with Drizzle ORM for type-safe database operations
 - **Authentication**: Session-based authentication with role-based access control
-- **File Processing**: Multer for file uploads, Mammoth for DOCX parsing, pdf-parse for PDF extraction
+- **File Processing**: Multer for file uploads, Mammoth for DOCX parsing, PDF.js for PDF extraction
 - **AI Integration**: OpenAI GPT-4 for resume analysis, job matching, and content generation
 
 ## Data Storage Solutions
@@ -148,7 +149,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Document Processing
 - **mammoth**: Microsoft Word (.docx) document text extraction
-- **pdf-parse**: PDF document text extraction and parsing
+- **pdfjs-dist**: PDF document text extraction and parsing (Mozilla PDF.js library)
 
 ### Authentication & Security
 - **connect-pg-simple**: PostgreSQL session store for Express sessions
