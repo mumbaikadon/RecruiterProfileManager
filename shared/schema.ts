@@ -210,7 +210,10 @@ export const publicApplications = pgTable("public_applications", {
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertJobSchema = createInsertSchema(jobs).omit({ id: true, createdAt: true });
 export const insertJobAssignmentSchema = createInsertSchema(jobAssignments).omit({ id: true, assignedAt: true });
-export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: true, createdAt: true });
+export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: true, createdAt: true }).extend({
+  dobMonth: z.union([z.number(), z.string().transform(val => val === '' ? undefined : Number(val))]).optional(),
+  dobDay: z.union([z.number(), z.string().transform(val => val === '' ? undefined : Number(val))]).optional()
+});
 export const insertResumeDataSchema = createInsertSchema(resumeData).omit({ id: true, uploadedAt: true });
 export const insertSubmissionSchema = createInsertSchema(submissions).omit({ id: true, submittedAt: true, updatedAt: true });
 export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, createdAt: true });
