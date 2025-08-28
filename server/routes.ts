@@ -3563,30 +3563,6 @@ Generated on: ${new Date().toLocaleString()}
     }
   });
 
-  // Check for duplicate files before upload
-  app.post("/api/profile-resumes/check-duplicates", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { filenames } = req.body;
-      
-      if (!Array.isArray(filenames)) {
-        return res.status(400).json({ message: "Filenames must be an array" });
-      }
-
-      // Query database for existing filenames
-      const existingResumes = await db
-        .select({ filename: profileResumes.filename })
-        .from(profileResumes)
-        .where(inArray(profileResumes.filename, filenames));
-
-      const existingFilenames = existingResumes.map(r => r.filename);
-      const duplicates = filenames.filter(filename => existingFilenames.includes(filename));
-
-      res.json({ duplicates, existingCount: duplicates.length });
-    } catch (error) {
-      console.error("Error checking duplicates:", error);
-      res.status(500).json({ message: (error as Error).message });
-    }
-  });
 
   // Enhanced bulk upload endpoint with memory optimization
   app.post("/api/profile-resumes/bulk-upload", requireAuth, bulkUpload.array('resumes', 10), async (req: Request, res: Response) => {

@@ -134,58 +134,24 @@ export default function ProfileRecord() {
         failedChunks: []
       });
 
-      // Step 1: Check for duplicates
-      const filenames = files.map(f => f.file.name);
-      const duplicateResponse = await fetch("/api/profile-resumes/check-duplicates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filenames }),
-        credentials: "include",
-      });
-      
-      if (!duplicateResponse.ok) {
-        throw new Error("Failed to check for duplicates");
-      }
-      
-      const { duplicates } = await duplicateResponse.json();
-      
-      // Step 2: Filter out duplicates
-      const newFiles = files.filter(fileData => !duplicates.includes(fileData.file.name));
-      
-      if (duplicates.length > 0) {
-        console.log(`Removed ${duplicates.length} duplicate files:`, duplicates);
-      }
-
-      if (newFiles.length === 0) {
-        setUploadProgress(prev => ({ ...prev, isProcessing: false }));
-        return { 
-          successful: [], 
-          failed: [], 
-          total: files.length,
-          duplicatesRemoved: duplicates.length,
-          message: "All files already exist in database"
-        };
-      }
-
-      // Step 3: Sequential chunk processing for better memory usage
-      const FRONTEND_CHUNK_SIZE = 5; // Reduced from unlimited to 5 files per request
+      // Sequential chunk processing for better memory usage
+      const FRONTEND_CHUNK_SIZE = 5; // 5 files per request for optimal performance
       const chunks = [];
       
-      for (let i = 0; i < newFiles.length; i += FRONTEND_CHUNK_SIZE) {
-        chunks.push(newFiles.slice(i, i + FRONTEND_CHUNK_SIZE));
+      for (let i = 0; i < files.length; i += FRONTEND_CHUNK_SIZE) {
+        chunks.push(files.slice(i, i + FRONTEND_CHUNK_SIZE));
       }
 
       setUploadProgress(prev => ({ 
         ...prev, 
         totalChunks: chunks.length,
-        totalFiles: newFiles.length 
+        totalFiles: files.length 
       }));
 
       const aggregatedResults = {
         successful: [] as any[],
         failed: [] as any[],
-        total: newFiles.length,
-        duplicatesRemoved: duplicates.length,
+        total: files.length,
         chunksProcessed: 0,
         failedChunks: [] as any[]
       };
@@ -755,7 +721,7 @@ export default function ProfileRecord() {
                       ) : (
                         <>
                           <Upload className="h-4 w-4 mr-2" />
-                          Optimized Upload {selectedFiles.length} file(s)
+                          Fast Upload {selectedFiles.length} file(s)
                         </>
                       )}
                     </Button>
@@ -785,7 +751,7 @@ export default function ProfileRecord() {
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
                           <span>
                             {uploadProgress.currentChunk === 0 ? 
-                              "Checking for duplicates..." : 
+                              "Preparing upload..." : 
                               `Processing chunk ${uploadProgress.currentChunk} of ${uploadProgress.totalChunks} (${uploadProgress.currentChunkFiles} files)`
                             }
                           </span>
