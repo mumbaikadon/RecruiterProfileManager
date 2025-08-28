@@ -33,7 +33,8 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     console.log("PDF.js loaded successfully");
     
     // Configure PDF.js for Node.js environment  
-    pdfjsLib.GlobalWorkerOptions.workerSrc = null as any;
+    // In Node.js, we use an empty string to disable the worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
     
     console.log("Parsing PDF document...");
     const uint8Array = new Uint8Array(buffer);
