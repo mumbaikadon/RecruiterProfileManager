@@ -27,7 +27,14 @@ import { NotificationService } from "./notifications";
 
 // Configure multer for file uploads 
 const multerStorage = multer.memoryStorage();
-const fileUpload = multer({ storage: multerStorage });
+// Add conservative limits to reduce memory pressure and intermittent parse failures
+const fileUpload = multer({ 
+  storage: multerStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB per file for single-upload endpoints
+    files: 1
+  }
+});
 
 // Configure multer for optimized bulk uploads with reduced limits
 const bulkUpload = multer({ 

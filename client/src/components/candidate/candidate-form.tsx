@@ -1538,7 +1538,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
             <Input
               id="resume"
               type="file"
-              accept=".pdf,.doc,.docx"
+              accept=".pdf,.docx,.txt"
               onChange={handleResumeUpload}
               className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-blue-600"
             />
