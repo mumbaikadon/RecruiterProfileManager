@@ -1,0 +1,101 @@
+2025-09-02 15:01:54] debug: Text extraction started | Meta: {"operation":"extraction_start","filename":"pdf-file","fileType":"pdf"}
+Starting PDF text extraction with PDF.js, buffer size: 483929
+Buffer type: object
+Is Buffer instance: true
+Loading PDF.js library...
+PDF.js loaded successfully
+PDF.js loaded successfully
+PDF extraction error: ReferenceError: __dirname is not defined
+    at extractTextFromPdf (/home/runner/workspace/server/document-parser.ts:37:37)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3629:31)
+    at async Promise.all (index 0)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3675:30)
+[2025-09-02 15:01:54] error: Text extraction failed | Meta: {"operation":"extraction_error","filename":"pdf-file","error":"PDF parsing failed: __dirname is not defined. The file may be image-based, password-protected, or corrupted."}
+[2025-09-02 15:01:54] error: File upload failed | Meta: {"operation":"upload_error","filename":"Dice_Profile_leleng_Awi_Highlighted.pdf","userId":1,"error":"Failed to extract text: PDF content could not be extracted. Please try converting to Word document format."}
+PDF extraction error: ReferenceError: __dirname is not defined
+    at extractTextFromPdf (/home/runner/workspace/server/document-parser.ts:37:37)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3629:31)
+    at async Promise.all (index 1)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3675:30)
+[2025-09-02 15:01:54] error: Text extraction failed | Meta: {"operation":"extraction_error","filename":"pdf-file","error":"PDF parsing failed: __dirname is not defined. The file may be image-based, password-protected, or corrupted."}
+[2025-09-02 15:01:54] error: File upload failed | Meta: {"operation":"upload_error","filename":"Dice_Profile_Levent_Demiroglu_Highlighted.pdf","userId":1,"error":"Failed to extract text: PDF content could not be extracted. Please try converting to Word document format."}
+Chunk 2 completed. Memory used: 0.2MB, Peak: 170.4MB
+Total memory usage for 5 files: 0.5MB
+Bulk upload completed in 296ms: 0/5 successful
+3:01:55 PM [express] POST /api/profile-resumes/bulk-upload 200 in 3308ms :: {"successful":[],"failed…
+[2025-09-02 15:01:58] debug: API request received | Meta: {"operation":"api_request","method":"POST","path":"/api/profile-resumes/bulk-upload","userId":1}
+Starting optimized bulk upload of 5 files
+Processing backend chunk 1/2 with 3 files (Memory: 170.0MB)
+[2025-09-02 15:01:58] info: File upload started | Meta: {"operation":"upload_start","filename":"Dice_Profile_Lisa_Wright_Highlighted.pdf","userId":1,"fileSize":404704}
+[2025-09-02 15:01:58] info: File upload started | Meta: {"operation":"upload_start","filename":"Dice_Profile_Mallikarjuna_Tangellapalli_Highlighted.pdf","userId":1,"fileSize":273530}
+[2025-09-02 15:01:58] info: File upload started | Meta: {"operation":"upload_start","filename":"Dice_Profile_Mark_Mckenzie_Highlighted.pdf","userId":1,"fileSize":272848}
+[2025-09-02 15:01:58] debug: Text extraction started | Meta: {"operation":"extraction_start","filename":"pdf-file","fileType":"pdf"}
+Starting PDF text extraction with PDF.js, buffer size: 273530
+Buffer type: object
+Is Buffer instance: true
+Loading PDF.js library...
+[2025-09-02 15:01:58] debug: Text extraction started | Meta: {"operation":"extraction_start","filename":"pdf-file","fileType":"pdf"}
+Starting PDF text extraction with PDF.js, buffer size: 404704
+Buffer type: object
+Is Buffer instance: true
+Loading PDF.js library...
+[2025-09-02 15:01:58] debug: Text extraction started | Meta: {"operation":"extraction_start","filename":"pdf-file","fileType":"pdf"}
+Starting PDF text extraction with PDF.js, buffer size: 272848
+Buffer type: object
+Is Buffer instance: true
+Loading PDF.js library...
+PDF.js loaded successfully
+PDF.js loaded successfully
+PDF.js loaded successfully
+PDF extraction error: ReferenceError: __dirname is not defined
+    at extractTextFromPdf (/home/runner/workspace/server/document-parser.ts:37:37)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3629:31)
+    at async Promise.all (index 1)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3675:30)
+[2025-09-02 15:01:58] error: Text extraction failed | Meta: {"operation":"extraction_error","filename":"pdf-file","error":"PDF parsing failed: __dirname is not defined. The file may be image-based, password-protected, or corrupted."}
+[2025-09-02 15:01:58] error: File upload failed | Meta: {"operation":"upload_error","filename":"Dice_Profile_Mallikarjuna_Tangellapalli_Highlighted.pdf","userId":1,"error":"Failed to extract text: PDF content could not be extracted. Please try converting to Word document format."}
+PDF extraction error: ReferenceError: __dirname is not defined
+    at extractTextFromPdf (/home/runner/workspace/server/document-parser.ts:37:37)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3629:31)
+    at async Promise.all (index 0)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3675:30)
+[2025-09-02 15:01:58] error: Text extraction failed | Meta: {"operation":"extraction_error","filename":"pdf-file","error":"PDF parsing failed: __dirname is not defined. The file may be image-based, password-protected, or corrupted."}
+PDF extraction error: ReferenceError: __dirname is not defined
+    at extractTextFromPdf (/home/runner/workspace/server/document-parser.ts:37:37)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3629:31)
+    at async Promise.all (index 2)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3675:30)
+[2025-09-02 15:01:58] error: Text extraction failed | Meta: {"operation":"extraction_error","filename":"pdf-file","error":"PDF parsing failed: __dirname is not defined. The file may be image-based, password-protected, or corrupted."}
+[2025-09-02 15:01:58] error: File upload failed | Meta: {"operation":"upload_error","filename":"Dice_Profile_Lisa_Wright_Highlighted.pdf","userId":1,"error":"Failed to extract text: PDF content could not be extracted. Please try converting to Word document format."}
+[2025-09-02 15:01:58] error: File upload failed | Meta: {"operation":"upload_error","filename":"Dice_Profile_Mark_Mckenzie_Highlighted.pdf","userId":1,"error":"Failed to extract text: PDF content could not be extracted. Please try converting to Word document format."}
+Chunk 1 completed. Memory used: 0.3MB, Peak: 170.3MB
+Processing backend chunk 2/2 with 2 files (Memory: 170.3MB)
+[2025-09-02 15:01:59] info: File upload started | Meta: {"operation":"upload_start","filename":"Dice_Profile_Mark_Pine_Highlighted.pdf","userId":1,"fileSize":510674}
+[2025-09-02 15:01:59] info: File upload started | Meta: {"operation":"upload_start","filename":"Dice_Profile_Michael_Davis_Highlighted.pdf","userId":1,"fileSize":279805}
+[2025-09-02 15:01:59] debug: Text extraction started | Meta: {"operation":"extraction_start","filename":"pdf-file","fileType":"pdf"}
+Starting PDF text extraction with PDF.js, buffer size: 510674
+Buffer type: object
+Is Buffer instance: true
+Loading PDF.js library...
+[2025-09-02 15:01:59] debug: Text extraction started | Meta: {"operation":"extraction_start","filename":"pdf-file","fileType":"pdf"}
+Starting PDF text extraction with PDF.js, buffer size: 279805
+Buffer type: object
+Is Buffer instance: true
+Loading PDF.js library...
+PDF.js loaded successfully
+PDF.js loaded successfully
+PDF extraction error: ReferenceError: __dirname is not defined
+    at extractTextFromPdf (/home/runner/workspace/server/document-parser.ts:37:37)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3629:31)
+    at async Promise.all (index 0)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3675:30)
+[2025-09-02 15:01:59] error: Text extraction failed | Meta: {"operation":"extraction_error","filename":"pdf-file","error":"PDF parsing failed: __dirname is not defined. The file may be image-based, password-protected, or corrupted."}
+[2025-09-02 15:01:59] error: File upload failed | Meta: {"operation":"upload_error","filename":"Dice_Profile_Mark_Pine_Highlighted.pdf","userId":1,"error":"Failed to extract text: PDF content could not be extracted. Please try converting to Word document format."}
+PDF extraction error: ReferenceError: __dirname is not defined
+    at extractTextFromPdf (/home/runner/workspace/server/document-parser.ts:37:37)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3629:31)
+    at async Promise.all (index 1)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3675:30)
+[2025-09-02 15:01:59] error: Text extraction failed | Meta: {"operation":"extraction_error","filename":"pdf-file","error":"PDF parsing failed: __dirname is not defined. The file may be image-based, password-protected, or corrupted."}
+[2025-09-02 15:01:59] error: File upload failed | Meta: {"operation":"upload_error","filename":"Dice_Profile_Michael_Davis_Highlighted.pdf","userId":1,"error":"Failed to extract text: PDF content could not be extracted. Please try converting to Word document format."}
+Chunk 2 completed. Memory used: 0.2MB, Peak: 170.5MB
