@@ -1,0 +1,40 @@
+tarting PDF text extraction with PDF.js, buffer size: 151406
+Buffer type: object
+Is Buffer instance: true
+Loading PDF.js library...
+PDF.js loaded successfully
+PDF.js worker disabled (fallback)
+Parsing PDF document...
+PDF extraction error: Error: Setting up fake worker failed: "No "GlobalWorkerOptions.workerSrc" specified.".
+    at <anonymous> (/home/runner/workspace/node_modules/pdfjs-dist/legacy/build/pdf.mjs:18897:31)
+[2025-08-29 03:49:13] error: Text extraction failed | Meta: {"operation":"extraction_error","filename":"pdf-file","error":"PDF parsing failed: Setting up fake worker failed: \"No \"GlobalWorkerOptions.workerSrc\" specified.\".. The file may be image-based, password-protected, or corrupted."}
+[2025-08-29 03:49:13] error: File upload failed | Meta: {"operation":"upload_error","filename":"Rama k Gowda -.pdf","userId":1,"error":"Failed to extract text: PDF content could not be extracted. Please try converting to Word document format."}
+PDF.js loaded successfully
+PDF.js worker disabled (fallback)
+Parsing PDF document...
+PDF extraction error: Error: Setting up fake worker failed: "No "GlobalWorkerOptions.workerSrc" specified.".
+    at <anonymous> (/home/runner/workspace/node_modules/pdfjs-dist/legacy/build/pdf.mjs:18897:31)
+[2025-08-29 03:49:13] error: Text extraction failed | Meta: {"operation":"extraction_error","filename":"pdf-file","error":"PDF parsing failed: Setting up fake worker failed: \"No \"GlobalWorkerOptions.workerSrc\" specified.\".. The file may be image-based, password-protected, or corrupted."}
+[2025-08-29 03:49:13] error: File upload failed | Meta: {"operation":"upload_error","filename":"Resume_Pra.pdf","userId":1,"error":"Failed to extract text: PDF content could not be extracted. Please try converting to Word document format."}
+PDF.js loaded successfully
+PDF.js worker disabled (fallback)
+Parsing PDF document...
+PDF extraction error: Error: Setting up fake worker failed: "No "GlobalWorkerOptions.workerSrc" specified.".
+    at <anonymous> (/home/runner/workspace/node_modules/pdfjs-dist/legacy/build/pdf.mjs:18897:31)
+[2025-08-29 03:49:13] error: Text extraction failed | Meta: {"operation":"extraction_error","filename":"pdf-file","error":"PDF parsing failed: Setting up fake worker failed: \"No \"GlobalWorkerOptions.workerSrc\" specified.\".. The file may be image-based, password-protected, or corrupted."}
+[2025-08-29 03:49:13] error: File upload failed | Meta: {"operation":"upload_error","filename":"MARIELA_ROSALES_RESUME pdf.pdf","userId":1,"error":"Failed to extract text: PDF content could not be extracted. Please try converting to Word document format."}
+Chunk 1 completed. Memory used: 0.3MB, Peak: 169.4MB
+Processing backend chunk 2/2 with 1 files (Memory: 169.4MB)
+[2025-08-29 03:49:14] info: File upload started | Meta: {"operation":"upload_start","filename":"AdelEddin_Technical_Resume_Detailed[96].pdf","userId":1,"fileSize":130868}
+[2025-08-29 03:49:14] debug: Text extraction started | Meta: {"operation":"extraction_start","filename":"pdf-file","fileType":"pdf"}
+Starting PDF text extraction with PDF.js, buffer size: 130868
+Buffer type: object
+Is Buffer instance: true
+Loading PDF.js library...
+PDF.js loaded successfully
+PDF.js worker disabled (fallback)
+Parsing PDF document...
+PDF extraction error: Error: Setting up fake worker failed: "No "GlobalWorkerOptions.workerSrc" specified.".
+    at <anonymous> (/home/runner/workspace/node_modules/pdfjs-dist/legacy/build/pdf.mjs:18897:31)
+[2025-08-29 03:49:14] error: Text extraction failed | Meta: {"operation":"extraction_error","filename":"pdf-file","error":"PDF parsing failed: Setting up fake worker failed: \"No \"GlobalWorkerOptions.workerSrc\" specified.\".. The file may be image-based, password-protected, or corrupted."}
+[2025-08-29 03:49:14] error: File upload failed | Meta: {"operation":"upload_error","filename":"AdelEddin_Technical_Resume_Detailed[96].pdf","userId":1,"error":"Failed to extract text: PDF content could not be extracted. Please try converting to Word document format."}

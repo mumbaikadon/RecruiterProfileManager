@@ -603,7 +603,7 @@ const ResubmitDialog: React.FC<ResubmitDialogProps> = ({
                     : "Please upload a resume for this new submission."}
                 </p>
                 <FileUpload
-                  accept=".pdf,.docx,.txt"
+                  accept=".pdf,.doc,.docx"
                   maxSize={5242880} // 5MB
                   onFileChange={setFile}
                   disabled={isLoading}

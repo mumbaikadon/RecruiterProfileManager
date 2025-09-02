@@ -1,6 +1,6 @@
 import { 
   users, jobs, jobAssignments, candidates, resumeData, submissions, activities, candidateValidations, publicApplications,
-  profileResumes, resumeContent, resumeMetadata, searchCache, uploadBatches, tempProfileUploads,
+  profileResumes, resumeContent, resumeMetadata, searchCache,
   type User, type InsertUser, 
   type Job, type InsertJob, 
   type JobAssignment, type InsertJobAssignment, 
@@ -13,12 +13,10 @@ import {
   type ProfileResume, type InsertProfileResume,
   type ResumeContent, type InsertResumeContent,
   type ResumeMetadata, type InsertResumeMetadata,
-  type SearchCache, type InsertSearchCache,
-  type UploadBatch, type InsertUploadBatch,
-  type TempProfileUpload, type InsertTempProfileUpload
+  type SearchCache, type InsertSearchCache
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, sql, gte, lte, or, ilike, inArray, isNull } from "drizzle-orm";
+import { eq, and, desc, count, sql, gte, lte, or, ilike, inArray } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -117,25 +115,6 @@ export interface IStorage {
   searchProfileResumesByContent(searchTerm: string): Promise<Array<ProfileResume & { extractedText: string; rank: number }>>;
   searchProfileResumesByPhone(phonePattern: string): Promise<Array<ProfileResume & { extractedText?: string; highlightedText?: string; rank?: number }>>;
   getProfileResumeContent(resumeId: number): Promise<ResumeContent | undefined>;
-
-  // Temporary Upload operations (Three-Phase System)
-  // Phase 1: Fast Upload
-  createUploadBatch(totalFiles: number, uploadedBy: number): Promise<UploadBatch>;
-  createTempProfileUpload(upload: InsertTempProfileUpload): Promise<TempProfileUpload>;
-  
-  // Phase 2: Background Processing
-  getPendingTempUploads(limit?: number): Promise<TempProfileUpload[]>;
-  updateTempUploadStatus(id: number, status: string, errorMessage?: string): Promise<TempProfileUpload>;
-  markTempUploadProcessed(id: number, profileResumeId: number): Promise<TempProfileUpload>;
-  updateUploadBatchProgress(batchId: string, completed: number, failed: number): Promise<UploadBatch>;
-  
-  // Phase 3: Cleanup
-  getExpiredTempUploads(hoursOld?: number): Promise<TempProfileUpload[]>;
-  getProcessedTempUploads(hoursOld: number): Promise<TempProfileUpload[]>;
-  getOrphanedBatches(): Promise<UploadBatch[]>;
-  deleteTempUpload(id: number): Promise<void>;
-  deleteUploadBatch(batchId: string): Promise<void>;
-  getUploadBatchStatus(batchId: string): Promise<UploadBatch | undefined>;
 }
 
 const PostgresSessionStore = connectPg(session);
@@ -1494,10 +1473,6 @@ export class DatabaseStorage implements IStorage {
           const contentHash = hashContent(fileBuffer);
           const filePath = await saveFile(fileBuffer, resume.filename, contentHash);
           finalResume.filePath = filePath;
-          
-          // Always set fileData even when using filesystem storage
-          // This is needed because the database has a not-null constraint on this field
-          finalResume.fileData = fileBuffer.toString('base64');
         } catch (error) {
           console.warn('Failed to save file to filesystem, falling back to database:', error);
           // Fallback to database storage for backward compatibility
@@ -1505,11 +1480,8 @@ export class DatabaseStorage implements IStorage {
             finalResume.fileData = fileBuffer.toString('base64');
           }
         }
-      } else {
-        // If no file buffer is provided, set an empty string to satisfy not-null constraint
-        finalResume.fileData = '';
       }
-      
+
       // Create the profile resume
       const [createdResume] = await tx
         .insert(profileResumes)
@@ -1537,8 +1509,8 @@ export class DatabaseStorage implements IStorage {
         .values({
           profileResumeId: createdResume.id,
           extractedText: finalExtractedText,
-          compressedText: compressedText,
-          contentHash: contentHash,
+          compressedText,
+          contentHash,
         });
 
       return createdResume;
@@ -1765,188 +1737,6 @@ export class DatabaseStorage implements IStorage {
       console.error("Phone search failed:", error);
       return [];
     }
-  }
-
-  // Temporary Upload operations implementation
-  
-  // Phase 1: Fast Upload
-  async createUploadBatch(totalFiles: number, uploadedBy: number): Promise<UploadBatch> {
-    const batchId = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const [batch] = await db
-      .insert(uploadBatches)
-      .values({
-        batchId,
-        totalFiles,
-        uploadedBy,
-      })
-      .returning();
-    return batch;
-  }
-
-  async createTempProfileUpload(upload: InsertTempProfileUpload): Promise<TempProfileUpload> {
-    const [tempUpload] = await db
-      .insert(tempProfileUploads)
-      .values(upload)
-      .returning();
-    return tempUpload;
-  }
-
-  // Phase 2: Background Processing
-  async getPendingTempUploads(limit: number = 10): Promise<TempProfileUpload[]> {
-    return db
-      .select()
-      .from(tempProfileUploads)
-      .where(eq(tempProfileUploads.uploadStatus, "pending"))
-      .orderBy(tempProfileUploads.uploadedAt)
-      .limit(limit);
-  }
-
-  async updateTempUploadStatus(id: number, status: string, errorMessage?: string): Promise<TempProfileUpload> {
-    const updateData: any = { 
-      uploadStatus: status,
-      processingAttempts: sql`${tempProfileUploads.processingAttempts} + 1`
-    };
-    
-    if (errorMessage) {
-      updateData.errorMessage = errorMessage;
-    }
-    
-    if (status === "processing") {
-      // Don't update processedAt when starting processing
-    } else if (status === "processed" || status === "failed") {
-      updateData.processedAt = new Date();
-    }
-
-    const [updated] = await db
-      .update(tempProfileUploads)
-      .set(updateData)
-      .where(eq(tempProfileUploads.id, id))
-      .returning();
-    return updated;
-  }
-
-  async markTempUploadProcessed(id: number, profileResumeId: number): Promise<TempProfileUpload> {
-    const [updated] = await db
-      .update(tempProfileUploads)
-      .set({
-        uploadStatus: "processed",
-        profileResumeId,
-        processedAt: new Date(),
-      })
-      .where(eq(tempProfileUploads.id, id))
-      .returning();
-    return updated;
-  }
-
-  async updateUploadBatchProgress(batchId: string, completed: number, failed: number): Promise<UploadBatch> {
-    const updateData: any = {
-      completedFiles: completed,
-      failedFiles: failed,
-    };
-
-    // Get current batch to check if processing is complete
-    const [currentBatch] = await db
-      .select()
-      .from(uploadBatches)
-      .where(eq(uploadBatches.batchId, batchId));
-
-    if (currentBatch && (completed + failed >= currentBatch.totalFiles)) {
-      updateData.status = failed > 0 ? "failed" : "completed";
-      updateData.completedAt = new Date();
-    } else if (completed > 0 || failed > 0) {
-      updateData.status = "processing";
-    }
-
-    const [updated] = await db
-      .update(uploadBatches)
-      .set(updateData)
-      .where(eq(uploadBatches.batchId, batchId))
-      .returning();
-    return updated;
-  }
-
-  // Phase 3: Cleanup
-  async getExpiredTempUploads(hoursOld: number = 72): Promise<TempProfileUpload[]> {
-    const cutoffDate = new Date(Date.now() - (hoursOld * 60 * 60 * 1000));
-    return db
-      .select()
-      .from(tempProfileUploads)
-      .where(
-        and(
-          or(
-            eq(tempProfileUploads.uploadStatus, 'failed'),
-            lte(tempProfileUploads.expiresAt, cutoffDate)
-          )
-        )
-      );
-  }
-
-  async getProcessedTempUploads(hoursOld: number): Promise<TempProfileUpload[]> {
-    const cutoffDate = new Date(Date.now() - (hoursOld * 60 * 60 * 1000));
-    return db
-      .select()
-      .from(tempProfileUploads)
-      .where(
-        and(
-          eq(tempProfileUploads.uploadStatus, 'processed'),
-          lte(tempProfileUploads.processedAt, cutoffDate)
-        )
-      );
-  }
-
-  async getOrphanedBatches(): Promise<UploadBatch[]> {
-    // Get batches where all temp uploads have been processed or deleted
-    const orphanedBatches = await db
-      .select({
-        batchId: uploadBatches.batchId,
-        totalFiles: uploadBatches.totalFiles,
-        completedFiles: uploadBatches.completedFiles,
-        failedFiles: uploadBatches.failedFiles,
-        status: uploadBatches.status,
-        createdAt: uploadBatches.createdAt,
-        completedAt: uploadBatches.completedAt,
-        uploadedBy: uploadBatches.uploadedBy
-      })
-      .from(uploadBatches)
-      .leftJoin(tempProfileUploads, eq(uploadBatches.batchId, tempProfileUploads.batchId))
-      .where(
-        and(
-          eq(uploadBatches.status, 'completed'),
-          isNull(tempProfileUploads.id) // No remaining temp uploads
-        )
-      )
-      .groupBy(
-        uploadBatches.batchId,
-        uploadBatches.totalFiles,
-        uploadBatches.completedFiles,
-        uploadBatches.failedFiles,
-        uploadBatches.status,
-        uploadBatches.createdAt,
-        uploadBatches.completedAt,
-        uploadBatches.uploadedBy
-      );
-    
-    return orphanedBatches;
-  }
-
-  async deleteTempUpload(id: number): Promise<void> {
-    await db
-      .delete(tempProfileUploads)
-      .where(eq(tempProfileUploads.id, id));
-  }
-
-  async deleteUploadBatch(batchId: string): Promise<void> {
-    await db
-      .delete(uploadBatches)
-      .where(eq(uploadBatches.batchId, batchId));
-  }
-
-  async getUploadBatchStatus(batchId: string): Promise<UploadBatch | undefined> {
-    const [batch] = await db
-      .select()
-      .from(uploadBatches)
-      .where(eq(uploadBatches.batchId, batchId));
-    return batch;
   }
 }
 

@@ -330,60 +330,11 @@ export const searchCache = pgTable("search_cache", {
   };
 });
 
-// Upload Batches table - for tracking batch upload operations
-export const uploadBatches = pgTable("upload_batches", {
-  id: serial("id").primaryKey(),
-  batchId: text("batch_id").notNull().unique(), // Unique identifier for the batch
-  totalFiles: integer("total_files").notNull(),
-  completedFiles: integer("completed_files").default(0),
-  failedFiles: integer("failed_files").default(0),
-  status: text("status", { enum: ["uploading", "processing", "completed", "failed"] }).default("uploading"),
-  uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  completedAt: timestamp("completed_at"),
-}, (table) => {
-  return {
-    batchIdIdx: index("upload_batches_batch_id_idx").on(table.batchId),
-    statusIdx: index("upload_batches_status_idx").on(table.status),
-    uploadedByIdx: index("upload_batches_uploaded_by_idx").on(table.uploadedBy),
-  };
-});
-
-// Temporary Profile Uploads table - for immediate file uploads before processing
-export const tempProfileUploads = pgTable("temp_profile_uploads", {
-  id: serial("id").primaryKey(),
-  batchId: text("batch_id").notNull().references(() => uploadBatches.batchId),
-  filename: text("filename").notNull(),
-  fileType: text("file_type", { enum: ["pdf", "docx"] }).notNull(),
-  fileSize: integer("file_size").notNull(),
-  filePath: text("file_path").notNull(), // File system path
-  candidateName: text("candidate_name"),
-  candidateEmail: text("candidate_email"),
-  uploadStatus: text("upload_status", { enum: ["pending", "processing", "processed", "failed"] }).default("pending"),
-  processingAttempts: integer("processing_attempts").default(0),
-  errorMessage: text("error_message"),
-  uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
-  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
-  processedAt: timestamp("processed_at"),
-  expiresAt: timestamp("expires_at").default(sql`NOW() + INTERVAL '24 hours'`), // Auto-expire after 24 hours
-  profileResumeId: integer("profile_resume_id").references(() => profileResumes.id), // Link to final record after processing
-}, (table) => {
-  return {
-    batchIdIdx: index("temp_profile_uploads_batch_id_idx").on(table.batchId),
-    statusIdx: index("temp_profile_uploads_status_idx").on(table.uploadStatus),
-    uploadedByIdx: index("temp_profile_uploads_uploaded_by_idx").on(table.uploadedBy),
-    expiresAtIdx: index("temp_profile_uploads_expires_at_idx").on(table.expiresAt),
-    processedAtIdx: index("temp_profile_uploads_processed_at_idx").on(table.processedAt),
-  };
-});
-
 // Create insert schemas
 export const insertProfileResumeSchema = createInsertSchema(profileResumes).omit({ id: true, uploadedAt: true });
 export const insertResumeContentSchema = createInsertSchema(resumeContent).omit({ id: true, createdAt: true });
 export const insertResumeMetadataSchema = createInsertSchema(resumeMetadata).omit({ id: true, extractedAt: true });
 export const insertSearchCacheSchema = createInsertSchema(searchCache).omit({ id: true, createdAt: true });
-export const insertUploadBatchSchema = createInsertSchema(uploadBatches).omit({ id: true, createdAt: true });
-export const insertTempProfileUploadSchema = createInsertSchema(tempProfileUploads).omit({ id: true, uploadedAt: true });
 
 // Export types
 export type ProfileResume = typeof profileResumes.$inferSelect & {
@@ -403,9 +354,3 @@ export type InsertResumeMetadata = z.infer<typeof insertResumeMetadataSchema>;
 
 export type SearchCache = typeof searchCache.$inferSelect;
 export type InsertSearchCache = z.infer<typeof insertSearchCacheSchema>;
-
-export type UploadBatch = typeof uploadBatches.$inferSelect;
-export type InsertUploadBatch = z.infer<typeof insertUploadBatchSchema>;
-
-export type TempProfileUpload = typeof tempProfileUploads.$inferSelect;
-export type InsertTempProfileUpload = z.infer<typeof insertTempProfileUploadSchema>;

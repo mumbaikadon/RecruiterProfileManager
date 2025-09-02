@@ -367,7 +367,7 @@ export function JobApplicationModal({ job, isOpen, onClose }: JobApplicationModa
                     id="resume-upload"
                     type="file"
                     className="hidden"
-                    accept=".pdf,.docx,.txt"
+                    accept=".pdf,.doc,.docx"
                     onChange={handleFileChange}
                   />
                 </label>
