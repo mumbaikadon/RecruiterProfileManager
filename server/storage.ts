@@ -18,7 +18,7 @@ import {
   type TempProfileUpload, type InsertTempProfileUpload
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, sql, gte, lte, or, ilike, inArray } from "drizzle-orm";
+import { eq, and, desc, count, sql, gte, lte, or, ilike, inArray, isNull } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -130,8 +130,11 @@ export interface IStorage {
   updateUploadBatchProgress(batchId: string, completed: number, failed: number): Promise<UploadBatch>;
   
   // Phase 3: Cleanup
-  getExpiredTempUploads(): Promise<TempProfileUpload[]>;
+  getExpiredTempUploads(hoursOld?: number): Promise<TempProfileUpload[]>;
+  getProcessedTempUploads(hoursOld: number): Promise<TempProfileUpload[]>;
+  getOrphanedBatches(): Promise<UploadBatch[]>;
   deleteTempUpload(id: number): Promise<void>;
+  deleteUploadBatch(batchId: string): Promise<void>;
   getUploadBatchStatus(batchId: string): Promise<UploadBatch | undefined>;
 }
 
@@ -1863,17 +1866,79 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Phase 3: Cleanup
-  async getExpiredTempUploads(): Promise<TempProfileUpload[]> {
+  async getExpiredTempUploads(hoursOld: number = 72): Promise<TempProfileUpload[]> {
+    const cutoffDate = new Date(Date.now() - (hoursOld * 60 * 60 * 1000));
     return db
       .select()
       .from(tempProfileUploads)
-      .where(lte(tempProfileUploads.expiresAt, new Date()));
+      .where(
+        and(
+          or(
+            eq(tempProfileUploads.uploadStatus, 'failed'),
+            lte(tempProfileUploads.expiresAt, cutoffDate)
+          )
+        )
+      );
+  }
+
+  async getProcessedTempUploads(hoursOld: number): Promise<TempProfileUpload[]> {
+    const cutoffDate = new Date(Date.now() - (hoursOld * 60 * 60 * 1000));
+    return db
+      .select()
+      .from(tempProfileUploads)
+      .where(
+        and(
+          eq(tempProfileUploads.uploadStatus, 'processed'),
+          lte(tempProfileUploads.processedAt, cutoffDate)
+        )
+      );
+  }
+
+  async getOrphanedBatches(): Promise<UploadBatch[]> {
+    // Get batches where all temp uploads have been processed or deleted
+    const orphanedBatches = await db
+      .select({
+        batchId: uploadBatches.batchId,
+        totalFiles: uploadBatches.totalFiles,
+        completedFiles: uploadBatches.completedFiles,
+        failedFiles: uploadBatches.failedFiles,
+        status: uploadBatches.status,
+        createdAt: uploadBatches.createdAt,
+        completedAt: uploadBatches.completedAt,
+        uploadedBy: uploadBatches.uploadedBy
+      })
+      .from(uploadBatches)
+      .leftJoin(tempProfileUploads, eq(uploadBatches.batchId, tempProfileUploads.batchId))
+      .where(
+        and(
+          eq(uploadBatches.status, 'completed'),
+          isNull(tempProfileUploads.id) // No remaining temp uploads
+        )
+      )
+      .groupBy(
+        uploadBatches.batchId,
+        uploadBatches.totalFiles,
+        uploadBatches.completedFiles,
+        uploadBatches.failedFiles,
+        uploadBatches.status,
+        uploadBatches.createdAt,
+        uploadBatches.completedAt,
+        uploadBatches.uploadedBy
+      );
+    
+    return orphanedBatches;
   }
 
   async deleteTempUpload(id: number): Promise<void> {
     await db
       .delete(tempProfileUploads)
       .where(eq(tempProfileUploads.id, id));
+  }
+
+  async deleteUploadBatch(batchId: string): Promise<void> {
+    await db
+      .delete(uploadBatches)
+      .where(eq(uploadBatches.batchId, batchId));
   }
 
   async getUploadBatchStatus(batchId: string): Promise<UploadBatch | undefined> {
