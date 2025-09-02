@@ -509,17 +509,11 @@ export default function ProfileRecord() {
     searchMutation.mutate({ query: searchTerm.trim(), page });
   };
   
-  // Phase 1: Handle view resume with on-demand content loading
-  const handleViewResume = async (resume: ProfileResume | SearchResult) => {
+  // Phase 1: Handle view resume - show dialog with preview only (button-controlled loading)
+  const handleViewResume = (resume: ProfileResume | SearchResult) => {
     setViewingResume(resume);
     setIsViewDialogOpen(true);
-    
-    // Load full content asynchronously
-    try {
-      await loadResumeContent(resume.id);
-    } catch (error) {
-      console.error('Failed to load resume content:', error);
-    }
+    // Content now loads only when user clicks "Load Full Content" button
   };
 
   // Clear search
