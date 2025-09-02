@@ -150,7 +150,7 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
           <div>
             <Input
               type="file"
-              accept=".pdf,.doc,.docx"
+              accept=".pdf,.docx,.txt"
               onChange={handleFileChange}
               className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-blue-600"
             />
@@ -197,8 +197,8 @@ const ResumeAnalyzer: React.FC<ResumeAnalyzerProps> = ({
                 <p className="text-sm font-medium">File Type:</p>
                 <p className="text-sm text-gray-600">
                   {file.name.toLowerCase().endsWith('.pdf') ? 'PDF Document' : 
-                   file.name.toLowerCase().endsWith('.docx') ? 'Word Document (DOCX)' :
-                   file.name.toLowerCase().endsWith('.doc') ? 'Word Document (DOC)' : 
+                  file.name.toLowerCase().endsWith('.docx') ? 'Word Document (DOCX)' : 
+                  file.name.toLowerCase().endsWith('.txt') ? 'Text Document (TXT)' : 
                    'Document'}
                 </p>
               </div>

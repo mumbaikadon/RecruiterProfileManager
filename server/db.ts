@@ -17,12 +17,16 @@ if (!process.env.DATABASE_URL) {
 console.log(`Connecting to database: ${process.env.DATABASE_URL.replace(/:[^:]*@/, ':****@')}`);
 
 // Create the connection pool with the standard pg client
+const sslEnabled = (process.env.DB_SSL || '').toLowerCase() === 'true';
+
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  // Add these options for better local connection handling
-  connectionTimeoutMillis: 5000,
+  // Better connection handling and stability
+  connectionTimeoutMillis: 10000,
   max: 20,
-  idleTimeoutMillis: 30000
+  idleTimeoutMillis: 30000,
+  keepAlive: true,
+  ssl: sslEnabled ? { rejectUnauthorized: false } : undefined
 });
 
 // Initialize Drizzle with the schema using the pg adapter
@@ -34,4 +38,11 @@ pool.connect()
     console.log('Database connection successful');
     client.release();
   })
-  .catch(err => console.error('Database connection error:', err));
+  .catch(err => {
+    console.error('Database connection error:', err?.message || err);
+    if (sslEnabled) {
+      console.error('Note: SSL is enabled (DB_SSL=true). If your server does not require SSL, set DB_SSL=false.');
+    } else {
+      console.error('Note: SSL is disabled. If you are connecting to a managed Postgres that requires SSL, set DB_SSL=true.');
+    }
+  });
