@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Download, Search, Upload, Trash2, Eye, Filter, Calendar, User } from "lucide-react";
+import { FileText, Download, Search, Upload, Trash2, Eye, Filter, Calendar, User, ChevronLeft, ChevronRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 // Phase 1: Optimized interfaces - NO FULL TEXT!
@@ -76,6 +76,13 @@ export default function ProfileRecord() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchPage, setSearchPage] = useState(1);
   const [itemsPerPage] = useState(20);
+  
+  // Search metadata for pagination
+  const [searchMetadata, setSearchMetadata] = useState<{
+    totalCount: number;
+    hasMore: boolean;
+    pages: number;
+  } | null>(null);
   
   // Phase 1: Content loading state  
   const [loadingContent, setLoadingContent] = useState<number | null>(null);
@@ -459,6 +466,11 @@ export default function ProfileRecord() {
     },
     onSuccess: (data) => {
       setSearchResults(data.results || []);
+      setSearchMetadata({
+        totalCount: data.metadata.totalCount,
+        hasMore: data.pagination.hasMore,
+        pages: data.pagination.pages
+      });
       setIsSearching(false);
       console.log(`Snippet search completed: ${data.results?.length || 0} results (${data.metadata.totalCount} total)`);
     },
@@ -520,6 +532,8 @@ export default function ProfileRecord() {
   const clearSearch = () => {
     setSearchTerm("");
     setSearchResults([]);
+    setSearchMetadata(null);
+    setSearchPage(1);
     setIsSearching(false);
   };
 
@@ -817,10 +831,10 @@ export default function ProfileRecord() {
               </div>
             </div>
             
-            {searchResults.length > 0 && (
+            {searchResults.length > 0 && searchMetadata && (
               <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  Found <strong>{searchResults.length}</strong> resume(s) matching: <code className="bg-white px-2 py-1 rounded text-xs">{searchTerm}</code>
+                  Showing <strong>{((searchPage - 1) * itemsPerPage) + 1}-{Math.min(searchPage * itemsPerPage, searchMetadata.totalCount)}</strong> of <strong>{searchMetadata.totalCount}</strong> resume(s) matching: <code className="bg-white px-2 py-1 rounded text-xs">{searchTerm}</code>
                 </p>
               </div>
             )}
@@ -836,7 +850,10 @@ export default function ProfileRecord() {
                 {searchResults.length > 0 ? "Search Results" : "All Resumes"}
               </span>
               <Badge variant="secondary">
-                {displayResumes.length} resume(s)
+                {searchResults.length > 0 && searchMetadata 
+                  ? `${displayResumes.length} of ${searchMetadata.totalCount} resume(s)`
+                  : `${displayResumes.length} resume(s)`
+                }
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -946,6 +963,109 @@ export default function ProfileRecord() {
             )}
           </CardContent>
         </Card>
+        
+        {/* Pagination Controls */}
+        {(displayResumes.length > 0 && (searchResults.length > 0 ? searchMetadata && searchMetadata.pages > 1 : pagination && pagination.pages > 1)) && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  {searchResults.length > 0 && searchMetadata ? (
+                    <>Showing {((searchPage - 1) * itemsPerPage) + 1}-{Math.min(searchPage * itemsPerPage, searchMetadata.totalCount)} of {searchMetadata.totalCount} results</>
+                  ) : (
+                    pagination && <>Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, pagination.total)} of {pagination.total} resumes</>
+                  )}
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  {/* Previous Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (searchResults.length > 0) {
+                        if (searchPage > 1) handleSearch(searchPage - 1);
+                      } else {
+                        if (currentPage > 1) setCurrentPage(currentPage - 1);
+                      }
+                    }}
+                    disabled={searchResults.length > 0 ? searchPage <= 1 : currentPage <= 1 || isLoading}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  
+                  {/* Page Numbers */}
+                  {searchResults.length > 0 && searchMetadata ? (
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: Math.min(5, searchMetadata.pages) }, (_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={pageNum === searchPage ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleSearch(pageNum)}
+                            className="w-10 h-8"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                      {searchMetadata.pages > 5 && (
+                        <span className="text-gray-500">...</span>
+                      )}
+                    </div>
+                  ) : (
+                    pagination && (
+                      <div className="flex items-center space-x-1">
+                        {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
+                          const pageNum = i + 1;
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={pageNum === currentPage ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(pageNum)}
+                              disabled={isLoading}
+                              className="w-10 h-8"
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        })}
+                        {pagination.pages > 5 && (
+                          <span className="text-gray-500">...</span>
+                        )}
+                      </div>
+                    )
+                  )}
+                  
+                  {/* Next Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (searchResults.length > 0) {
+                        if (searchMetadata && searchPage < searchMetadata.pages) handleSearch(searchPage + 1);
+                      } else {
+                        if (pagination && currentPage < pagination.pages) setCurrentPage(currentPage + 1);
+                      }
+                    }}
+                    disabled={
+                      searchResults.length > 0 
+                        ? !searchMetadata || searchPage >= searchMetadata.pages
+                        : !pagination || currentPage >= pagination.pages || isLoading
+                    }
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* View Resume Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
