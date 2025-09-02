@@ -158,5 +158,13 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
   }, () => {
     log(`serving on port ${port} (http://localhost:${port})`);
+    
+    // Start background processor for temporary uploads
+    import('./background-processor').then(({ startBackgroundProcessor }) => {
+      startBackgroundProcessor();
+      console.log('✅ Background processor started');
+    }).catch(error => {
+      console.error('❌ Failed to start background processor:', error);
+    });
   });
 })();

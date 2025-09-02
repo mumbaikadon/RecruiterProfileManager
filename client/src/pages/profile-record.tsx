@@ -1,18 +1,17 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { FileText, Download, Search, Upload, Trash2, Eye, Filter, Calendar, User } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+// This is a corrected version with the three-phase upload system
 
-// Phase 1: Optimized interfaces - NO FULL TEXT!
+import { useState, useRef } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { FileUp, Search, X, Download, Trash2, User, Mail, Upload } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
+
 interface ProfileResume {
   id: number;
   filename: string;
@@ -20,78 +19,51 @@ interface ProfileResume {
   fileSize: number;
   candidateName: string | null;
   candidateEmail: string | null;
-  processingStatus?: string;
   uploadedAt: string;
   uploadedBy: number;
-  summaryText?: string; // Short summary instead of full text
-  filePath?: string;
-}
-
-interface PaginatedResponse<T> {
-  resumes?: T[];
-  results?: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    hasMore: boolean;
-    pages: number;
-  };
-  metadata: {
-    searchQuery?: string | null;
-    resultCount: number;
-    totalCount: number;
-    duration: number;
-  };
-}
-
-interface SearchResult extends ProfileResume {
-  rank: number;
-  snippets: string; // Only snippets, not full text!
-  highlightedSnippets: string;
-}
-
-interface ResumeContent {
   extractedText: string;
-  wordCount?: number;
-  metadata: {
-    duration: number;
-    textLength: number;
-    compressed: boolean;
-  };
 }
 
 export default function ProfileRecord() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [candidateName, setCandidateName] = useState("");
-  const [candidateEmail, setCandidateEmail] = useState("");
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [viewingResume, setViewingResume] = useState<ProfileResume | null>(null);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  
-  // Phase 1: Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchPage, setSearchPage] = useState(1);
-  const [itemsPerPage] = useState(20);
-  
-  // Phase 1: Content loading state  
-  const [loadingContent, setLoadingContent] = useState<number | null>(null);
-  const [resumeContent, setResumeContent] = useState<{[key: number]: ResumeContent}>({});
-
   const queryClient = useQueryClient();
+  
+  // States for file upload
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [candidateName, setCandidateName] = useState('');
+  const [candidateEmail, setCandidateEmail] = useState('');
+  
+  // States for search and pagination
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [resultsPerPage, setResultsPerPage] = useState(25);
+  
+  // File input ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Phase 1: Fetch resumes with pagination (NO FULL TEXT!)
-  const { data: resumesResponse, isLoading } = useQuery<PaginatedResponse<ProfileResume>>({
-    queryKey: ["/api/profile-resumes", currentPage, itemsPerPage],
+  // Enhanced upload state for progress tracking
+  const [uploadProgress, setUploadProgress] = useState({
+    currentChunk: 0,
+    totalChunks: 0,
+    filesCompleted: 0,
+    totalFiles: 0,
+    isProcessing: false,
+    currentChunkFiles: 0,
+    failedChunks: [] as any[]
+  });
+
+  // Query to fetch resumes with search and pagination
+  const resumesResponse = useQuery({
+    queryKey: ["/api/profile-resumes", { search: searchTerm, page: currentPage, limit: resultsPerPage }],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        limit: itemsPerPage.toString(),
-        includeFileData: 'false' // Exclude file data for list view
+        limit: resultsPerPage.toString()
       });
+      
+      if (searchTerm) {
+        params.append('search', searchTerm);
+      }
       
       const response = await fetch(`/api/profile-resumes?${params}`, {
         credentials: 'include'
@@ -106,24 +78,15 @@ export default function ProfileRecord() {
   });
 
   // Extract resumes and pagination info
-  const resumes = resumesResponse?.resumes || [];
-  const pagination = resumesResponse?.pagination;
+  const resumes = resumesResponse?.data?.resumes || [];
+  const pagination = resumesResponse?.data?.pagination;
 
-  // Enhanced upload state for progress tracking
-  const [uploadProgress, setUploadProgress] = useState({
-    currentChunk: 0,
-    totalChunks: 0,
-    filesCompleted: 0,
-    totalFiles: 0,
-    isProcessing: false,
-    currentChunkFiles: 0,
-    failedChunks: [] as any[]
-  });
-
-  // Upload mutation with sequential chunk processing for better performance
+  // Enhanced upload mutation with three-phase system
   const uploadMutation = useMutation({
     mutationFn: async (files: { file: File; candidateName: string; candidateEmail: string }[]) => {
       const startTime = Date.now();
+      const LARGE_BATCH_THRESHOLD = 10; // Use fast upload for 10+ files
+      
       setUploadProgress({
         currentChunk: 0,
         totalChunks: 0,
@@ -134,942 +97,307 @@ export default function ProfileRecord() {
         failedChunks: []
       });
 
-      // Sequential chunk processing for better memory usage
-      const FRONTEND_CHUNK_SIZE = 5; // 5 files per request for optimal performance
-      const chunks = [];
-      
-      for (let i = 0; i < files.length; i += FRONTEND_CHUNK_SIZE) {
-        chunks.push(files.slice(i, i + FRONTEND_CHUNK_SIZE));
-      }
-
-      setUploadProgress(prev => ({ 
-        ...prev, 
-        totalChunks: chunks.length,
-        totalFiles: files.length 
-      }));
-
-      const aggregatedResults = {
-        successful: [] as any[],
-        failed: [] as any[],
-        total: files.length,
-        chunksProcessed: 0,
-        failedChunks: [] as any[]
-      };
-
-      // Process chunks sequentially to reduce memory overhead
-      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-        const chunk = chunks[chunkIndex];
+      // Choose upload strategy based on batch size
+      if (files.length >= LARGE_BATCH_THRESHOLD) {
+        // Fast Upload for large batches
+        console.log(`Large batch detected (${files.length} files), using fast upload system...`);
         
-        setUploadProgress(prev => ({
-          ...prev,
-          currentChunk: chunkIndex + 1,
-          currentChunkFiles: chunk.length
-        }));
-
-        try {
-          const formData = new FormData();
-          chunk.forEach(({ file }) => {
-            formData.append('resumes', file);
-          });
-          
-          // Use candidate info from first file
-          if (chunk[0]?.candidateName) formData.append('candidateName', chunk[0].candidateName);
-          if (chunk[0]?.candidateEmail) formData.append('candidateEmail', chunk[0].candidateEmail);
-          
-          console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} files`);
-          
-          const response = await fetch("/api/profile-resumes/bulk-upload", {
-            method: "POST",
-            body: formData,
-            credentials: "include",
-          });
-          
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message);
-          }
-          
-          const chunkResult = await response.json();
-          
-          // Aggregate results
-          aggregatedResults.successful.push(...chunkResult.successful);
-          aggregatedResults.failed.push(...chunkResult.failed);
-          aggregatedResults.chunksProcessed++;
-          
-          // Update progress
-          setUploadProgress(prev => ({
-            ...prev,
-            filesCompleted: aggregatedResults.successful.length
-          }));
-          
-          // Brief delay between chunks to prevent server overload
-          if (chunkIndex < chunks.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 800));
-          }
-          
-        } catch (error) {
-          console.error(`Chunk ${chunkIndex + 1} failed:`, error);
-          
-          // Add failed chunk for retry capability
-          const failedChunk = {
-            id: chunkIndex,
-            files: chunk,
-            error: (error as Error).message
-          };
-          
-          aggregatedResults.failedChunks.push(failedChunk);
-          
-          // Mark individual files as failed initially (will retry)
-          const chunkFailures = chunk.map(fileData => ({
-            filename: fileData.file.name,
-            error: (error as Error).message
-          }));
-          aggregatedResults.failed.push(...chunkFailures);
-        }
-      }
-
-      // Retry failed chunks once
-      if (aggregatedResults.failedChunks.length > 0) {
-        console.log(`Retrying ${aggregatedResults.failedChunks.length} failed chunks...`);
+        const formData = new FormData();
+        files.forEach(({ file }) => {
+          formData.append('resumes', file);
+        });
         
-        setUploadProgress(prev => ({
-          ...prev,
-          currentChunk: 0,
-          totalChunks: aggregatedResults.failedChunks.length
-        }));
-
-        for (let retryIndex = 0; retryIndex < aggregatedResults.failedChunks.length; retryIndex++) {
-          const failedChunk = aggregatedResults.failedChunks[retryIndex];
-          
-          setUploadProgress(prev => ({
-            ...prev,
-            currentChunk: retryIndex + 1
-          }));
-
-          try {
-            const formData = new FormData();
-            failedChunk.files.forEach(({ file }: any) => {
-              formData.append('resumes', file);
-            });
-            
-            if (failedChunk.files[0]?.candidateName) formData.append('candidateName', failedChunk.files[0].candidateName);
-            if (failedChunk.files[0]?.candidateEmail) formData.append('candidateEmail', failedChunk.files[0].candidateEmail);
-            
-            console.log(`Retrying chunk ${retryIndex + 1}/${aggregatedResults.failedChunks.length}`);
-            
-            const response = await fetch("/api/profile-resumes/bulk-upload", {
-              method: "POST",
-              body: formData,
-              credentials: "include",
-            });
-            
-            if (response.ok) {
-              const retryResult = await response.json();
-              
-              // Remove from failed and add to successful
-              const failedFileNames = failedChunk.files.map((f: any) => f.file.name);
-              aggregatedResults.failed = aggregatedResults.failed.filter(f => !failedFileNames.includes(f.filename));
-              aggregatedResults.successful.push(...retryResult.successful);
-              
-              console.log(`Retry successful for chunk ${retryIndex + 1}`);
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-          } catch (retryError) {
-            console.error(`Retry failed for chunk ${retryIndex + 1}:`, retryError);
-          }
+        if (files[0]?.candidateName) formData.append('candidateName', files[0].candidateName);
+        if (files[0]?.candidateEmail) formData.append('candidateEmail', files[0].candidateEmail);
+        
+        const response = await fetch("/api/profile-resumes/fast-upload", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message);
         }
-      }
+        
+        const result = await response.json();
+        
+        return {
+          ...result,
+          isFastUpload: true,
+          message: `Files uploaded successfully! Background processing will extract text and create profile records automatically.`
+        };
 
-      const duration = Date.now() - startTime;
-      console.log(`Optimized bulk upload completed in ${duration}ms. Success: ${aggregatedResults.successful.length}, Failed: ${aggregatedResults.failed.length}`);
-      
-      setUploadProgress(prev => ({ ...prev, isProcessing: false }));
-      return aggregatedResults;
-    },
-    onMutate: async (files) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries({ queryKey: ["/api/profile-resumes"] });
-
-      // Snapshot the previous value
-      const previousResumes = queryClient.getQueryData<ProfileResume[]>(["/api/profile-resumes"]);
-
-      // Optimistically add the uploading files to the list
-      if (previousResumes) {
-        const optimisticResumes = files.map((fileData, index) => ({
-          id: -index - 1, // Temporary negative ID
-          filename: fileData.file.name,
-          fileType: fileData.file.name.endsWith('.pdf') ? 'pdf' as const : 'docx' as const,
-          fileSize: fileData.file.size,
-          candidateName: fileData.candidateName || null,
-          candidateEmail: fileData.candidateEmail || null,
-          uploadedAt: new Date().toISOString(),
-          uploadedBy: 2, // Current user ID
-          extractedText: "Processing...",
-        }));
-
-        queryClient.setQueryData<ProfileResume[]>(
-          ["/api/profile-resumes"],
-          [...optimisticResumes, ...previousResumes]
-        );
-      }
-
-      // Return a context object with the snapshotted value
-      return { previousResumes };
-    },
-    onError: (err, files, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousResumes) {
-        queryClient.setQueryData(["/api/profile-resumes"], context.previousResumes);
+      } else {
+        // Traditional bulk upload for smaller batches
+        console.log(`Small batch (${files.length} files), using traditional bulk upload...`);
+        
+        const formData = new FormData();
+        files.forEach(({ file }) => {
+          formData.append('resumes', file);
+        });
+        
+        if (files[0]?.candidateName) formData.append('candidateName', files[0].candidateName);
+        if (files[0]?.candidateEmail) formData.append('candidateEmail', files[0].candidateEmail);
+        
+        const response = await fetch("/api/profile-resumes/bulk-upload", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message);
+        }
+        
+        return response.json();
       }
     },
     onSuccess: (result) => {
-      // Invalidate and refetch to get the real data from server
       queryClient.invalidateQueries({ queryKey: ["/api/profile-resumes"] });
-      queryClient.refetchQueries({ queryKey: ["/api/profile-resumes"] });
-      
       setIsUploadOpen(false);
       setSelectedFiles([]);
       setCandidateName("");
       setCandidateEmail("");
+      setUploadProgress(prev => ({ ...prev, isProcessing: false }));
       
       const { successful, failed } = result;
+      const message = result.isFastUpload 
+        ? result.message 
+        : `Successfully uploaded ${successful.length} resume(s)${failed?.length > 0 ? `, ${failed.length} failed` : ''}`;
       
-      const successMsg = `Successfully uploaded ${successful.length} resume(s)`;
-      const failMsg = failed.length > 0 ? `, ${failed.length} failed` : '';
-      
-      // Determine alert type based on results
-      if (successful.length > 0 || failed.length > 0) {
-        const isSuccess = successful.length > 0;
-        const hasFailures = failed.length > 0;
-        
-        let alertType, alertMessage;
-        
-        if (isSuccess && !hasFailures) {
-          // All successful
-          alertType = 'bg-green-500';
-          alertMessage = successMsg;
-        } else if (isSuccess && hasFailures) {
-          // Mixed results
-          alertType = 'bg-yellow-500';
-          alertMessage = `Partial success: ${successMsg}${failMsg}`;
-        } else {
-          // All failed
-          alertType = 'bg-red-500';
-          alertMessage = `Upload failed: ${failed.length} file(s) could not be processed`;
-        }
-        
-        // Create a toast or alert with appropriate styling
-        const alert = document.createElement('div');
-        alert.className = `fixed top-4 right-4 ${alertType} text-white p-4 rounded-lg shadow-lg z-50`;
-        alert.textContent = alertMessage;
-        document.body.appendChild(alert);
-        
-        // Remove alert after 4 seconds for better readability
-        setTimeout(() => {
-          if (document.body.contains(alert)) {
-            document.body.removeChild(alert);
-          }
-        }, 4000);
-      }
-    },
-  });
-
-  // Delete mutation with optimistic updates
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await fetch(`/api/profile-resumes/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message);
-      }
-      return response.json();
-    },
-    onMutate: async (deletedId) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries({ queryKey: ["/api/profile-resumes"] });
-
-      // Snapshot the previous value
-      const previousResumes = queryClient.getQueryData<ProfileResume[]>(["/api/profile-resumes"]);
-
-      // Optimistically update to the new value
-      if (previousResumes) {
-        queryClient.setQueryData<ProfileResume[]>(
-          ["/api/profile-resumes"],
-          previousResumes.filter(resume => resume.id !== deletedId)
-        );
-      }
-
-      // Return a context object with the snapshotted value
-      return { previousResumes };
-    },
-    onError: (err, deletedId, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousResumes) {
-        queryClient.setQueryData(["/api/profile-resumes"], context.previousResumes);
-      }
-    },
-    onSuccess: () => {
-      // Show success notification
+      // Show success message
       const alert = document.createElement('div');
-      alert.className = 'fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50';
-      alert.textContent = 'Resume deleted successfully';
+      alert.className = 'fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50';
+      alert.textContent = message;
       document.body.appendChild(alert);
       
       setTimeout(() => {
         if (document.body.contains(alert)) {
           document.body.removeChild(alert);
         }
-      }, 2000);
+      }, 4000);
     },
-    onSettled: () => {
-      // Always refetch after error or success to ensure we have the latest data
-      queryClient.invalidateQueries({ queryKey: ["/api/profile-resumes"] });
-    },
-  });
-
-  // Phase 1: CRITICAL - Snippet-based search (MASSIVE memory savings!)
-  const searchMutation = useMutation({
-    mutationFn: async ({ query, page }: { query: string; page: number }) => {
-      console.log("Starting snippet search for:", query, "page:", page);
-      const response = await fetch('/api/profile-resumes/search-snippets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          searchTerm: query,
-          page,
-          limit: itemsPerPage,
-          maxSnippetLength: 75 // Limit snippet size for performance
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Search failed');
-      }
-      
-      return response.json() as Promise<PaginatedResponse<SearchResult>>;
-    },
-    onMutate: () => {
-      setIsSearching(true);
-    },
-    onSuccess: (data) => {
-      setSearchResults(data.results || []);
-      setIsSearching(false);
-      console.log(`Snippet search completed: ${data.results?.length || 0} results (${data.metadata.totalCount} total)`);
-    },
-    onError: (error) => {
-      console.error("Search failed:", error);
-      setSearchResults([]);
-      setIsSearching(false);
+    onError: (error: Error) => {
+      setUploadProgress(prev => ({ ...prev, isProcessing: false }));
+      console.error('Upload error:', error);
     }
   });
-  
-  // Phase 1: Load full content ONLY when viewing (on-demand)
-  const loadResumeContent = async (id: number) => {
-    if (resumeContent[id]) {
-      return resumeContent[id]; // Already loaded
-    }
-    
-    setLoadingContent(id);
-    
-    try {
-      const response = await fetch(`/api/profile-resumes/${id}/content`, {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to load resume content');
-      }
-      
-      const content = await response.json() as ResumeContent;
-      setResumeContent(prev => ({ ...prev, [id]: content }));
-      return content;
-    } catch (error) {
-      console.error('Failed to load content:', error);
-      throw error;
-    } finally {
-      setLoadingContent(null);
-    }
+
+  // File selection handling
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setSelectedFiles(files);
   };
 
-  // Phase 1: Updated search handler for pagination
-  const handleSearch = async (page: number = 1) => {
-    if (!searchTerm.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-    
-    setSearchPage(page);
-    searchMutation.mutate({ query: searchTerm.trim(), page });
-  };
-  
-  // Phase 1: Handle view resume with on-demand content loading
-  const handleViewResume = async (resume: ProfileResume | SearchResult) => {
-    setViewingResume(resume);
-    setIsViewDialogOpen(true);
-    
-    // Load full content asynchronously
-    try {
-      await loadResumeContent(resume.id);
-    } catch (error) {
-      console.error('Failed to load resume content:', error);
-    }
-  };
-
-  // Clear search
-  const clearSearch = () => {
-    setSearchTerm("");
-    setSearchResults([]);
-    setIsSearching(false);
-  };
-
-  // Handle multiple file upload
   const handleUpload = () => {
     if (selectedFiles.length === 0) return;
-
-    const uploadData = selectedFiles.map(file => ({
+    
+    const fileData = selectedFiles.map(file => ({
       file,
       candidateName,
-      candidateEmail,
+      candidateEmail
     }));
-
-    uploadMutation.mutate(uploadData);
+    
+    uploadMutation.mutate(fileData);
   };
 
-  // Download resume
-  const handleDownload = async (resume: ProfileResume) => {
-    try {
-      const response = await fetch(`/api/profile-resumes/${resume.id}/download`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = resume.filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
-    } catch (error) {
-      console.error("Download failed:", error);
-    }
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  // View resume details
-  const handleView = (resume: ProfileResume) => {
-    setViewingResume(resume);
-    setIsViewDialogOpen(true);
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + " B";
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    else return (bytes / 1048576).toFixed(1) + " MB";
   };
-
-  // Format file size
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const displayResumes = searchResults.length > 0 ? searchResults : resumes;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Profile Record</h1>
-            <p className="text-gray-600 mt-1">Search and manage resume database</p>
-          </div>
-          
-          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Upload Resume
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-              <DialogHeader className="flex-shrink-0">
-                <DialogTitle>Upload Resume Files</DialogTitle>
-                <p className="text-sm text-gray-600">Select multiple PDF or DOCX files to upload</p>
-              </DialogHeader>
-              
-              <div className="flex-1 overflow-hidden flex flex-col space-y-4">
-                <div className="flex-shrink-0">
-                  <Label htmlFor="resume-files">Resume Files (PDF or DOCX)</Label>
-                  <Input
-                    id="resume-files"
-                    type="file"
-                    accept=".pdf,.docx"
-                    multiple
-                    onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
-                    className="mt-1"
-                  />
-                </div>
-                
-                {selectedFiles.length > 0 && (
-                  <div className="flex-1 overflow-hidden flex flex-col">
-                    <div className="flex-shrink-0 flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-gray-700">
-                        Selected files ({selectedFiles.length}):
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedFiles([])}
-                        className="text-xs h-6 px-2"
-                      >
-                        Clear All
-                      </Button>
-                    </div>
-                    
-                    <div className="flex-1 overflow-y-auto space-y-2 pr-2 max-h-60">
-                      {selectedFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between text-sm bg-gray-50 p-3 rounded-lg border group hover:bg-gray-100 transition-colors">
-                          <div className="flex-1 min-w-0 mr-3">
-                            <div className="font-medium truncate" title={file.name}>
-                              {file.name}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {formatFileSize(file.size)} • {file.type.includes('pdf') ? 'PDF' : 'DOCX'}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => {
-                              const newFiles = selectedFiles.filter((_, i) => i !== index);
-                              setSelectedFiles(newFiles);
-                            }}
-                            className="flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
-                            title="Remove file"
-                          >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex-shrink-0 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="candidate-name">Default Candidate Name (Optional)</Label>
-                      <Input
-                        id="candidate-name"
-                        value={candidateName}
-                        onChange={(e) => setCandidateName(e.target.value)}
-                        placeholder="Applied to all files"
-                        className="mt-1"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="candidate-email">Default Candidate Email (Optional)</Label>
-                      <Input
-                        id="candidate-email"
-                        type="email"
-                        value={candidateEmail}
-                        onChange={(e) => setCandidateEmail(e.target.value)}
-                        placeholder="Applied to all files"
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3 pt-2">
-                    <Button
-                      onClick={handleUpload}
-                      disabled={selectedFiles.length === 0 || uploadProgress.isProcessing}
-                      className="flex-1"
-                      size="lg"
-                    >
-                      {uploadProgress.isProcessing ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                          {uploadProgress.currentChunk === 0 ? 
-                            `Preparing ${selectedFiles.length} file(s)...` : 
-                            `Processing chunk ${uploadProgress.currentChunk}/${uploadProgress.totalChunks}...`
-                          }
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Fast Upload {selectedFiles.length} file(s)
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setIsUploadOpen(false)}
-                      size="lg"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-                
-                {uploadMutation.error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>
-                      {uploadMutation.error.message}
-                    </AlertDescription>
-                  </Alert>
-                )}
-                
-                {uploadProgress.isProcessing && (
-                  <Alert>
-                    <AlertDescription>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-                          <span>
-                            {uploadProgress.currentChunk === 0 ? 
-                              "Preparing upload..." : 
-                              `Processing chunk ${uploadProgress.currentChunk} of ${uploadProgress.totalChunks} (${uploadProgress.currentChunkFiles} files)`
-                            }
-                          </span>
-                        </div>
-                        
-                        {uploadProgress.totalChunks > 0 && (
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm text-gray-600">
-                              <span>{uploadProgress.filesCompleted} / {uploadProgress.totalFiles} files completed</span>
-                              <span>{Math.round((uploadProgress.filesCompleted / uploadProgress.totalFiles) * 100)}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                                style={{ width: `${(uploadProgress.filesCompleted / uploadProgress.totalFiles) * 100}%` }}
-                              />
-                            </div>
-                          </div>
-                        )}
-                        
-                        {uploadProgress.failedChunks.length > 0 && (
-                          <div className="text-sm text-yellow-600">
-                            ⚠️ {uploadProgress.failedChunks.length} chunk(s) failed - will retry automatically
-                          </div>
-                        )}
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* Search Section */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5" />
-              Content Search
+              <User className="h-5 w-5" />
+              Profile Record Management
             </CardTitle>
+            <CardDescription>
+              Manage candidate resume database with advanced search and bulk upload capabilities
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder='Advanced search: "Senior Developer" AND React OR Java...'
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="flex-1"
-                />
-                <Button onClick={handleSearch} disabled={isSearching}>
-                  {isSearching ? "Searching..." : "Search"}
-                </Button>
-                {(searchTerm || searchResults.length > 0) && (
-                  <Button variant="outline" onClick={clearSearch}>
-                    Clear
-                  </Button>
-                )}
+        </Card>
+
+        {/* Upload Dialog */}
+        <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <FileUp className="h-4 w-4 mr-2" />
+              Upload Resumes
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Upload Resume Files</DialogTitle>
+              <DialogDescription>
+                Upload multiple PDF or DOCX files. Large batches (10+ files) will use fast upload with background processing.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="candidateName">Candidate Name (Optional)</Label>
+                  <Input
+                    id="candidateName"
+                    placeholder="Enter candidate name"
+                    value={candidateName}
+                    onChange={(e) => setCandidateName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="candidateEmail">Candidate Email (Optional)</Label>
+                  <Input
+                    id="candidateEmail"
+                    type="email"
+                    placeholder="Enter candidate email"
+                    value={candidateEmail}
+                    onChange={(e) => setCandidateEmail(e.target.value)}
+                  />
+                </div>
               </div>
-              
-              <div className="text-xs text-gray-500 space-y-1">
-                <p><strong>Advanced Search Examples:</strong></p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-1 font-mono text-xs">
-                  <p>• Simple: <code className="bg-gray-100 px-1 rounded">JavaScript React</code></p>
-                  <p>• Phrases: <code className="bg-gray-100 px-1 rounded">"Senior Developer" AND React</code></p>
-                  <p>• Complex: <code className="bg-gray-100 px-1 rounded">Java AND ("Spring Boot" OR "Spring Framework")</code></p>
-                  <p>• Multi-tech: <code className="bg-gray-100 px-1 rounded">("Full Stack" OR "Frontend") AND (React OR Vue)</code></p>
-                  <p>• Phone (last 4): <code className="bg-gray-100 px-1 rounded">1234</code></p>
-                  <p>• Phone (full): <code className="bg-gray-100 px-1 rounded">5551234567</code></p>
+
+              <div className="space-y-2">
+                <Label>Select Files</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.docx"
+                  onChange={handleFileSelect}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+
+              {selectedFiles.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Selected Files ({selectedFiles.length})</Label>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div className="flex-1 truncate">
+                          <span className="text-sm font-medium">{file.name}</span>
+                          <span className="text-xs text-gray-500 ml-2">({formatFileSize(file.size)})</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleRemoveFile(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {uploadProgress.isProcessing && (
+                <Alert>
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Processing files...</span>
+                        <span>{uploadProgress.filesCompleted}/{uploadProgress.totalFiles}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${(uploadProgress.filesCompleted / uploadProgress.totalFiles) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsUploadOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleUpload} 
+                disabled={selectedFiles.length === 0 || uploadMutation.isPending}
+              >
+                {uploadMutation.isPending ? "Uploading..." : "Upload Files"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Search and Results */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search resumes by content, name, email, or phone..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
               </div>
             </div>
-            
-            {searchResults.length > 0 && (
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  Found <strong>{searchResults.length}</strong> resume(s) matching: <code className="bg-white px-2 py-1 rounded text-xs">{searchTerm}</code>
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Results/Resume List */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                {searchResults.length > 0 ? "Search Results" : "All Resumes"}
-              </span>
-              <Badge variant="secondary">
-                {displayResumes.length} resume(s)
-              </Badge>
-            </CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {resumesResponse.isLoading ? (
               <div className="text-center py-8">Loading resumes...</div>
-            ) : displayResumes.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                {searchTerm ? `No resumes found for "${searchTerm}"` : "No resumes uploaded yet"}
+            ) : resumes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No resumes found. Upload some files to get started.
               </div>
             ) : (
               <div className="space-y-4">
-                {displayResumes.map((resume) => (
-                  <div key={resume.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                    <div className="flex items-start justify-between">
+                {resumes.map((resume: ProfileResume) => (
+                  <Card key={resume.id} className="p-4">
+                    <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-medium text-lg">{resume.filename}</h3>
-                          <Badge variant={resume.fileType === 'pdf' ? 'default' : 'secondary'}>
-                            {resume.fileType.toUpperCase()}
-                          </Badge>
-                          {resume.rank && (
-                            <Badge variant="outline">
-                              Relevance: {Math.round(resume.rank * 100)}%
-                            </Badge>
+                        <h3 className="font-semibold">{resume.filename}</h3>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          {resume.candidateName && (
+                            <span className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {resume.candidateName}
+                            </span>
                           )}
+                          {resume.candidateEmail && (
+                            <span className="flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              {resume.candidateEmail}
+                            </span>
+                          )}
+                          <span>{formatFileSize(resume.fileSize)}</span>
+                          <Badge variant="secondary">{resume.fileType.toUpperCase()}</Badge>
                         </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {resume.candidateName || "Unknown Candidate"}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(resume.uploadedAt)}
-                          </div>
-                          <div>Size: {formatFileSize(resume.fileSize)}</div>
-                        </div>
-                        
-                        {resume.candidateEmail && (
-                          <div className="mt-2 text-sm text-gray-600">
-                            Email: {resume.candidateEmail}
-                          </div>
-                        )}
-                        
-                        {/* Phase 1: Show snippets for search results (memory optimized!) */}
-                        {'snippets' in resume && resume.snippets && (
-                          <div className="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-                            <p className="text-sm text-gray-700">
-                              <span
-                                dangerouslySetInnerHTML={{
-                                  __html: (resume.highlightedSnippets || resume.snippets).replace(
-                                    /<mark>/g,
-                                    '<mark style="background-color: #fbbf24; padding: 2px 4px; border-radius: 3px; font-weight: 600;">'
-                                  )
-                                }}
-                              />
-                            </p>
-                            {'rank' in resume && (
-                              <div className="mt-2 text-xs text-yellow-700">
-                                Match Score: {(resume.rank * 100).toFixed(1)}%
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Phase 1: Show summary for regular results */}
-                        {!('snippets' in resume) && resume.summaryText && (
-                          <div className="mt-2 text-sm text-gray-600">
-                            <span className="font-medium">Summary:</span> {resume.summaryText}
-                          </div>
-                        )}
                       </div>
-                      
-                      <div className="flex items-center gap-2 ml-4">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewResume(resume)}
-                          title="View resume details"
-                        >
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDownload(resume)}
-                          title="Download resume file"
-                        >
-                          <Download className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => deleteMutation.mutate(resume.id)}
-                          disabled={deleteMutation.isPending}
-                          title="Delete resume"
-                        >
-                          <Trash2 className="h-3 w-3" />
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline">
+                          <Download className="h-4 w-4 mr-1" />
+                          Download
                         </Button>
                       </div>
                     </div>
-                  </div>
+                  </Card>
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
-
-        {/* View Resume Dialog */}
-        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Resume Details</DialogTitle>
-            </DialogHeader>
-            {viewingResume && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Filename</Label>
-                    <p className="text-sm mt-1">{viewingResume.filename}</p>
-                  </div>
-                  <div>
-                    <Label>File Type</Label>
-                    <p className="text-sm mt-1">{viewingResume.fileType.toUpperCase()}</p>
-                  </div>
-                  <div>
-                    <Label>Candidate Name</Label>
-                    <p className="text-sm mt-1">{viewingResume.candidateName || "Not specified"}</p>
-                  </div>
-                  <div>
-                    <Label>Candidate Email</Label>
-                    <p className="text-sm mt-1">{viewingResume.candidateEmail || "Not specified"}</p>
-                  </div>
-                  <div>
-                    <Label>File Size</Label>
-                    <p className="text-sm mt-1">{formatFileSize(viewingResume.fileSize)}</p>
-                  </div>
-                  <div>
-                    <Label>Uploaded</Label>
-                    <p className="text-sm mt-1">{formatDate(viewingResume.uploadedAt)}</p>
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <Label>Extracted Text Content</Label>
-                  {/* Phase 1: On-demand content loading */}
-                  {loadingContent === viewingResume.id ? (
-                    <div className="mt-2 h-64 flex items-center justify-center border rounded-md bg-gray-50">
-                      <div className="text-center">
-                        <div className="animate-spin h-8 w-8 border-b-2 border-blue-500 rounded-full mx-auto mb-2"></div>
-                        <p className="text-sm text-gray-600">Loading full content...</p>
-                      </div>
-                    </div>
-                  ) : resumeContent[viewingResume.id] ? (
-                    <div className="mt-2">
-                      <div className="mb-2 text-xs text-gray-500 flex justify-between">
-                        <span>Word Count: {resumeContent[viewingResume.id].wordCount || 'Unknown'}</span>
-                        <span>Load Time: {resumeContent[viewingResume.id].metadata.duration}ms</span>
-                      </div>
-                      <Textarea
-                        value={resumeContent[viewingResume.id].extractedText}
-                        readOnly
-                        className="h-64 resize-none text-sm"
-                        placeholder="Full resume content..."
-                      />
-                    </div>
-                  ) : (
-                    <div className="mt-2 h-64 flex items-center justify-center border rounded-md bg-gray-50">
-                      <div className="text-center">
-                        <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600 mb-2">Click "Load Full Content" to view complete text</p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => loadResumeContent(viewingResume.id)}
-                        >
-                          Load Full Content
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Phase 1: Show snippets if available */}
-                  {'snippets' in viewingResume && viewingResume.snippets && (
-                    <div className="mt-2 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-                      <Label className="text-xs text-yellow-800">Search Match Snippets:</Label>
-                      <div 
-                        className="text-sm mt-1"
-                        dangerouslySetInnerHTML={{
-                          __html: viewingResume.highlightedSnippets || viewingResume.snippets
-                        }}
-                      />
-                    </div>
-                  )}
-                  
-                  {/* Phase 1: Show summary if available */}
-                  {viewingResume.summaryText && (
-                    <div className="mt-2 p-3 bg-blue-50 border-l-4 border-blue-400 rounded">
-                      <Label className="text-xs text-blue-800">Summary:</Label>
-                      <p className="text-sm mt-1 text-blue-700">{viewingResume.summaryText}</p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    onClick={() => handleDownload(viewingResume)}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download File
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsViewDialogOpen(false)}
-                  >
-                    Close
-                  </Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
