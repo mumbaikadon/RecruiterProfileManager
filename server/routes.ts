@@ -12,6 +12,10 @@ import {
   insertUserSchema,
   insertCandidateValidationSchema,
   insertProfileResumeSchema,
+  processingJobs,
+  uploadSessions,
+  insertProcessingJobSchema,
+  insertUploadSessionSchema,
   type InsertResumeData,
   resumeData,
   profileResumes,
@@ -24,6 +28,8 @@ import { parseJobRequirements } from "./job-parser";
 import fs from "fs";
 import multer from "multer";
 import { NotificationService } from "./notifications";
+// Initialize job processor for async file processing
+import "./job-processor";
 
 // Configure multer for file uploads 
 const multerStorage = multer.memoryStorage();
@@ -3729,6 +3735,244 @@ Generated on: ${new Date().toLocaleString()}
       const errorMsg = (error as Error).message;
       profileLogger.apiError('POST', '/api/profile-resumes/bulk-upload', errorMsg, 500);
       res.status(500).json({ message: errorMsg });
+    }
+  });
+
+  // NEW: Asynchronous bulk upload endpoint - stores files and queues processing
+  app.post("/api/profile-resumes/bulk-upload-async", requireAuth, bulkUpload.array('resumes', 50), async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const { profileLogger } = await import('./logger');
+    const { jobProcessor } = await import('./job-processor');
+    const { v4: uuidv4 } = await import('uuid');
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    try {
+      profileLogger.apiRequest('POST', '/api/profile-resumes/bulk-upload-async', (req as any).user?.id);
+      
+      if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        profileLogger.apiError('POST', '/api/profile-resumes/bulk-upload-async', 'No files uploaded', 400);
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const files = req.files as Express.Multer.File[];
+      const { candidateName, candidateEmail } = req.body;
+      const sessionId = uuidv4();
+      
+      console.log(`🚀 Starting async bulk upload of ${files.length} files (Session: ${sessionId})`);
+      
+      // Create upload session
+      const session = await storage.db.insert(uploadSessions).values({
+        sessionId,
+        totalFiles: files.length,
+        candidateName: candidateName || null,
+        candidateEmail: candidateEmail || null,
+        createdBy: (req as any).user.id
+      }).returning();
+      
+      const results = {
+        sessionId,
+        successful: [] as any[],
+        failed: [] as any[],
+        queued: [] as any[],
+        total: files.length
+      };
+
+      // Ensure uploads directory exists
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'async');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      // Process files quickly - just validate, store, and queue
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        try {
+          // Validate file type
+          if (!['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.mimetype)) {
+            throw new Error("Only PDF and DOCX files are allowed");
+          }
+
+          // Generate unique filename
+          const fileExtension = file.mimetype === 'application/pdf' ? '.pdf' : '.docx';
+          const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(7)}-${file.originalname}`;
+          const filePath = path.join(uploadsDir, uniqueFilename);
+          
+          // Store file to disk
+          fs.writeFileSync(filePath, file.buffer);
+          
+          // Create profile resume record with 'uploading' status
+          const resumeData = {
+            filename: file.originalname,
+            fileType: file.mimetype === 'application/pdf' ? 'pdf' : 'docx',
+            fileSize: file.size,
+            filePath,
+            candidateName: candidateName || null,
+            candidateEmail: candidateEmail || null,
+            processingStatus: 'uploading',
+            uploadedBy: (req as any).user.id,
+          };
+
+          const validatedData = insertProfileResumeSchema.parse(resumeData);
+          const resume = await storage.createProfileResumeAsync(validatedData);
+          
+          // Create processing job
+          const processingData = {
+            filePath,
+            fileName: file.originalname,
+            fileType: resumeData.fileType,
+            fileSize: file.size,
+            candidateName: candidateName,
+            candidateEmail: candidateEmail,
+            userId: (req as any).user.id
+          };
+          
+          const job = await jobProcessor.createJob(
+            resume.id,
+            'extract_text',
+            processingData,
+            0, // normal priority
+            (req as any).user.id
+          );
+          
+          results.successful.push({
+            success: true,
+            filename: file.originalname,
+            resumeId: resume.id,
+            jobId: job.id,
+            status: 'queued'
+          });
+          results.queued.push({ resumeId: resume.id, jobId: job.id });
+          
+          profileLogger.uploadStart(file.originalname, (req as any).user?.id, file.size);
+          
+        } catch (error) {
+          const errorMsg = (error as Error).message;
+          profileLogger.uploadError(file.originalname, (req as any).user?.id, errorMsg);
+          
+          results.failed.push({
+            success: false,
+            filename: file.originalname,
+            error: errorMsg
+          });
+        }
+      }
+      
+      // Update session
+      await storage.db.update(uploadSessions)
+        .set({
+          uploadedFiles: results.successful.length,
+          failedFiles: results.failed.length,
+          status: results.failed.length === 0 ? 'processing' : 'completed',
+          updatedAt: new Date()
+        })
+        .where(eq(uploadSessions.id, session[0].id));
+      
+      const duration = Date.now() - startTime;
+      console.log(`⚡ Async bulk upload completed in ${duration}ms: ${results.successful.length}/${results.total} queued for processing`);
+      
+      res.status(200).json({
+        ...results,
+        message: `${results.successful.length} files queued for processing`,
+        processingTime: duration
+      });
+      
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      const errorMsg = (error as Error).message;
+      profileLogger.apiError('POST', '/api/profile-resumes/bulk-upload-async', errorMsg, 500);
+      res.status(500).json({ message: errorMsg });
+    }
+  });
+
+  // Status monitoring endpoints for async processing
+  app.get("/api/upload-sessions/:sessionId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const sessionId = req.params.sessionId;
+      
+      // Get session details
+      const session = await storage.db
+        .select()
+        .from(uploadSessions)
+        .where(eq(uploadSessions.sessionId, sessionId))
+        .limit(1);
+      
+      if (session.length === 0) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      
+      // Get processing jobs for this session
+      const jobs = await storage.db
+        .select({
+          id: processingJobs.id,
+          profileResumeId: processingJobs.profileResumeId,
+          status: processingJobs.status,
+          jobType: processingJobs.jobType,
+          retryCount: processingJobs.retryCount,
+          errorMessage: processingJobs.errorMessage,
+          createdAt: processingJobs.createdAt,
+          startedAt: processingJobs.startedAt,
+          completedAt: processingJobs.completedAt,
+          filename: profileResumes.filename
+        })
+        .from(processingJobs)
+        .leftJoin(profileResumes, eq(processingJobs.profileResumeId, profileResumes.id))
+        .where(eq(profileResumes.uploadedBy, session[0].createdBy));
+      
+      // Calculate progress
+      const totalJobs = jobs.length;
+      const completedJobs = jobs.filter(job => job.status === 'completed').length;
+      const failedJobs = jobs.filter(job => job.status === 'failed').length;
+      const processingJobs = jobs.filter(job => job.status === 'processing').length;
+      const pendingJobs = jobs.filter(job => ['pending', 'retrying'].includes(job.status)).length;
+      
+      res.json({
+        session: session[0],
+        progress: {
+          total: totalJobs,
+          completed: completedJobs,
+          failed: failedJobs,
+          processing: processingJobs,
+          pending: pendingJobs,
+          percentage: totalJobs > 0 ? Math.round((completedJobs / totalJobs) * 100) : 0
+        },
+        jobs: jobs.slice(0, 50) // Limit to first 50 jobs for performance
+      });
+      
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+  
+  app.get("/api/processing-queue/stats", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { jobProcessor } = await import('./job-processor');
+      const stats = await jobProcessor.getQueueStats();
+      
+      // Get recent failed jobs for monitoring
+      const recentFailures = await storage.db
+        .select({
+          id: processingJobs.id,
+          profileResumeId: processingJobs.profileResumeId,
+          errorMessage: processingJobs.errorMessage,
+          retryCount: processingJobs.retryCount,
+          createdAt: processingJobs.createdAt,
+          filename: profileResumes.filename
+        })
+        .from(processingJobs)
+        .leftJoin(profileResumes, eq(processingJobs.profileResumeId, profileResumes.id))
+        .where(eq(processingJobs.status, 'failed'))
+        .orderBy(processingJobs.completedAt)
+        .limit(10);
+      
+      res.json({
+        stats,
+        recentFailures
+      });
+      
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
     }
   });
 

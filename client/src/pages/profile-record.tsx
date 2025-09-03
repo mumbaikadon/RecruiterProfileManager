@@ -69,6 +69,9 @@ export default function ProfileRecord() {
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState<'sync' | 'async'>('async'); // Default to async
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isTrackingSession, setIsTrackingSession] = useState(false);
   const [viewingResume, setViewingResume] = useState<ProfileResume | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   
@@ -185,7 +188,11 @@ export default function ProfileRecord() {
           
           console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} files`);
           
-          const response = await fetch("/api/profile-resumes/bulk-upload", {
+          const endpoint = uploadMode === 'async' 
+            ? "/api/profile-resumes/bulk-upload-async"
+            : "/api/profile-resumes/bulk-upload";
+            
+          const response = await fetch(endpoint, {
             method: "POST",
             body: formData,
             credentials: "include",
@@ -198,10 +205,20 @@ export default function ProfileRecord() {
           
           const chunkResult = await response.json();
           
-          // Aggregate results
-          aggregatedResults.successful.push(...chunkResult.successful);
-          aggregatedResults.failed.push(...chunkResult.failed);
-          aggregatedResults.chunksProcessed++;
+          // Handle async response differently
+          if (uploadMode === 'async' && chunkResult.sessionId) {
+            // For async uploads, set session ID and break early
+            setCurrentSessionId(chunkResult.sessionId);
+            setIsTrackingSession(true);
+            aggregatedResults.successful.push(...chunkResult.successful);
+            aggregatedResults.failed.push(...chunkResult.failed);
+            break; // Async uploads don't use chunk processing
+          } else {
+            // Aggregate results for sync uploads
+            aggregatedResults.successful.push(...chunkResult.successful);
+            aggregatedResults.failed.push(...chunkResult.failed);
+            aggregatedResults.chunksProcessed++;
+          }
           
           // Update progress
           setUploadProgress(prev => ({
@@ -481,6 +498,21 @@ export default function ProfileRecord() {
     }
   });
   
+  // Session tracking for async uploads
+  const { data: sessionStatus } = useQuery({
+    queryKey: ['upload-session', currentSessionId],
+    queryFn: async () => {
+      if (!currentSessionId) return null;
+      const response = await fetch(`/api/upload-sessions/${currentSessionId}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch session status');
+      return response.json();
+    },
+    enabled: !!currentSessionId && isTrackingSession,
+    refetchInterval: 2000, // Poll every 2 seconds
+  });
+
   // Phase 1: Load full content ONLY when viewing (on-demand)
   const loadResumeContent = async (id: number) => {
     if (resumeContent[id]) {
@@ -621,6 +653,38 @@ export default function ProfileRecord() {
               <DialogHeader className="flex-shrink-0">
                 <DialogTitle>Upload Resume Files</DialogTitle>
                 <p className="text-sm text-gray-600">Select multiple PDF or DOCX files to upload</p>
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="uploadMode"
+                        value="async"
+                        checked={uploadMode === 'async'}
+                        onChange={(e) => setUploadMode(e.target.value as 'async')}
+                        className="text-blue-600"
+                      />
+                      <div>
+                        <span className="font-medium text-blue-800">⚡ Async Upload (Recommended)</span>
+                        <p className="text-xs text-blue-600">Queue files for background processing - upload 500+ files instantly!</p>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="uploadMode"
+                        value="sync"
+                        checked={uploadMode === 'sync'}
+                        onChange={(e) => setUploadMode(e.target.value as 'sync')}
+                        className="text-blue-600"
+                      />
+                      <div>
+                        <span className="font-medium text-blue-800">🔄 Sync Upload</span>
+                        <p className="text-xs text-blue-600">Process files immediately - wait for completion</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
               </DialogHeader>
               
               <div className="flex-1 overflow-hidden flex flex-col space-y-4">
@@ -725,7 +789,7 @@ export default function ProfileRecord() {
                       ) : (
                         <>
                           <Upload className="h-4 w-4 mr-2" />
-                          Fast Upload {selectedFiles.length} file(s)
+                          {uploadMode === 'async' ? `⚡ Queue ${selectedFiles.length} file(s)` : `🔄 Process ${selectedFiles.length} file(s)`}
                         </>
                       )}
                     </Button>
@@ -1062,6 +1126,75 @@ export default function ProfileRecord() {
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Async Upload Session Tracking */}
+        {isTrackingSession && sessionStatus && (
+          <Card className="border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                  <span>⚡ Background Processing</span>
+                </div>
+                {sessionStatus.progress && (
+                  <Badge variant="outline" className="ml-auto">
+                    {sessionStatus.progress.percentage}% Complete
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {sessionStatus.progress && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Processing {sessionStatus.progress.total} files</span>
+                      <span>{sessionStatus.progress.completed + sessionStatus.progress.failed} / {sessionStatus.progress.total} processed</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${sessionStatus.progress.percentage}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>✅ {sessionStatus.progress.completed} completed</span>
+                      <span>⌛ {sessionStatus.progress.processing} processing</span>
+                      <span>⏳ {sessionStatus.progress.pending} pending</span>
+                      {sessionStatus.progress.failed > 0 && (
+                        <span className="text-red-600">❌ {sessionStatus.progress.failed} failed</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {sessionStatus.progress?.percentage === 100 && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-green-600">
+                      <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg className="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span className="font-medium">Processing Complete!</span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setIsTrackingSession(false);
+                        setCurrentSessionId(null);
+                        queryClient.invalidateQueries({ queryKey: ["/api/profile-resumes"] });
+                      }}
+                    >
+                      Done
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

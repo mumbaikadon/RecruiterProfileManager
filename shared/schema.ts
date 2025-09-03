@@ -330,11 +330,64 @@ export const searchCache = pgTable("search_cache", {
   };
 });
 
+// Processing Job Queue - for asynchronous file processing
+export const processingJobs = pgTable("processing_jobs", {
+  id: serial("id").primaryKey(),
+  profileResumeId: integer("profile_resume_id").notNull().references(() => profileResumes.id, { onDelete: "cascade" }),
+  jobType: text("job_type", { enum: ["extract_text", "generate_summary", "analyze_content"] }).notNull().default("extract_text"),
+  status: text("status", { enum: ["pending", "processing", "completed", "failed", "retrying"] }).notNull().default("pending"),
+  priority: integer("priority").notNull().default(0), // Higher number = higher priority
+  retryCount: integer("retry_count").notNull().default(0),
+  maxRetries: integer("max_retries").notNull().default(3),
+  errorMessage: text("error_message"),
+  processingData: text("processing_data"), // JSON data for job context (file path, etc.)
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdBy: integer("created_by").references(() => users.id),
+}, (table) => {
+  return {
+    // Index for efficient job queue processing
+    statusPriorityIdx: index("processing_jobs_status_priority_idx").on(table.status, table.priority, table.createdAt),
+    // Index on resume ID for tracking
+    resumeIdx: index("processing_jobs_resume_idx").on(table.profileResumeId),
+    // Index on created by for user tracking
+    createdByIdx: index("processing_jobs_created_by_idx").on(table.createdBy),
+  };
+});
+
+// Batch Upload Sessions - track upload batches
+export const uploadSessions = pgTable("upload_sessions", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull().unique(), // UUID for tracking
+  totalFiles: integer("total_files").notNull(),
+  uploadedFiles: integer("uploaded_files").notNull().default(0),
+  processedFiles: integer("processed_files").notNull().default(0),
+  failedFiles: integer("failed_files").notNull().default(0),
+  status: text("status", { enum: ["uploading", "processing", "completed", "failed"] }).notNull().default("uploading"),
+  candidateName: text("candidate_name"),
+  candidateEmail: text("candidate_email"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+}, (table) => {
+  return {
+    // Index for session tracking
+    sessionIdx: index("upload_sessions_session_idx").on(table.sessionId),
+    // Index on status for filtering active sessions
+    statusIdx: index("upload_sessions_status_idx").on(table.status),
+    // Index on created by for user sessions
+    createdByIdx: index("upload_sessions_created_by_idx").on(table.createdBy),
+  };
+});
+
 // Create insert schemas
 export const insertProfileResumeSchema = createInsertSchema(profileResumes).omit({ id: true, uploadedAt: true });
 export const insertResumeContentSchema = createInsertSchema(resumeContent).omit({ id: true, createdAt: true });
 export const insertResumeMetadataSchema = createInsertSchema(resumeMetadata).omit({ id: true, extractedAt: true });
 export const insertSearchCacheSchema = createInsertSchema(searchCache).omit({ id: true, createdAt: true });
+export const insertProcessingJobSchema = createInsertSchema(processingJobs).omit({ id: true, createdAt: true });
+export const insertUploadSessionSchema = createInsertSchema(uploadSessions).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Export types
 export type ProfileResume = typeof profileResumes.$inferSelect & {
@@ -354,3 +407,9 @@ export type InsertResumeMetadata = z.infer<typeof insertResumeMetadataSchema>;
 
 export type SearchCache = typeof searchCache.$inferSelect;
 export type InsertSearchCache = z.infer<typeof insertSearchCacheSchema>;
+
+export type ProcessingJob = typeof processingJobs.$inferSelect;
+export type InsertProcessingJob = z.infer<typeof insertProcessingJobSchema>;
+
+export type UploadSession = typeof uploadSessions.$inferSelect;
+export type InsertUploadSession = z.infer<typeof insertUploadSessionSchema>;

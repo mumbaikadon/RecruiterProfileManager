@@ -1524,6 +1524,16 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  // Async profile resume creation - just stores file without processing
+  async createProfileResumeAsync(resume: InsertProfileResume): Promise<ProfileResume> {
+    const [createdResume] = await db
+      .insert(profileResumes)
+      .values(resume)
+      .returning();
+    
+    return createdResume;
+  }
+
   async deleteProfileResume(id: number): Promise<void> {
     await db.transaction(async (tx) => {
       // Get resume info before deleting to clean up filesystem file
