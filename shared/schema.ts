@@ -342,6 +342,7 @@ export const processingJobs = pgTable("processing_jobs", {
   errorMessage: text("error_message"),
   processingData: text("processing_data"), // JSON data for job context (file path, etc.)
   startedAt: timestamp("started_at"),
+  retryAt: timestamp("retry_at"), // When to retry failed jobs
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").references(() => users.id),

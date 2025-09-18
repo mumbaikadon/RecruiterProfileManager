@@ -298,7 +298,8 @@ class JobProcessor {
 // Export singleton instance
 export const jobProcessor = new JobProcessor();
 
-// Auto-start when module is imported
-if (process.env.NODE_ENV !== 'test') {
-  jobProcessor.start().catch(console.error);
-}
+// Auto-start disabled - Enhanced background job manager is now used
+// The new background-job-manager.ts provides superior worker thread processing
+// if (process.env.NODE_ENV !== 'test') {
+//   jobProcessor.start().catch(console.error);
+// }

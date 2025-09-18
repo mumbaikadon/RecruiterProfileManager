@@ -3742,7 +3742,7 @@ Generated on: ${new Date().toLocaleString()}
   app.post("/api/profile-resumes/bulk-upload-async", requireAuth, bulkUpload.array('resumes', 50), async (req: Request, res: Response) => {
     const startTime = Date.now();
     const { profileLogger } = await import('./logger');
-    const { jobProcessor } = await import('./job-processor');
+    const { backgroundJobManager } = await import('./background-job-manager');
     const { v4: uuidv4 } = await import('uuid');
     const fs = await import('fs');
     const path = await import('path');
@@ -3828,13 +3828,19 @@ Generated on: ${new Date().toLocaleString()}
             userId: (req as any).user.id
           };
           
-          const job = await jobProcessor.createJob(
+          // Ensure background job manager is started (safety net)
+          await backgroundJobManager.ensureStarted();
+          
+          // Queue job for worker thread processing with enhanced scheduler
+          const job = await backgroundJobManager.createJob(
             resume.id,
             'extract_text',
             processingData,
-            0, // normal priority
+            1, // High priority for bulk uploads 
             (req as any).user.id
           );
+          
+          console.log(`📋 Queued job ${job.id} for file ${file.originalname} (Resume ID: ${resume.id})`);
           
           results.successful.push({
             success: true,
@@ -3872,10 +3878,21 @@ Generated on: ${new Date().toLocaleString()}
       const duration = Date.now() - startTime;
       console.log(`⚡ Async bulk upload completed in ${duration}ms: ${results.successful.length}/${results.total} queued for processing`);
       
+      // Log system stats for monitoring
+      const queueSize = await backgroundJobManager.getQueueSize();
+      const systemStats = await backgroundJobManager.getStats();
+      console.log(`🚀 Enhanced job system - Queue size: ${queueSize}, Active workers: ${systemStats.workerStats.activeWorkers}/${systemStats.workerStats.totalWorkers}`);
+      console.log(`📊 System health: ${systemStats.systemHealth}, Total processed: ${systemStats.totalJobsProcessed}`);
+      
       res.status(200).json({
         ...results,
-        message: `${results.successful.length} files queued for processing`,
-        processingTime: duration
+        message: `${results.successful.length} files queued for enhanced worker processing`,
+        processingTime: duration,
+        systemStats: {
+          queueSize,
+          workers: systemStats.workerStats,
+          health: systemStats.systemHealth
+        }
       });
       
     } catch (error) {
@@ -3947,8 +3964,8 @@ Generated on: ${new Date().toLocaleString()}
   
   app.get("/api/processing-queue/stats", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { jobProcessor } = await import('./job-processor');
-      const stats = await jobProcessor.getQueueStats();
+      const { backgroundJobManager } = await import('./background-job-manager');
+      const stats = await backgroundJobManager.getStats();
       
       // Get recent failed jobs for monitoring
       const recentFailures = await storage.db

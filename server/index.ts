@@ -81,6 +81,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+// Enhanced background job manager temporarily disabled while fixing worker threads
+// import "./background-job-manager";
+
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
@@ -156,7 +159,19 @@ app.use((req, res, next) => {
   server.listen({
     port,
     host: "0.0.0.0",
-  }, () => {
+  }, async () => {
     log(`serving on port ${port} (http://localhost:${port})`);
+    
+    // Start enhanced background job manager after server is ready
+    try {
+      console.log('🚀 Starting background job manager initialization...');
+      const { backgroundJobManager } = await import('./background-job-manager');
+      console.log('✅ Background job manager imported successfully');
+      await backgroundJobManager.ensureStarted();
+      console.log('🎯 Background job manager started successfully!');
+    } catch (error) {
+      console.error('❌ Background job manager initialization failed:', error);
+      console.error('📋 Full error stack:', error instanceof Error ? error.stack : 'Unknown error details');
+    }
   });
 })();
