@@ -5,7 +5,7 @@
 
 import { db } from './db';
 import { processingJobs, profileResumes, uploadSessions } from '@shared/schema';
-import { eq, or, and, inArray, lte, desc } from 'drizzle-orm';
+import { eq, or, and, inArray, lte, desc, count } from 'drizzle-orm';
 import { WorkerThreadManager, createWorkerThreadManager } from './worker-thread';
 
 interface JobSchedulerConfig {
@@ -332,7 +332,7 @@ class JobScheduler {
       const jobStats = await db
         .select({
           status: processingJobs.status,
-          count: db.count()
+          count: count()
         })
         .from(processingJobs)
         .groupBy(processingJobs.status);
@@ -498,7 +498,7 @@ class JobScheduler {
 
   async getQueueSize(): Promise<number> {
     const result = await db
-      .select({ count: db.count() })
+      .select({ count: count() })
       .from(processingJobs)
       .where(
         or(
