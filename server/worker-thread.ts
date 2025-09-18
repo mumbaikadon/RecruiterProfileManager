@@ -224,14 +224,10 @@ export class WorkerThreadManager {
     console.log(`🧵 Initializing ${this.maxWorkers} worker threads...`);
     
     for (let i = 0; i < this.maxWorkers; i++) {
-      // Handle development mode with tsx - use the TypeScript file with tsx loader
-      const workerScript = process.env.NODE_ENV === 'development' 
-        ? new URL('./worker-thread.ts', import.meta.url)
-        : new URL('./worker-thread.js', import.meta.url);
+      // Use dedicated JavaScript worker script for stability
+      const workerScript = new URL('./worker-script.js', import.meta.url);
       
-      const worker = new Worker(workerScript, {
-        execArgv: process.env.NODE_ENV === 'development' ? ['--loader', 'tsx/esm'] : []
-      });
+      const worker = new Worker(workerScript);
       
       worker.on('error', (error) => {
         console.error(`❌ Worker ${i} error:`, error);
@@ -256,14 +252,10 @@ export class WorkerThreadManager {
   private replaceWorker(deadWorker: Worker) {
     const index = this.workers.indexOf(deadWorker);
     if (index > -1) {
-      // Handle development mode with tsx - use the TypeScript file with tsx loader
-      const workerScript = process.env.NODE_ENV === 'development' 
-        ? new URL('./worker-thread.ts', import.meta.url)
-        : new URL('./worker-thread.js', import.meta.url);
+      // Use dedicated JavaScript worker script for stability
+      const workerScript = new URL('./worker-script.js', import.meta.url);
       
-      const newWorker = new Worker(workerScript, {
-        execArgv: process.env.NODE_ENV === 'development' ? ['--loader', 'tsx/esm'] : []
-      });
+      const newWorker = new Worker(workerScript);
       this.workers[index] = newWorker;
       
       // Remove from pool if it was there
