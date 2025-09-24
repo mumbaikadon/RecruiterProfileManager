@@ -1463,65 +1463,125 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProfileResume(resume: InsertProfileResume, extractedText: string, fileBuffer?: Buffer): Promise<ProfileResume> {
-    return await db.transaction(async (tx) => {
-      let finalResume = { ...resume };
+    // Enhanced database insertion with connection validation and retry logic
+    const maxRetries = 3;
+    let lastError: Error | null = null;
 
-      // Save file to filesystem if fileBuffer provided
-      if (fileBuffer) {
-        try {
-          const { saveFile, hashContent, compressText } = await import('./file-utils');
-          const contentHash = hashContent(fileBuffer);
-          const filePath = await saveFile(fileBuffer, resume.filename, contentHash);
-          finalResume.filePath = filePath;
-          
-          // Always set fileData even when using filesystem storage
-          // This is needed because the database has a not-null constraint on this field
-          finalResume.fileData = fileBuffer.toString('base64');
-        } catch (error) {
-          console.warn('Failed to save file to filesystem, falling back to database:', error);
-          // Fallback to database storage for backward compatibility
-          if (fileBuffer) {
-            finalResume.fileData = fileBuffer.toString('base64');
-          }
-        }
-      } else {
-        // If no file buffer is provided, set an empty string to satisfy not-null constraint
-        finalResume.fileData = '';
-      }
-      
-      // Create the profile resume
-      const [createdResume] = await tx
-        .insert(profileResumes)
-        .values(finalResume)
-        .returning();
-
-      // Compress extracted text for better storage efficiency
-      let finalExtractedText = extractedText;
-      let compressedText: string | undefined;
-      
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const { compressText } = await import('./file-utils');
-        compressedText = await compressText(extractedText);
-      } catch (error) {
-        console.warn('Text compression failed, storing uncompressed:', error);
-      }
+        // Validate database connection before starting transaction
+        if (!db) {
+          throw new Error('Database connection is not available');
+        }
 
-      // Create content hash for duplicate detection
-      const crypto = await import('crypto');
-      const contentHash = crypto.createHash('sha256').update(extractedText).digest('hex');
+        return await db.transaction(async (tx) => {
+          // Additional validation inside transaction
+          if (!tx || typeof tx.insert !== 'function') {
+            throw new Error('Transaction context is invalid or database connection lost');
+          }
 
-      // Create the resume content
-      await tx
-        .insert(resumeContent)
-        .values({
-          profileResumeId: createdResume.id,
-          extractedText: finalExtractedText,
-          compressedText: compressedText,
-          contentHash: contentHash,
+          let finalResume = { ...resume };
+
+          // Save file to filesystem if fileBuffer provided
+          if (fileBuffer) {
+            try {
+              const { saveFile, hashContent, compressText } = await import('./file-utils');
+              const contentHash = hashContent(fileBuffer);
+              const filePath = await saveFile(fileBuffer, resume.filename, contentHash);
+              finalResume.filePath = filePath;
+              
+              // Always set fileData even when using filesystem storage
+              // This is needed because the database has a not-null constraint on this field
+              finalResume.fileData = fileBuffer.toString('base64');
+            } catch (error) {
+              console.warn('Failed to save file to filesystem, falling back to database:', error);
+              // Fallback to database storage for backward compatibility
+              if (fileBuffer) {
+                finalResume.fileData = fileBuffer.toString('base64');
+              }
+            }
+          } else {
+            // If no file buffer is provided, set an empty string to satisfy not-null constraint
+            finalResume.fileData = '';
+          }
+          
+          // Validate table references before inserting
+          if (!profileResumes || typeof profileResumes !== 'object') {
+            throw new Error('ProfileResumes table reference is not available');
+          }
+
+          // Create the profile resume with timeout protection
+          const [createdResume] = await Promise.race([
+            tx.insert(profileResumes).values(finalResume).returning(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Database insert timeout after 30 seconds')), 30000)
+            )
+          ]) as [ProfileResume];
+
+          if (!createdResume || !createdResume.id) {
+            throw new Error('Failed to create profile resume - no ID returned');
+          }
+
+          // Compress extracted text for better storage efficiency
+          let finalExtractedText = extractedText;
+          let compressedText: string | undefined;
+          
+          try {
+            const { compressText } = await import('./file-utils');
+            compressedText = await compressText(extractedText);
+          } catch (error) {
+            console.warn('Text compression failed, storing uncompressed:', error);
+          }
+
+          // Create content hash for duplicate detection
+          const crypto = await import('crypto');
+          const contentHash = crypto.createHash('sha256').update(extractedText).digest('hex');
+
+          // Validate resume content table reference
+          if (!resumeContent || typeof resumeContent !== 'object') {
+            throw new Error('ResumeContent table reference is not available');
+          }
+
+          // Create the resume content with timeout protection
+          await Promise.race([
+            tx.insert(resumeContent).values({
+              profileResumeId: createdResume.id,
+              extractedText: finalExtractedText,
+              compressedText: compressedText,
+              contentHash: contentHash,
+            }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Database content insert timeout after 30 seconds')), 30000)
+            )
+          ]);
+
+          return createdResume;
         });
 
-      return createdResume;
-    });
+      } catch (error) {
+        lastError = error as Error;
+        const errorMessage = lastError.message || 'Unknown database error';
+        
+        console.error(`Database insertion attempt ${attempt}/${maxRetries} failed:`, {
+          filename: resume.filename,
+          error: errorMessage,
+          attempt,
+          willRetry: attempt < maxRetries
+        });
+
+        // If this is the last attempt, throw the error
+        if (attempt === maxRetries) {
+          throw new Error(`Database insertion failed after ${maxRetries} attempts: ${errorMessage}`);
+        }
+
+        // Wait briefly before retry (exponential backoff)
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+
+    // This should never be reached, but just in case
+    throw lastError || new Error('Database insertion failed for unknown reason');
   }
 
   // Async profile resume creation - just stores file without processing
