@@ -10,7 +10,7 @@ const pipelineAsync = promisify(pipeline);
 
 // File storage configuration
 const STORAGE_DIR = process.env.RESUME_STORAGE_DIR || '/tmp/resumes';
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB max file size
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB max file size (increased for enterprise-scale uploads)
 const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.doc'];
 
 // Ensure storage directory exists

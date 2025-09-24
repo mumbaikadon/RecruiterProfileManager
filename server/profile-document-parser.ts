@@ -19,7 +19,7 @@ interface PDFParseResult {
  */
 
 // Memory and performance limits
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit (increased for enterprise-scale uploads)
 const MAX_PAGES = 100; // Page limit to prevent excessive memory usage
 const PARSING_TIMEOUT = 20000; // 20 second timeout
 const MEMORY_THRESHOLD = 500 * 1024 * 1024; // 500MB memory threshold

@@ -42,12 +42,12 @@ const fileUpload = multer({
   }
 });
 
-// Configure multer for optimized bulk uploads with reduced limits
+// Configure multer for enterprise-scale bulk uploads with worker thread processing
 const bulkUpload = multer({ 
   storage: multerStorage,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB per file
-    files: 10 // Reduced from 200 to 10 files for better memory management
+    fileSize: 100 * 1024 * 1024, // 100MB per file (increased for large resumes)
+    files: 100 // Increased to 100 files per request for enterprise-scale uploads
   }
 });
 
