@@ -3625,63 +3625,104 @@ Generated on: ${new Date().toLocaleString()}
         
         console.log(`Processing backend chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} files (Memory: ${(memBefore / 1024 / 1024).toFixed(1)}MB)`);
         
-        // Process files in current chunk concurrently
+        // Process files in current chunk concurrently with enhanced error handling
         const chunkPromises = chunk.map(async (file) => {
-          try {
-            profileLogger.uploadStart(file.originalname, (req as any).user?.id, file.size);
-            
-            // Validate file type
-            if (!['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.mimetype)) {
-              throw new Error("Only PDF and DOCX files are allowed");
-            }
+          const maxAttempts = 2;
+          let lastError: Error | null = null;
 
-            // Extract text from the uploaded file
-            let extractedText = "";
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-              const { extractTextFromDocument } = await import("./document-parser");
-              extractedText = await extractTextFromDocument(file.buffer, file.mimetype);
-            } catch (parseError) {
-              throw new Error(`Failed to extract text: ${(parseError as Error).message}`);
+              profileLogger.uploadStart(file.originalname, (req as any).user?.id, file.size);
+              
+              // Validate file type
+              if (!['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.mimetype)) {
+                throw new Error("Only PDF and DOCX files are allowed");
+              }
+
+              // Extract text from the uploaded file with timeout protection
+              let extractedText = "";
+              try {
+                const { extractTextFromDocument } = await import("./document-parser");
+                extractedText = await Promise.race([
+                  extractTextFromDocument(file.buffer, file.mimetype),
+                  new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Text extraction timeout after 45 seconds')), 45000)
+                  )
+                ]) as string;
+              } catch (parseError) {
+                throw new Error(`Failed to extract text: ${(parseError as Error).message}`);
+              }
+
+              if (!extractedText || extractedText.trim().length === 0) {
+                throw new Error("No text content found in the document");
+              }
+
+              // Prepare resume data for filesystem storage (no fileData needed)
+              const fileType = file.mimetype === 'application/pdf' ? 'pdf' : 'docx';
+
+              const resumeData = {
+                filename: file.originalname,
+                fileType,
+                fileSize: file.size,
+                candidateName: candidateName || null,
+                candidateEmail: candidateEmail || null,
+                uploadedBy: (req as any).user.id,
+              };
+
+              const validatedData = insertProfileResumeSchema.parse(resumeData);
+              
+              // Enhanced database insertion with timeout protection
+              const resume = await Promise.race([
+                storage.createProfileResume(validatedData, extractedText, file.buffer),
+                new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('Database insertion timeout after 60 seconds')), 60000)
+                )
+              ]) as ProfileResume;
+              
+              profileLogger.uploadSuccess(file.originalname, (req as any).user?.id, extractedText.length);
+              
+              return {
+                success: true,
+                filename: file.originalname,
+                resume
+              };
+              
+            } catch (error) {
+              lastError = error as Error;
+              const errorMsg = lastError.message || 'Unknown error';
+              
+              // Log the attempt
+              console.error(`File processing attempt ${attempt}/${maxAttempts} failed for ${file.originalname}:`, {
+                error: errorMsg,
+                attempt,
+                willRetry: attempt < maxAttempts
+              });
+
+              // If this is the last attempt, log and return error
+              if (attempt === maxAttempts) {
+                profileLogger.uploadError(file.originalname, (req as any).user?.id, errorMsg);
+                
+                return {
+                  success: false,
+                  filename: file.originalname,
+                  error: errorMsg
+                };
+              }
+
+              // Wait briefly before retry
+              await new Promise(resolve => setTimeout(resolve, 1000));
             }
-
-            if (!extractedText || extractedText.trim().length === 0) {
-              throw new Error("No text content found in the document");
-            }
-
-            // Prepare resume data for filesystem storage (no fileData needed)
-            const fileType = file.mimetype === 'application/pdf' ? 'pdf' : 'docx';
-
-            const resumeData = {
-              filename: file.originalname,
-              fileType,
-              fileSize: file.size,
-              candidateName: candidateName || null,
-              candidateEmail: candidateEmail || null,
-              uploadedBy: (req as any).user.id,
-            };
-
-            const validatedData = insertProfileResumeSchema.parse(resumeData);
-            // Pass file buffer for filesystem storage
-            const resume = await storage.createProfileResume(validatedData, extractedText, file.buffer);
-            
-            profileLogger.uploadSuccess(file.originalname, (req as any).user?.id, extractedText.length);
-            
-            return {
-              success: true,
-              filename: file.originalname,
-              resume
-            };
-            
-          } catch (error) {
-            const errorMsg = (error as Error).message;
-            profileLogger.uploadError(file.originalname, (req as any).user?.id, errorMsg);
-            
-            return {
-              success: false,
-              filename: file.originalname,
-              error: errorMsg
-            };
           }
+
+          // Should never reach here, but just in case
+          const errorMsg = lastError?.message || 'Processing failed after all attempts';
+          profileLogger.uploadError(file.originalname, (req as any).user?.id, errorMsg);
+          
+          return {
+            success: false,
+            filename: file.originalname,
+            error: errorMsg
+          };
         });
 
         // Wait for current chunk to complete
