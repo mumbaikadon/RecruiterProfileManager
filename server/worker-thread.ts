@@ -7,6 +7,11 @@ import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
 import { db } from './db';
 import { processingJobs, profileResumes, resumeContent, resumeMetadata } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface WorkerJobData {
   jobId: number;
@@ -230,10 +235,9 @@ export class WorkerThreadManager {
       
       if (import.meta.url.includes('tsx') || process.env.NODE_ENV === 'development') {
         // Development mode with tsx - use relative path from current file
-        workerScriptPath = new URL('./worker-script.js', import.meta.url).pathname;
+        workerScriptPath = path.resolve(__dirname, "worker-script.js");
       } else {
         // Production mode - construct path relative to current working directory
-        const path = require('path');
         workerScriptPath = path.resolve(process.cwd(), 'server/worker-script.js');
       }
       
