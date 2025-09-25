@@ -225,9 +225,19 @@ export class WorkerThreadManager {
     
     for (let i = 0; i < this.maxWorkers; i++) {
       // Use dedicated JavaScript worker script for stability
-      const workerScript = new URL('./worker-script.js', import.meta.url);
+      // Handle both development and production paths
+      let workerScriptPath: string;
       
-      const worker = new Worker(workerScript);
+      if (import.meta.url.includes('tsx') || process.env.NODE_ENV === 'development') {
+        // Development mode with tsx - use relative path from current file
+        workerScriptPath = new URL('./worker-script.js', import.meta.url).pathname;
+      } else {
+        // Production mode - construct path relative to current working directory
+        const path = require('path');
+        workerScriptPath = path.resolve(process.cwd(), 'server/worker-script.js');
+      }
+      
+      const worker = new Worker(workerScriptPath);
       
       worker.on('error', (error) => {
         console.error(`❌ Worker ${i} error:`, error);
@@ -253,9 +263,19 @@ export class WorkerThreadManager {
     const index = this.workers.indexOf(deadWorker);
     if (index > -1) {
       // Use dedicated JavaScript worker script for stability
-      const workerScript = new URL('./worker-script.js', import.meta.url);
+      // Handle both development and production paths
+      let workerScriptPath: string;
       
-      const newWorker = new Worker(workerScript);
+      if (import.meta.url.includes('tsx') || process.env.NODE_ENV === 'development') {
+        // Development mode with tsx - use relative path from current file
+        workerScriptPath = new URL('./worker-script.js', import.meta.url).pathname;
+      } else {
+        // Production mode - construct path relative to current working directory
+        const path = require('path');
+        workerScriptPath = path.resolve(process.cwd(), 'server/worker-script.js');
+      }
+      
+      const newWorker = new Worker(workerScriptPath);
       this.workers[index] = newWorker;
       
       // Remove from pool if it was there
