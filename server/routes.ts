@@ -21,7 +21,7 @@ import {
   profileResumes,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, inArray, isNull } from "drizzle-orm";
+import { eq, inArray, isNull, desc } from "drizzle-orm";
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
 import { parseJobRequirements } from "./job-parser";
@@ -3803,7 +3803,7 @@ Generated on: ${new Date().toLocaleString()}
       console.log(`🚀 Starting async bulk upload of ${files.length} files (Session: ${sessionId})`);
       
       // Create upload session
-      const session = await storage.db.insert(uploadSessions).values({
+      const session = await db.insert(uploadSessions).values({
         sessionId,
         totalFiles: files.length,
         candidateName: candidateName || null,
@@ -3907,7 +3907,7 @@ Generated on: ${new Date().toLocaleString()}
       }
       
       // Update session
-      await storage.db.update(uploadSessions)
+      await db.update(uploadSessions)
         .set({
           uploadedFiles: results.successful.length,
           failedFiles: results.failed.length,
@@ -3950,7 +3950,7 @@ Generated on: ${new Date().toLocaleString()}
       const sessionId = req.params.sessionId;
       
       // Get session details
-      const session = await storage.db
+      const session = await db
         .select()
         .from(uploadSessions)
         .where(eq(uploadSessions.sessionId, sessionId))
@@ -3961,7 +3961,7 @@ Generated on: ${new Date().toLocaleString()}
       }
       
       // Get processing jobs for this session
-      const jobs = await storage.db
+      const jobs = await db
         .select({
           id: processingJobs.id,
           profileResumeId: processingJobs.profileResumeId,
@@ -4009,19 +4009,21 @@ Generated on: ${new Date().toLocaleString()}
       const stats = await backgroundJobManager.getStats();
       
       // Get recent failed jobs for monitoring
-      const recentFailures = await storage.db
+      const recentFailures = await db
         .select({
           id: processingJobs.id,
           profileResumeId: processingJobs.profileResumeId,
-          errorMessage: processingJobs.errorMessage,
+          status: processingJobs.status,
+          jobType: processingJobs.jobType,
           retryCount: processingJobs.retryCount,
+          errorMessage: processingJobs.errorMessage,
           createdAt: processingJobs.createdAt,
           filename: profileResumes.filename
         })
         .from(processingJobs)
         .leftJoin(profileResumes, eq(processingJobs.profileResumeId, profileResumes.id))
         .where(eq(processingJobs.status, 'failed'))
-        .orderBy(processingJobs.completedAt)
+        .orderBy(desc(processingJobs.createdAt))
         .limit(10);
       
       res.json({
