@@ -2,6 +2,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Job, InsertJob } from "@shared/schema";
 
+interface JobsResponse {
+  jobs: Job[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
 export function useJobs(filters?: { status?: string; date?: string; search?: string }) {
   let url = "/api/jobs";
   const queryParams = new URLSearchParams();
@@ -17,7 +23,14 @@ export function useJobs(filters?: { status?: string; date?: string; search?: str
   }
   
   return useQuery<Job[]>({
-    queryKey: [url]
+    queryKey: [url],
+    select: (data: JobsResponse | Job[]) => {
+      // Handle both old array format and new paginated format for backward compatibility
+      if (Array.isArray(data)) {
+        return data;
+      }
+      return data.jobs || [];
+    }
   });
 }
 
