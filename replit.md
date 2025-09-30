@@ -2,9 +2,18 @@
 
 RecruiterTracker is a modern AI-powered recruitment management platform built with React/TypeScript frontend and Node.js/Express backend. The system streamlines the recruitment process by allowing recruiters to manage jobs, candidates, and submissions while integrating OpenAI for resume analysis and matching capabilities. Key features include duplicate candidate prevention, intelligent resume processing, comprehensive tracking of the recruitment pipeline from initial submission to final hiring decisions, and robust analytics with success/rejection rate calculations.
 
-## Recent Changes (August 28, 2025)
+## Recent Changes (September 30, 2025)
 
-**Performance Optimization: Enhanced Sequential Chunk Processing + Duplicate Check Removal (Latest)**
+**N+1 Query Optimization - Jobs Listing (Latest)**
+- Eliminated N+1 API call anti-pattern in jobs tab that caused 51 API requests for 50 jobs
+- Modified `/api/jobs` endpoint to include assignedRecruiters and submissionCount in single response
+- Removed frontend loops in jobs/index.tsx and dashboard.tsx that fetched individual job details
+- Updated JobTable component to use enhanced job data directly from API response
+- Performance improvement: Reduced jobs page load from 51 API calls to 1 API call
+- Note: Backend still uses per-job database queries (can be further optimized with SQL JOINs)
+- Overall impact: Significantly faster page loads, reduced network overhead, better user experience
+
+**Performance Optimization: Enhanced Sequential Chunk Processing + Duplicate Check Removal**
 - Implemented sequential chunk processing for massive file uploads (2000+ files support)
 - Reduced frontend chunk size from unlimited to 5 files per request (86% memory reduction)
 - Reduced backend chunk size from 10 to 3 files for better memory management
