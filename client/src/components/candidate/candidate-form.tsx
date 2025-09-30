@@ -67,6 +67,7 @@ interface CandidateFormProps {
     matchResults?: any;
   }) => void;
   isPending?: boolean;
+  onClose?: () => void;
 }
 
 const CandidateForm: React.FC<CandidateFormProps> = ({
@@ -74,7 +75,8 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
   jobTitle,
   jobDescription,
   onSubmit,
-  isPending = false
+  isPending = false,
+  onClose
 }) => {
   const [pastedData, setPastedData] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -1829,7 +1831,7 @@ const CandidateForm: React.FC<CandidateFormProps> = ({
           )}
 
           <div className="flex justify-end space-x-3">
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button 

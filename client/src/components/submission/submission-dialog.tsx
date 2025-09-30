@@ -573,6 +573,7 @@ const SubmissionDialog: React.FC<SubmissionDialogProps> = ({
             jobDescription={sanitizeHtml(jobDescription)}
             onSubmit={handleSubmit}
             isPending={isPending || isValidating}
+            onClose={onClose}
           />
         </DialogContent>
       </Dialog>
