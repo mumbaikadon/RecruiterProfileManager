@@ -480,13 +480,13 @@ export default function OrganizationPage() {
                 <div className="text-center py-8 text-red-500">
                   Error loading users: {error instanceof Error ? error.message : 'Unknown error'}
                 </div>
-              ) : !Array.isArray(users) || users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No users found
+                  No active users found
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {users.map((user: OrganizationUser) => (
+                  {filteredUsers.map((user: OrganizationUser) => (
                     <div
                       key={user.id}
                       className="flex items-center justify-between p-4 border rounded-lg"
