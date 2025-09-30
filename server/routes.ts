@@ -3396,6 +3396,109 @@ Generated on: ${new Date().toLocaleString()}
     }
   });
 
+  app.put("/api/organization/users/:id/deactivate", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = (req as any).user;
+      
+      // Check if user is admin
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Prevent deactivating yourself
+      if (userId === currentUser.id) {
+        return res.status(400).json({ message: "You cannot deactivate yourself" });
+      }
+
+      const updatedUser = await storage.updateUserStatus(userId, "deactivated", currentUser.id);
+      
+      // Create activity for deactivation
+      await storage.createActivity({
+        type: "system_integration",
+        userId: currentUser.id,
+        message: `User ${updatedUser.name} (${updatedUser.username}) was deactivated by admin`
+      });
+
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Error deactivating user:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.put("/api/organization/users/:id/reactivate", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = (req as any).user;
+      
+      // Check if user is admin
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const updatedUser = await storage.updateUserStatus(userId, "approved", currentUser.id);
+      
+      // Create activity for reactivation
+      await storage.createActivity({
+        type: "system_integration",
+        userId: currentUser.id,
+        message: `User ${updatedUser.name} (${updatedUser.username}) was reactivated by admin`
+      });
+
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Error reactivating user:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  app.delete("/api/organization/users/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = (req as any).user;
+      
+      // Check if user is admin
+      if (currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      // Prevent deleting yourself
+      if (userId === currentUser.id) {
+        return res.status(400).json({ message: "You cannot delete yourself" });
+      }
+
+      const deletedUser = await storage.deleteUser(userId);
+      
+      // Create activity for deletion
+      await storage.createActivity({
+        type: "system_integration",
+        userId: currentUser.id,
+        message: `User ${deletedUser.name} (${deletedUser.username}) was permanently deleted by admin`
+      });
+
+      const { password, ...safeUser } = deletedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   // Phase 1: Optimized Profile Resume API routes (NO FULL TEXT!)
   app.get("/api/profile-resumes", requireAuth, async (req: Request, res: Response) => {
     const startTime = Date.now();
