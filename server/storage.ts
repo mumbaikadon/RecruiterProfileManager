@@ -264,7 +264,7 @@ export class DatabaseStorage implements IStorage {
     return db
       .select()
       .from(users)
-      .where(eq(users.role, "recruiter"))
+      .where(and(eq(users.role, "recruiter"), eq(users.status, "approved")))
       .orderBy(users.name);
   }
 
