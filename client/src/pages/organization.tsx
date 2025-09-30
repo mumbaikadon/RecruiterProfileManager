@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, UserCheck, UserX, Crown, Shield, User, Briefcase } from "lucide-react";
+import { Users, UserCheck, UserX, Crown, Shield, User, Briefcase, Ban, RefreshCw, Trash2, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface OrganizationUser {
@@ -29,6 +29,14 @@ export default function OrganizationPage() {
     open: false,
     user: null,
     selectedRole: "recruiter"
+  });
+  const [deactivateDialog, setDeactivateDialog] = useState<{ open: boolean; user: OrganizationUser | null }>({
+    open: false,
+    user: null
+  });
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; user: OrganizationUser | null }>({
+    open: false,
+    user: null
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -164,6 +172,99 @@ export default function OrganizationPage() {
     },
   });
 
+  // Deactivate user mutation
+  const deactivateMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const response = await fetch(`/api/organization/users/${userId}/deactivate`, {
+        method: "PUT",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organization/users"] });
+      toast({
+        title: "User Deactivated",
+        description: `${data.name} has been deactivated.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Deactivation Failed",
+        description: error instanceof Error ? error.message : "Failed to deactivate user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reactivate user mutation
+  const reactivateMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const response = await fetch(`/api/organization/users/${userId}/reactivate`, {
+        method: "PUT",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organization/users"] });
+      toast({
+        title: "User Reactivated",
+        description: `${data.name} has been reactivated.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Reactivation Failed",
+        description: error instanceof Error ? error.message : "Failed to reactivate user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete user mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const response = await fetch(`/api/organization/users/${userId}`, {
+        method: "DELETE",
+        credentials: 'include',
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organization/users"] });
+      toast({
+        title: "User Deleted",
+        description: `${data.name} has been permanently deleted.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Deletion Failed",
+        description: error instanceof Error ? error.message : "Failed to delete user",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getRoleIcon = (role: string) => {
     switch (role) {
       case "admin":
@@ -187,6 +288,8 @@ export default function OrganizationPage() {
         return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">Pending</Badge>;
       case "rejected":
         return <Badge variant="destructive">Rejected</Badge>;
+      case "deactivated":
+        return <Badge variant="outline" className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">Deactivated</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -195,7 +298,7 @@ export default function OrganizationPage() {
   const filteredUsers = Array.isArray(users) 
     ? (selectedTab === "pending" 
         ? users.filter((user: OrganizationUser) => user.status === "pending")
-        : users.filter((user: OrganizationUser) => user.status === "approved"))
+        : users.filter((user: OrganizationUser) => user.status !== "pending"))
     : [];
 
   return (
@@ -405,23 +508,69 @@ export default function OrganizationPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {user.status === "approved" && (
-                          <Select
-                            value={user.role}
-                            onValueChange={(role) => 
-                              updateRoleMutation.mutate({ userId: user.id, role })
-                            }
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="recruiter">Recruiter</SelectItem>
-                              <SelectItem value="lead">Lead</SelectItem>
-                              <SelectItem value="manager">Manager</SelectItem>
-                              <SelectItem value="sub-admin">Sub-Admin</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <>
+                            <Select
+                              value={user.role}
+                              onValueChange={(role) => 
+                                updateRoleMutation.mutate({ userId: user.id, role })
+                              }
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="recruiter">Recruiter</SelectItem>
+                                <SelectItem value="lead">Lead</SelectItem>
+                                <SelectItem value="manager">Manager</SelectItem>
+                                <SelectItem value="sub-admin">Sub-Admin</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDeactivateDialog({ open: true, user })}
+                              disabled={deactivateMutation.isPending}
+                              data-testid={`button-deactivate-${user.id}`}
+                            >
+                              <Ban className="w-4 h-4 mr-1" />
+                              Deactivate
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => setDeleteDialog({ open: true, user })}
+                              disabled={deleteMutation.isPending}
+                              data-testid={`button-delete-${user.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Delete
+                            </Button>
+                          </>
+                        )}
+                        {user.status === "deactivated" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => reactivateMutation.mutate(user.id)}
+                              disabled={reactivateMutation.isPending}
+                              data-testid={`button-reactivate-${user.id}`}
+                            >
+                              <RefreshCw className="w-4 h-4 mr-1" />
+                              Reactivate
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => setDeleteDialog({ open: true, user })}
+                              disabled={deleteMutation.isPending}
+                              data-testid={`button-delete-${user.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Delete
+                            </Button>
+                          </>
                         )}
                         {user.status === "pending" && (
                           <>
@@ -444,6 +593,18 @@ export default function OrganizationPage() {
                             </Button>
                           </>
                         )}
+                        {user.status === "rejected" && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setDeleteDialog({ open: true, user })}
+                            disabled={deleteMutation.isPending}
+                            data-testid={`button-delete-${user.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -453,6 +614,76 @@ export default function OrganizationPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Deactivate Confirmation Dialog */}
+      <Dialog open={deactivateDialog.open} onOpenChange={(open) => !open && setDeactivateDialog({ open: false, user: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-600" />
+              Deactivate User
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to deactivate {deactivateDialog.user?.name}? They will lose access to the system but their data will be preserved. You can reactivate them later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeactivateDialog({ open: false, user: null })}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => {
+                if (deactivateDialog.user) {
+                  deactivateMutation.mutate(deactivateDialog.user.id);
+                  setDeactivateDialog({ open: false, user: null });
+                }
+              }}
+              disabled={deactivateMutation.isPending}
+            >
+              {deactivateMutation.isPending ? "Deactivating..." : "Deactivate User"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, user: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" />
+              Delete User Permanently
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete {deleteDialog.user?.name}? This action cannot be undone and will remove all user data from the system.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialog({ open: false, user: null })}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteDialog.user) {
+                  deleteMutation.mutate(deleteDialog.user.id);
+                  setDeleteDialog({ open: false, user: null });
+                }
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete Permanently"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
