@@ -298,7 +298,11 @@ export default function OrganizationPage() {
   const filteredUsers = Array.isArray(users) 
     ? (selectedTab === "pending" 
         ? users.filter((user: OrganizationUser) => user.status === "pending")
-        : users.filter((user: OrganizationUser) => user.status !== "pending"))
+        : users.filter((user: OrganizationUser) => user.status === "approved"))
+    : [];
+
+  const deactivatedUsers = Array.isArray(users) 
+    ? users.filter((user: OrganizationUser) => user.status === "deactivated")
     : [];
 
   return (
@@ -507,104 +511,120 @@ export default function OrganizationPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {user.status === "approved" && (
-                          <>
-                            <Select
-                              value={user.role}
-                              onValueChange={(role) => 
-                                updateRoleMutation.mutate({ userId: user.id, role })
-                              }
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="recruiter">Recruiter</SelectItem>
-                                <SelectItem value="lead">Lead</SelectItem>
-                                <SelectItem value="manager">Manager</SelectItem>
-                                <SelectItem value="sub-admin">Sub-Admin</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setDeactivateDialog({ open: true, user })}
-                              disabled={deactivateMutation.isPending}
-                              data-testid={`button-deactivate-${user.id}`}
-                            >
-                              <Ban className="w-4 h-4 mr-1" />
-                              Deactivate
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => setDeleteDialog({ open: true, user })}
-                              disabled={deleteMutation.isPending}
-                              data-testid={`button-delete-${user.id}`}
-                            >
-                              <Trash2 className="w-4 h-4 mr-1" />
-                              Delete
-                            </Button>
-                          </>
-                        )}
-                        {user.status === "deactivated" && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => reactivateMutation.mutate(user.id)}
-                              disabled={reactivateMutation.isPending}
-                              data-testid={`button-reactivate-${user.id}`}
-                            >
-                              <RefreshCw className="w-4 h-4 mr-1" />
-                              Reactivate
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => setDeleteDialog({ open: true, user })}
-                              disabled={deleteMutation.isPending}
-                              data-testid={`button-delete-${user.id}`}
-                            >
-                              <Trash2 className="w-4 h-4 mr-1" />
-                              Delete
-                            </Button>
-                          </>
-                        )}
-                        {user.status === "pending" && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => approveMutation.mutate(user.id)}
-                              disabled={approveMutation.isPending}
-                            >
-                              <UserCheck className="w-4 h-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => rejectMutation.mutate(user.id)}
-                              disabled={rejectMutation.isPending}
-                            >
-                              <UserX className="w-4 h-4 mr-1" />
-                              Reject
-                            </Button>
-                          </>
-                        )}
-                        {user.status === "rejected" && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => setDeleteDialog({ open: true, user })}
-                            disabled={deleteMutation.isPending}
-                            data-testid={`button-delete-${user.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Delete
-                          </Button>
-                        )}
+                        <Select
+                          value={user.role}
+                          onValueChange={(role) => 
+                            updateRoleMutation.mutate({ userId: user.id, role })
+                          }
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="recruiter">Recruiter</SelectItem>
+                            <SelectItem value="lead">Lead</SelectItem>
+                            <SelectItem value="manager">Manager</SelectItem>
+                            <SelectItem value="sub-admin">Sub-Admin</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setDeactivateDialog({ open: true, user })}
+                          disabled={deactivateMutation.isPending}
+                          data-testid={`button-deactivate-${user.id}`}
+                        >
+                          <Ban className="w-4 h-4 mr-1" />
+                          Deactivate
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setDeleteDialog({ open: true, user })}
+                          disabled={deleteMutation.isPending}
+                          data-testid={`button-delete-${user.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Deactivated Users Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Ban className="w-5 h-5" />
+                Deactivated Users
+              </CardTitle>
+              <CardDescription>
+                Users who have been temporarily deactivated and can be reactivated
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-center py-8">Loading users...</div>
+              ) : error ? (
+                <div className="text-center py-8 text-red-500">
+                  Error loading users: {error instanceof Error ? error.message : 'Unknown error'}
+                </div>
+              ) : deactivatedUsers.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No deactivated users
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {deactivatedUsers.map((user: OrganizationUser) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-4 border rounded-lg bg-muted/50"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                            {getRoleIcon(user.role)}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">{user.name}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              @{user.username} • {user.email}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {getStatusBadge(user.status)}
+                              <span className="text-xs text-muted-foreground">
+                                Joined {formatDistanceToNow(new Date(user.createdAt))} ago
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => reactivateMutation.mutate(user.id)}
+                          disabled={reactivateMutation.isPending}
+                          data-testid={`button-reactivate-${user.id}`}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                          Reactivate
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setDeleteDialog({ open: true, user })}
+                          disabled={deleteMutation.isPending}
+                          data-testid={`button-delete-${user.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   ))}
