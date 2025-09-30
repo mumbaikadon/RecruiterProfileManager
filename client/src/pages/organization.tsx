@@ -467,10 +467,10 @@ export default function OrganizationPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                All Organization Users
+                Active Users
               </CardTitle>
               <CardDescription>
-                Manage roles and view all users in your organization
+                Manage roles and view active users in your organization
               </CardDescription>
             </CardHeader>
             <CardContent>
