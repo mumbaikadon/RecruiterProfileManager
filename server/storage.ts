@@ -16,7 +16,7 @@ import {
   type SearchCache, type InsertSearchCache
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, sql, gte, lte, or, ilike, inArray } from "drizzle-orm";
+import { eq, and, desc, count, sql, gte, lte, or, ilike, inArray, ne } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -280,7 +280,7 @@ export class DatabaseStorage implements IStorage {
     return db
       .select()
       .from(users)
-      .where(eq(users.status, "approved"))
+      .where(ne(users.status, "pending"))
       .orderBy(desc(users.createdAt));
   }
 
