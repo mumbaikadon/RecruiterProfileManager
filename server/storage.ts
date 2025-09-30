@@ -276,11 +276,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getJobs(filters?: { status?: string; date?: Date; searchTerm?: string }): Promise<Job[]> {
-    let query = db.select().from(jobs);
+    let conditions = [];
 
     if (filters) {
       if (filters.status) {
-        query = query.where(eq(jobs.status, filters.status));
+        conditions.push(eq(jobs.status, filters.status));
       }
 
       if (filters.date) {
@@ -290,13 +290,13 @@ export class DatabaseStorage implements IStorage {
         const endOfDay = new Date(filters.date);
         endOfDay.setHours(23, 59, 59, 999);
 
-        query = query.where(
+        conditions.push(
           sql`${jobs.createdAt} >= ${startOfDay} AND ${jobs.createdAt} <= ${endOfDay}`
         );
       }
 
       if (filters.searchTerm) {
-        query = query.where(
+        conditions.push(
           sql`${jobs.title} ILIKE ${'%' + filters.searchTerm + '%'} OR 
               ${jobs.jobId} ILIKE ${'%' + filters.searchTerm + '%'} OR 
               ${jobs.description} ILIKE ${'%' + filters.searchTerm + '%'}`
@@ -304,7 +304,30 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    return query.orderBy(desc(jobs.createdAt));
+    const query = db
+      .select({
+        id: jobs.id,
+        jobId: jobs.jobId,
+        title: jobs.title,
+        description: jobs.description,
+        client: jobs.client,
+        implOrPv: jobs.implOrPv,
+        city: jobs.city,
+        state: jobs.state,
+        jobType: jobs.jobType,
+        rate: jobs.rate,
+        interviewType: jobs.interviewType,
+        visaRestrictions: jobs.visaRestrictions,
+        requiredSkills: jobs.requiredSkills,
+        status: jobs.status,
+        createdAt: jobs.createdAt,
+        createdBy: jobs.createdBy,
+      })
+      .from(jobs)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(jobs.createdAt));
+
+    return query;
   }
 
   async getJob(id: number): Promise<Job | undefined> {

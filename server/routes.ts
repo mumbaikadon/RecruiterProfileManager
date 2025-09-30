@@ -75,7 +75,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const jobs = await storage.getJobs(filters);
-      res.json(jobs);
+      
+      const enhancedJobs = await Promise.all(
+        jobs.map(async (job) => {
+          const assignments = await storage.getJobAssignments(job.id);
+          const assignedUserIds = assignments.map((a) => a.userId);
+          const recruiters = await Promise.all(
+            assignedUserIds.map((id) => storage.getUser(id))
+          );
+          
+          const submissions = await storage.getSubmissions({ jobId: job.id });
+          
+          return {
+            ...job,
+            assignedRecruiters: recruiters
+              .filter(Boolean)
+              .map((r) => ({
+                id: r!.id,
+                name: r!.name || r!.username,
+                username: r!.username,
+              })),
+            submissionCount: submissions.length,
+          };
+        })
+      );
+
+      res.json(enhancedJobs);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }

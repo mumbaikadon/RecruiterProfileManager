@@ -15,55 +15,8 @@ const JobsPage: React.FC = () => {
   }>({});
   const [editingJob, setEditingJob] = useState<Job | null>(null);
 
-  // Fetch jobs with filters
+  // Fetch jobs with filters - now includes assignedRecruiters and submissionCount
   const { data: jobs, isLoading } = useJobs(filters);
-  
-  // Fetch all submissions to count per job
-  const { data: submissions } = useSubmissions();
-  
-  // Calculate submission counts per job
-  const submissionCounts: Record<number, number> = {};
-  submissions?.forEach((submission: { jobId: number }) => {
-    submissionCounts[submission.jobId] = (submissionCounts[submission.jobId] || 0) + 1;
-  });
-  
-  // Get assigned recruiters for each job
-  const [assignedRecruiters, setAssignedRecruiters] = React.useState<Record<number, { id: number; name: string }[]>>({});
-  
-  // Process job assignments when data is available
-  React.useEffect(() => {
-    if (jobs) {
-      const fetchAssignedRecruiters = async () => {
-        const recruitersMap: Record<number, { id: number; name: string }[]> = {};
-        
-        // Process each job to get assigned recruiters
-        for (const job of jobs) {
-          if (job.id) {
-            try {
-              // Fetch the complete job data including assignments
-              const jobResponse = await fetch(`/api/jobs/${job.id}`);
-              if (jobResponse.ok) {
-                const jobData = await jobResponse.json();
-                if (jobData.assignedRecruiters && jobData.assignedRecruiters.length > 0) {
-                  recruitersMap[job.id] = jobData.assignedRecruiters.map((r: any) => ({
-                    id: r.id,
-                    name: r.name || r.username
-                  }));
-                }
-              }
-            } catch (error) {
-              console.error(`Error fetching job details for ${job.id}:`, error);
-            }
-          }
-        }
-        
-        // Update state with all fetched recruiters
-        setAssignedRecruiters(recruitersMap);
-      };
-      
-      fetchAssignedRecruiters();
-    }
-  }, [jobs]);
   
   const handleFilterChange = (newFilters: {
     status?: string;
@@ -99,8 +52,6 @@ const JobsPage: React.FC = () => {
         </div>
         <JobTable 
           jobs={jobs || []} 
-          assignedRecruiters={assignedRecruiters}
-          submissionCounts={submissionCounts}
           isLoading={isLoading} 
           onEdit={handleEditJob}
         />

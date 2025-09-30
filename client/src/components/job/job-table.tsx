@@ -22,17 +22,16 @@ import { formatDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
 interface JobTableProps {
-  jobs: Job[];
-  assignedRecruiters?: Record<number, { id: number; name: string }[]>;
-  submissionCounts?: Record<number, number>;
+  jobs: (Job & { 
+    assignedRecruiters?: { id: number; name: string; username?: string }[]; 
+    submissionCount?: number;
+  })[];
   isLoading?: boolean;
   onEdit?: (job: Job) => void;
 }
 
 const JobTable: React.FC<JobTableProps> = ({ 
   jobs, 
-  assignedRecruiters = {}, 
-  submissionCounts = {},
   isLoading = false,
   onEdit
 }) => {
@@ -172,9 +171,9 @@ const JobTable: React.FC<JobTableProps> = ({
                         {formatDate(job.createdAt)}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        {assignedRecruiters[job.id] && assignedRecruiters[job.id].length > 0 ? (
+                        {job.assignedRecruiters && job.assignedRecruiters.length > 0 ? (
                           <div className="flex -space-x-2 overflow-hidden">
-                            {assignedRecruiters[job.id].slice(0, 3).map((recruiter) => (
+                            {job.assignedRecruiters.slice(0, 3).map((recruiter) => (
                               <div 
                                 key={recruiter.id} 
                                 className="inline-block h-6 w-6 rounded-full ring-2 ring-background bg-primary/10 flex items-center justify-center text-xs font-bold text-primary"
@@ -189,7 +188,7 @@ const JobTable: React.FC<JobTableProps> = ({
                         )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {submissionCounts[job.id] || 0}
+                        {job.submissionCount || 0}
                       </TableCell>
                       <TableCell>
                         <span className={cn(

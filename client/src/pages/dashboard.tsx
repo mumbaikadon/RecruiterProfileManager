@@ -40,59 +40,11 @@ const Dashboard: React.FC = () => {
   // Fetch dashboard stats
   const { data: statsData, isLoading: isLoadingStats } = useDashboardStats();
   
-  // Fetch recent jobs
+  // Fetch recent jobs - now includes assignedRecruiters and submissionCount
   const { data: jobsData, isLoading: isLoadingJobs } = useJobs({
     date: filterDate?.toISOString().split('T')[0],
     search: searchTerm
   });
-  
-  // Fetch all submissions to count per job
-  const { data: submissions } = useSubmissions();
-  
-  // Calculate submission counts per job
-  const submissionCounts: Record<number, number> = {};
-  submissions?.forEach((submission: { jobId: number }) => {
-    submissionCounts[submission.jobId] = (submissionCounts[submission.jobId] || 0) + 1;
-  });
-  
-  // Get assigned recruiters for each job
-  const { data: allJobs } = useJobs();
-  const [assignedRecruiters, setAssignedRecruiters] = React.useState<Record<number, { id: number; name: string }[]>>({});
-  
-  // Process job assignments when data is available
-  React.useEffect(() => {
-    if (allJobs) {
-      const fetchAssignedRecruiters = async () => {
-        const recruitersMap: Record<number, { id: number; name: string }[]> = {};
-        
-        // Process each job to get assigned recruiters
-        for (const job of allJobs) {
-          if (job.id) {
-            try {
-              // Fetch the complete job data including assignments
-              const jobResponse = await fetch(`/api/jobs/${job.id}`);
-              if (jobResponse.ok) {
-                const jobData = await jobResponse.json();
-                if (jobData.assignedRecruiters && jobData.assignedRecruiters.length > 0) {
-                  recruitersMap[job.id] = jobData.assignedRecruiters.map((r: any) => ({
-                    id: r.id,
-                    name: r.name || r.username
-                  }));
-                }
-              }
-            } catch (error) {
-              console.error(`Error fetching job details for ${job.id}:`, error);
-            }
-          }
-        }
-        
-        // Update state with all fetched recruiters
-        setAssignedRecruiters(recruitersMap);
-      };
-      
-      fetchAssignedRecruiters();
-    }
-  }, [allJobs]);
   
   // Fetch recent activities
   const { data: activitiesData, isLoading: isLoadingActivities } = useActivities(10);
@@ -241,8 +193,6 @@ const Dashboard: React.FC = () => {
                 <div className="table-container">
                   <JobTable 
                     jobs={jobsData?.slice(0, 5) || []} 
-                    submissionCounts={submissionCounts}
-                    assignedRecruiters={assignedRecruiters}
                     isLoading={isLoadingJobs} 
                   />
                 </div>
