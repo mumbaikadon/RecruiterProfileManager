@@ -1,6 +1,6 @@
 import { db } from './db';
 import { processingJobs, profileResumes, resumeContent, resumeMetadata } from '@shared/schema';
-import { eq, and, inArray, lt, or } from 'drizzle-orm';
+import { eq, and, inArray, lt, or, count } from 'drizzle-orm';
 
 interface ProcessingJobData {
   filePath: string;
@@ -175,7 +175,6 @@ class JobProcessor {
           .update(profileResumes)
           .set({ processingStatus: 'failed' })
           .where(eq(profileResumes.id, job.profileResumeId));
-          
         console.log(`💀 Job ${job.id} permanently failed after ${job.retryCount} retries`);
       }
     }
@@ -184,9 +183,46 @@ class JobProcessor {
   private async extractText(resumeId: number, data: ProcessingJobData) {
     const { extractTextFromDocument } = await import('./document-parser');
     
-    // Read file from filesystem
-    const fs = await import('fs');
-    const fileBuffer = fs.readFileSync(data.filePath);
+    let fileBuffer: Buffer;
+    
+    // Try to read file from filesystem first, fallback to database
+    if (data.filePath) {
+      try {
+        console.log(`📂 Reading file from filesystem: ${data.filePath}`);
+        const fs = await import('fs');
+        fileBuffer = fs.readFileSync(data.filePath);
+      } catch (error) {
+        console.warn(`⚠️  Failed to read from filesystem, trying database fallback:`, error);
+        // Fallback to database
+        const resume = await db
+          .select({ fileData: profileResumes.fileData })
+          .from(profileResumes)
+          .where(eq(profileResumes.id, resumeId))
+          .limit(1);
+        
+        if (!resume[0]?.fileData) {
+          throw new Error(`File not found in filesystem or database for resume ${resumeId}`);
+        }
+        
+        fileBuffer = Buffer.from(resume[0].fileData, 'base64');
+        console.log(`📦 Retrieved file from database (${fileBuffer.length} bytes)`);
+      }
+    } else {
+      // No filePath provided, read from database
+      console.log(`📦 No filePath provided, reading from database for resume ${resumeId}`);
+      const resume = await db
+        .select({ fileData: profileResumes.fileData })
+        .from(profileResumes)
+        .where(eq(profileResumes.id, resumeId))
+        .limit(1);
+      
+      if (!resume[0]?.fileData) {
+        throw new Error(`File data not found in database for resume ${resumeId}. The file may not have been uploaded correctly.`);
+      }
+      
+      fileBuffer = Buffer.from(resume[0].fileData, 'base64');
+      console.log(`📦 Retrieved file from database (${fileBuffer.length} bytes)`);
+    }
     
     // Extract text
     const extractedText = await extractTextFromDocument(fileBuffer, data.fileName);
@@ -286,7 +322,7 @@ class JobProcessor {
     const stats = await db
       .select({
         status: processingJobs.status,
-        count: db.count()
+        count: count()
       })
       .from(processingJobs)
       .groupBy(processingJobs.status);
