@@ -53,6 +53,9 @@ class JobProcessor {
   
   private async processJobs() {
     try {
+      // First, clean up stuck processing jobs (older than 5 minutes)
+      await this.cleanupStuckJobs();
+      
       // Get pending jobs with priority ordering
       const pendingJobs = await db
         .select()
@@ -78,6 +81,69 @@ class JobProcessor {
       
     } catch (error) {
       console.error('❌ Error fetching jobs:', error);
+    }
+  }
+  
+  private async cleanupStuckJobs() {
+    try {
+      // Find jobs stuck in "processing" state for more than 5 minutes
+      const fiveMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+      
+      const stuckJobs = await db
+        .select()
+        .from(processingJobs)
+        .where(
+          and(
+            eq(processingJobs.status, 'processing'),
+            lt(processingJobs.startedAt, fiveMinutesAgo)
+          )
+        );
+      
+      if (stuckJobs.length === 0) {
+        return;
+      }
+      
+      console.log(`🔧 Found ${stuckJobs.length} stuck job(s) in processing state, marking as failed...`);
+      
+      for (const job of stuckJobs) {
+        const shouldRetry = job.retryCount < job.maxRetries;
+        
+        if (shouldRetry) {
+          // Mark for retry
+          await db
+            .update(processingJobs)
+            .set({
+              status: 'retrying',
+              retryCount: job.retryCount + 1,
+              errorMessage: 'Job stuck in processing state for more than 5 minutes (timeout)',
+              startedAt: null
+            })
+            .where(eq(processingJobs.id, job.id));
+          
+          console.log(`🔄 Stuck job ${job.id} will be retried (attempt ${job.retryCount + 1}/${job.maxRetries})`);
+        } else {
+          // Mark as permanently failed
+          await db
+            .update(processingJobs)
+            .set({
+              status: 'failed',
+              errorMessage: 'Job stuck in processing state for more than 5 minutes (timeout)',
+              completedAt: new Date()
+            })
+            .where(eq(processingJobs.id, job.id));
+          
+          // Mark resume as failed
+          await db
+            .update(profileResumes)
+            .set({ processingStatus: 'failed' })
+            .where(eq(profileResumes.id, job.profileResumeId));
+          
+          console.log(`💀 Stuck job ${job.id} permanently failed after ${job.retryCount} retries`);
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ Error cleaning up stuck jobs:', error);
     }
   }
   
@@ -216,8 +282,12 @@ class JobProcessor {
         .where(eq(profileResumes.id, resumeId))
         .limit(1);
       
-      if (!resume[0]?.fileData) {
-        throw new Error(`File data not found in database for resume ${resumeId}. The file may not have been uploaded correctly.`);
+      if (!resume[0]) {
+        throw new Error(`Resume ${resumeId} not found in database`);
+      }
+      
+      if (!resume[0].fileData) {
+        throw new Error(`File data is null for resume ${resumeId}. This resume was uploaded before the database schema was fixed. Please re-upload this file or run: node sync-database-schema.js to fix the schema.`);
       }
       
       fileBuffer = Buffer.from(resume[0].fileData, 'base64');
@@ -328,6 +398,13 @@ class JobProcessor {
       .groupBy(processingJobs.status);
     
     return stats;
+  }
+  
+  // Manual cleanup method - can be called to immediately clean stuck jobs
+  async cleanupStuckJobsNow() {
+    console.log('🔧 Manually cleaning up stuck jobs...');
+    await this.cleanupStuckJobs();
+    console.log('✅ Stuck jobs cleanup completed');
   }
 }
 
