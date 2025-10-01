@@ -33,6 +33,8 @@ export const jobs = pgTable("jobs", {
   visaRestrictions: text("visa_restrictions"), // Visa/sponsorship restrictions
   requiredSkills: text("required_skills").array(), // Array of required skills
   status: text("status", { enum: ["active", "reviewing", "closed"] }).notNull().default("active"),
+  emailMessageId: text("email_message_id"), // Email Message-ID from job assignment notification
+  emailThreadReferences: text("email_thread_references"), // Email References header for threading
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").references(() => users.id),
 });
