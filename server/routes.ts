@@ -4074,8 +4074,11 @@ Generated on: ${new Date().toLocaleString()}
 
   // Status monitoring endpoints for async processing
   app.get("/api/upload-sessions/:sessionId", requireAuth, async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const sessionId = req.params.sessionId;
+    
     try {
-      const sessionId = req.params.sessionId;
+      console.log(`📊 [Upload Session] Fetching session status for: ${sessionId}`);
       
       // Get session details
       const session = await db
@@ -4084,11 +4087,25 @@ Generated on: ${new Date().toLocaleString()}
         .where(eq(uploadSessions.sessionId, sessionId))
         .limit(1);
       
+      console.log(`📊 [Upload Session] Query result:`, {
+        sessionId,
+        found: session.length > 0,
+        sessionData: session.length > 0 ? {
+          id: session[0].id,
+          totalFiles: session[0].totalFiles,
+          uploadedFiles: session[0].uploadedFiles,
+          status: session[0].status,
+          createdBy: session[0].createdBy
+        } : null
+      });
+      
       if (session.length === 0) {
+        console.log(`⚠️ [Upload Session] Session not found: ${sessionId}`);
         return res.status(404).json({ message: "Session not found" });
       }
       
       // Get processing jobs for this session
+      console.log(`📊 [Upload Session] Fetching processing jobs for user: ${session[0].createdBy}`);
       const jobs = await db
         .select({
           id: processingJobs.id,
@@ -4106,12 +4123,24 @@ Generated on: ${new Date().toLocaleString()}
         .leftJoin(profileResumes, eq(processingJobs.profileResumeId, profileResumes.id))
         .where(eq(profileResumes.uploadedBy, session[0].createdBy));
       
+      console.log(`📊 [Upload Session] Found ${jobs.length} processing jobs`);
+      
       // Calculate progress
       const totalJobs = jobs.length;
       const completedJobs = jobs.filter(job => job.status === 'completed').length;
       const failedJobs = jobs.filter(job => job.status === 'failed').length;
-      const processingJobs = jobs.filter(job => job.status === 'processing').length;
+      const processingJobsCount = jobs.filter(job => job.status === 'processing').length;
       const pendingJobs = jobs.filter(job => ['pending', 'retrying'].includes(job.status)).length;
+      
+      const duration = Date.now() - startTime;
+      console.log(`✅ [Upload Session] Status retrieved in ${duration}ms:`, {
+        sessionId,
+        total: totalJobs,
+        completed: completedJobs,
+        failed: failedJobs,
+        processing: processingJobsCount,
+        pending: pendingJobs
+      });
       
       res.json({
         session: session[0],
@@ -4119,7 +4148,7 @@ Generated on: ${new Date().toLocaleString()}
           total: totalJobs,
           completed: completedJobs,
           failed: failedJobs,
-          processing: processingJobs,
+          processing: processingJobsCount,
           pending: pendingJobs,
           percentage: totalJobs > 0 ? Math.round((completedJobs / totalJobs) * 100) : 0
         },
@@ -4127,7 +4156,16 @@ Generated on: ${new Date().toLocaleString()}
       });
       
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      const duration = Date.now() - startTime;
+      console.error(`❌ [Upload Session] Error after ${duration}ms:`, {
+        sessionId,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : 'Unknown error',
+        sessionId 
+      });
     }
   });
   
