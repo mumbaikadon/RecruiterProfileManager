@@ -2,9 +2,37 @@
 
 RecruiterTracker is a modern AI-powered recruitment management platform built with React/TypeScript frontend and Node.js/Express backend. The system streamlines the recruitment process by allowing recruiters to manage jobs, candidates, and submissions while integrating OpenAI for resume analysis and matching capabilities. Key features include duplicate candidate prevention, intelligent resume processing, comprehensive tracking of the recruitment pipeline from initial submission to final hiring decisions, and robust analytics with success/rejection rate calculations.
 
+## Recent Changes (October 1, 2025)
+
+**Email Threading Implementation - Per-Assignment Message-ID Storage (Latest)**
+- Implemented comprehensive email threading system for job assignments and candidate submissions
+- **Architecture**: Message-IDs stored per job assignment (jobAssignments table) rather than per job
+  - Each recruiter receives assignment email with unique Message-ID stored on their assignment record
+  - Ensures proper email threading in Gmail/email clients for multi-recruiter scenarios
+- **Database Schema**: Added `emailMessageId` and `emailThreadReferences` columns to `jobAssignments` table
+  - Removed previous job-level email threading columns (moved from jobs to jobAssignments)
+  - Each assignment maintains its own thread chain as conversation grows
+- **Email Service Enhancements**:
+  - Modified `sendEmail()` to accept threading headers (inReplyTo/references) and return Message-ID
+  - Returns Message-ID string instead of boolean for thread tracking
+- **Notification Service Updates**:
+  - `sendJobAssignmentNotification()` stores Message-ID on specific job assignment
+  - `sendSubmissionNotification()` looks up recruiter's assignment to get their Message-ID
+  - Thread references automatically updated as conversation grows: "msg1" → "msg1 msg2" → "msg1 msg2 msg3"
+  - Proper Gmail-compatible space-delimited References header format
+- **Storage Layer**: Added methods for job assignment updates and lookups
+  - `updateJobAssignment()` - Updates assignment with email threading data
+  - `getJobAssignmentByJobAndUser()` - Retrieves assignment by job and recruiter
+- **Edge Cases Handled**:
+  - Legacy assignments without Message-IDs send non-threaded emails (graceful fallback)
+  - Thread chain persists and grows with each submission notification
+  - Works correctly when multiple recruiters are assigned to same job
+- **Testing Required**: End-to-end Gmail testing with multi-recruiter job assignments and submissions
+- **Impact**: All job-related emails (assignments, submissions) now appear in same Gmail conversation thread per recruiter
+
 ## Recent Changes (September 30, 2025)
 
-**N+1 Query Optimization - Jobs Listing (Latest)**
+**N+1 Query Optimization - Jobs Listing**
 - Eliminated N+1 API call anti-pattern in jobs tab that caused 51 API requests for 50 jobs
 - Modified `/api/jobs` endpoint to include assignedRecruiters and submissionCount in single response
 - Removed frontend loops in jobs/index.tsx and dashboard.tsx that fetched individual job details
