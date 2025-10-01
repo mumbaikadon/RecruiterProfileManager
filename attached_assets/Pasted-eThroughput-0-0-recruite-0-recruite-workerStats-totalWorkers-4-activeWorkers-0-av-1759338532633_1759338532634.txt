@@ -1,0 +1,59 @@
+eThroughput: 0
+0|recruite |   },
+0|recruite |   workerStats: { totalWorkers: 4, activeWorkers: 0, availableWorkers: 4 }
+0|recruite | }
+0|recruite | ❌ Job 28 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 29 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 30 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 31 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 32 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 28 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 29 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 30 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 31 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 32 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | 🚨 CRITICAL: Background job system health is critical! {
+0|recruite |   isRunning: true,
+0|recruite |   uptime: 90.002,
+0|recruite |   totalJobsProcessed: 27,
+0|recruite |   failureRate: 100,
+0|recruite |   systemHealth: 'critical',
+0|recruite |   schedulerStats: {
+0|recruite |     totalJobs: 32,
+0|recruite |     pendingJobs: 0,
+0|recruite |     processingJobs: 0,
+0|recruite |     completedJobs: 0,
+0|recruite |     failedJobs: 27,
+0|recruite |     activeWorkers: 0,
+0|recruite |     availableWorkers: 4,
+0|recruite |     averageProcessingTime: 0,
+0|recruite |     queueThroughput: 0
+0|recruite |   },
+0|recruite |   workerStats: { totalWorkers: 4, activeWorkers: 0, availableWorkers: 4 }
+0|recruite | }
+0|recruite | ❌ Job 28 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 29 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 30 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 31 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | ❌ Job 32 failed: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received null
+0|recruite | 🚨 CRITICAL: Background job system health is critical! {
+0|recruite |   isRunning: true,
+0|recruite |   uptime: 120.002,
+0|recruite |   totalJobsProcessed: 32,
+0|recruite |   failureRate: 100,
+0|recruite |   systemHealth: 'critical',
+0|recruite |   schedulerStats: {
+0|recruite |     totalJobs: 32,
+0|recruite |     pendingJobs: 0,
+0|recruite |     processingJobs: 0,
+0|recruite |     completedJobs: 0,
+0|recruite |     failedJobs: 32,
+0|recruite |     activeWorkers: 0,
+0|recruite |     availableWorkers: 4,
+0|recruite |     averageProcessingTime: 0,
+0|recruite |     queueThroughput: 0
+0|recruite |   },
+0|recruite |   workerStats: { totalWorkers: 4, activeWorkers: 0, availableWorkers: 4 }
+0|recruite | }
+ 
+ 
