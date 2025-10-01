@@ -10,8 +10,9 @@ export class NotificationService {
   /**
    * Send job assignment notification to a recruiter
    * Returns the Message-ID for email threading, or null if failed
+   * @param assignmentId - The job assignment ID to update with Message-ID
    */
-  static async sendJobAssignmentNotification(job: Job, recruiter: User): Promise<string | null> {
+  static async sendJobAssignmentNotification(job: Job, recruiter: User, assignmentId?: number): Promise<string | null> {
     try {
       if (!recruiter.email) {
         console.warn(`Recruiter ${recruiter.name} (ID: ${recruiter.id}) has no email address`);
@@ -49,6 +50,19 @@ export class NotificationService {
       if (messageId) {
         console.log(`Job assignment notification sent to ${recruiter.name} (${recruiter.email}) for job: ${job.jobId}`);
         console.log(`Email Message-ID: ${messageId}`);
+        
+        // Store Message-ID on the job assignment if assignment ID is provided
+        if (assignmentId) {
+          try {
+            await storage.updateJobAssignment(assignmentId, {
+              emailMessageId: messageId,
+              emailThreadReferences: messageId
+            });
+            console.log(`Stored Message-ID on assignment ${assignmentId}`);
+          } catch (error) {
+            console.error(`Failed to store Message-ID on assignment ${assignmentId}:`, error);
+          }
+        }
       } else {
         console.error(`Failed to send job assignment notification to ${recruiter.name} (${recruiter.email})`);
       }
@@ -62,31 +76,29 @@ export class NotificationService {
 
   /**
    * Send job assignment notifications to multiple recruiters
-   * Returns the first valid Message-ID for email threading
+   * Each recruiter gets their own Message-ID stored on their assignment
    */
-  static async sendJobAssignmentNotifications(job: Job, recruiterIds: number[]): Promise<string | null> {
-    let firstMessageId: string | null = null;
-    
+  static async sendJobAssignmentNotifications(job: Job, recruiterIds: number[]): Promise<void> {
     const notifications = recruiterIds.map(async (recruiterId) => {
       try {
         const recruiter = await storage.getUser(recruiterId);
         if (recruiter) {
-          const messageId = await this.sendJobAssignmentNotification(job, recruiter);
-          if (messageId && !firstMessageId) {
-            firstMessageId = messageId;
+          // Get the assignment to pass its ID for Message-ID storage
+          const assignment = await storage.getJobAssignmentByJobAndUser(job.id, recruiterId);
+          if (assignment) {
+            await this.sendJobAssignmentNotification(job, recruiter, assignment.id);
+          } else {
+            // If no assignment found, send notification without storing Message-ID
+            await this.sendJobAssignmentNotification(job, recruiter);
           }
-          return messageId;
         }
       } catch (error) {
         console.error(`Failed to send notification to recruiter ${recruiterId}:`, error);
-        return null;
       }
     });
 
     // Process all notifications concurrently
     await Promise.allSettled(notifications);
-    
-    return firstMessageId;
   }
 
   /**
@@ -135,11 +147,17 @@ export class NotificationService {
         `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/submissions/${submission.id}`
       );
 
-      // Use email threading if job has emailMessageId
-      const threadingHeaders = job.emailMessageId ? {
-        inReplyTo: job.emailMessageId,
-        references: job.emailThreadReferences || job.emailMessageId
-      } : undefined;
+      // Look up this recruiter's specific assignment to get their Message-ID
+      const assignment = await storage.getJobAssignmentByJobAndUser(job.id, recruiter.id);
+      
+      // Use email threading if assignment has emailMessageId
+      let threadingHeaders;
+      if (assignment?.emailMessageId) {
+        threadingHeaders = {
+          inReplyTo: assignment.emailMessageId,
+          references: assignment.emailThreadReferences || assignment.emailMessageId
+        };
+      }
 
       const messageId = await sendEmail(
         recruiter.email, 
@@ -152,7 +170,21 @@ export class NotificationService {
       if (messageId) {
         console.log(`Submission notification sent to ${recruiter.name} for job ${job.jobId}, candidate ${candidate.firstName} ${candidate.lastName}`);
         if (threadingHeaders) {
-          console.log(`Email threaded with Message-ID: ${job.emailMessageId}`);
+          console.log(`Email threaded with Message-ID: ${assignment!.emailMessageId}`);
+          
+          // Update the assignment's thread references to include this new Message-ID
+          try {
+            const updatedReferences = assignment!.emailThreadReferences 
+              ? `${assignment!.emailThreadReferences} ${messageId}`
+              : `${assignment!.emailMessageId} ${messageId}`;
+            
+            await storage.updateJobAssignment(assignment!.id, {
+              emailThreadReferences: updatedReferences
+            });
+            console.log(`Updated thread references for assignment ${assignment!.id}`);
+          } catch (error) {
+            console.error(`Failed to update thread references:`, error);
+          }
         }
         return true;
       } else {

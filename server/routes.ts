@@ -228,18 +228,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Send email notifications to assigned recruiters and capture Message-ID for threading
+        // Send email notifications to assigned recruiters (Message-IDs stored per assignment)
         if (assignedRecruiterIds.length > 0) {
-          const messageId = await NotificationService.sendJobAssignmentNotifications(job, assignedRecruiterIds);
-          
-          // Store Message-ID for email threading if notification was sent successfully
-          if (messageId) {
-            await storage.updateJob(job.id, {
-              emailMessageId: messageId,
-              emailThreadReferences: messageId
-            });
-            console.log(`Stored email Message-ID for new job ${job.jobId}: ${messageId}`);
-          }
+          await NotificationService.sendJobAssignmentNotifications(job, assignedRecruiterIds);
         }
       } catch (assignError) {
         console.error('Failed to assign recruiters or send notifications:', assignError);
@@ -433,17 +424,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validRecruiterIds,
       );
 
-      // Send email notifications to assigned recruiters and capture Message-ID for threading
-      const messageId = await NotificationService.sendJobAssignmentNotifications(job, validRecruiterIds);
-      
-      // Store Message-ID for email threading if notification was sent successfully
-      if (messageId) {
-        await storage.updateJob(id, {
-          emailMessageId: messageId,
-          emailThreadReferences: messageId
-        });
-        console.log(`Stored email Message-ID for job ${job.jobId}: ${messageId}`);
-      }
+      // Send email notifications to assigned recruiters (Message-IDs stored per assignment)
+      await NotificationService.sendJobAssignmentNotifications(job, validRecruiterIds);
 
       res.status(201).json(assignments);
     } catch (error) {
@@ -1391,6 +1373,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           submissionId: submission.id,
           message: `Candidate ${candidate.firstName} ${candidate.lastName} was submitted for ${job.title} (${job.jobId})`,
         });
+        
+        // Send email notifications to all assigned recruiters about the new submission
+        try {
+          const assignments = await storage.getJobAssignments(job.id);
+          console.log(`Sending submission notifications to ${assignments.length} assigned recruiters for job ${job.jobId}`);
+          
+          for (const assignment of assignments) {
+            const recruiter = await storage.getUser(assignment.recruiterId);
+            if (recruiter) {
+              await NotificationService.sendSubmissionNotification(
+                job,
+                candidate,
+                submission,
+                recruiter
+              );
+            }
+          }
+        } catch (notificationError) {
+          console.error('Failed to send submission notifications:', notificationError);
+          // Continue even if notifications fail
+        }
       }
 
       res.status(201).json({

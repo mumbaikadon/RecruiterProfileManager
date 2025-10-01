@@ -33,8 +33,6 @@ export const jobs = pgTable("jobs", {
   visaRestrictions: text("visa_restrictions"), // Visa/sponsorship restrictions
   requiredSkills: text("required_skills").array(), // Array of required skills
   status: text("status", { enum: ["active", "reviewing", "closed"] }).notNull().default("active"),
-  emailMessageId: text("email_message_id"), // Email Message-ID from job assignment notification
-  emailThreadReferences: text("email_thread_references"), // Email References header for threading
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").references(() => users.id),
 });
@@ -45,6 +43,9 @@ export const jobAssignments = pgTable("job_assignments", {
   jobId: integer("job_id").notNull().references(() => jobs.id),
   userId: integer("user_id").notNull().references(() => users.id),
   assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+  // Email threading fields - stores Message-ID for this specific assignment notification
+  emailMessageId: text("email_message_id"),
+  emailThreadReferences: text("email_thread_references"), // Stores the full References header chain
 }, (table) => {
   return {
     // Ensure a user can only be assigned to a job once

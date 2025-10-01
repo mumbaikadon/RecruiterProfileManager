@@ -48,6 +48,8 @@ export interface IStorage {
   assignRecruitersToJob(jobId: number, recruiterIds: number[]): Promise<JobAssignment[]>;
   getJobAssignments(jobId: number): Promise<JobAssignment[]>;
   getUserAssignedJobs(userId: number): Promise<Job[]>;
+  updateJobAssignment(assignmentId: number, updates: Partial<InsertJobAssignment>): Promise<JobAssignment>;
+  getJobAssignmentByJobAndUser(jobId: number, userId: number): Promise<JobAssignment | undefined>;
 
   // Candidate operations
   getCandidates(): Promise<Array<Candidate & { jobTitle?: string; yearsOfExperience?: number }>>;
@@ -428,6 +430,30 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(jobs.createdAt));
+  }
+
+  async updateJobAssignment(assignmentId: number, updates: Partial<InsertJobAssignment>): Promise<JobAssignment> {
+    const [assignment] = await db
+      .update(jobAssignments)
+      .set(updates)
+      .where(eq(jobAssignments.id, assignmentId))
+      .returning();
+    
+    return assignment;
+  }
+
+  async getJobAssignmentByJobAndUser(jobId: number, userId: number): Promise<JobAssignment | undefined> {
+    const [assignment] = await db
+      .select()
+      .from(jobAssignments)
+      .where(
+        and(
+          eq(jobAssignments.jobId, jobId),
+          eq(jobAssignments.userId, userId)
+        )
+      );
+    
+    return assignment;
   }
 
   async getCandidates(): Promise<Array<Candidate & { jobTitle?: string; yearsOfExperience?: number }>> {
