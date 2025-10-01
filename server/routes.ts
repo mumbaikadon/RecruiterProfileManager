@@ -22,7 +22,7 @@ import {
   profileResumes,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, inArray, isNull, desc } from "drizzle-orm";
+import { eq, inArray, isNull, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { analyzeResumeText, matchResumeToJob } from "./openai";
 import { parseJobRequirements } from "./job-parser";
@@ -3908,7 +3908,7 @@ Generated on: ${new Date().toLocaleString()}
     }
   });
 
-  // NEW: Asynchronous bulk upload endpoint - stores files and queues processing
+  // NEW: Asynchronous bulk upload endpoint - stores files and queues processing (supports multi-chunk)
   app.post("/api/profile-resumes/bulk-upload-async", requireAuth, bulkUpload.array('resumes', 50), async (req: Request, res: Response) => {
     const startTime = Date.now();
     const { profileLogger } = await import('./logger');
@@ -3926,19 +3926,57 @@ Generated on: ${new Date().toLocaleString()}
       }
 
       const files = req.files as Express.Multer.File[];
-      const { candidateName, candidateEmail } = req.body;
-      const sessionId = uuidv4();
+      const { candidateName, candidateEmail, sessionId: existingSessionId } = req.body;
       
-      console.log(`🚀 Starting async bulk upload of ${files.length} files (Session: ${sessionId})`);
+      let sessionId: string;
+      let session: any[];
+      let isNewSession = false;
       
-      // Create upload session
-      const session = await db.insert(uploadSessions).values({
-        sessionId,
-        totalFiles: files.length,
-        candidateName: candidateName || null,
-        candidateEmail: candidateEmail || null,
-        createdBy: (req as any).user.id
-      }).returning();
+      // Check if this is a continuation of an existing session (multi-chunk)
+      if (existingSessionId) {
+        console.log(`🔄 Continuing async upload with existing session: ${existingSessionId} (${files.length} more files)`);
+        
+        // Look up existing session
+        session = await db
+          .select()
+          .from(uploadSessions)
+          .where(eq(uploadSessions.sessionId, existingSessionId))
+          .limit(1);
+        
+        if (session.length === 0) {
+          return res.status(404).json({ message: "Session not found" });
+        }
+        
+        // SECURITY: Verify session ownership
+        if (session[0].createdBy !== (req as any).user.id) {
+          console.error(`⛔ Unauthorized session access attempt: User ${(req as any).user.id} tried to access session ${existingSessionId} owned by ${session[0].createdBy}`);
+          return res.status(403).json({ message: "Unauthorized: You don't have permission to access this session" });
+        }
+        
+        sessionId = existingSessionId;
+        
+        // Update total files count atomically to include new chunk
+        await db.update(uploadSessions)
+          .set({
+            totalFiles: sql`${uploadSessions.totalFiles} + ${files.length}`,
+            updatedAt: new Date()
+          })
+          .where(eq(uploadSessions.sessionId, existingSessionId));
+          
+      } else {
+        // Create new session for first chunk
+        isNewSession = true;
+        sessionId = uuidv4();
+        console.log(`🚀 Starting NEW async bulk upload session: ${sessionId} (${files.length} files)`);
+        
+        session = await db.insert(uploadSessions).values({
+          sessionId,
+          totalFiles: files.length,
+          candidateName: candidateName || null,
+          candidateEmail: candidateEmail || null,
+          createdBy: (req as any).user.id
+        }).returning();
+      }
       
       const results = {
         sessionId,
@@ -4035,15 +4073,37 @@ Generated on: ${new Date().toLocaleString()}
         }
       }
       
-      // Update session
+      // Update session - use atomic SQL increments to prevent race conditions
       await db.update(uploadSessions)
         .set({
-          uploadedFiles: results.successful.length,
-          failedFiles: results.failed.length,
-          status: results.failed.length === 0 ? 'processing' : 'completed',
+          uploadedFiles: sql`${uploadSessions.uploadedFiles} + ${results.successful.length}`,
+          failedFiles: sql`${uploadSessions.failedFiles} + ${results.failed.length}`,
           updatedAt: new Date()
         })
-        .where(eq(uploadSessions.id, session[0].id));
+        .where(eq(uploadSessions.sessionId, sessionId));
+      
+      // Fetch updated session to check completion
+      const updatedSession = await db
+        .select()
+        .from(uploadSessions)
+        .where(eq(uploadSessions.sessionId, sessionId))
+        .limit(1);
+      
+      // Update status only when all chunks are uploaded
+      if (updatedSession.length > 0) {
+        const sess = updatedSession[0];
+        const totalProcessed = sess.uploadedFiles + sess.failedFiles;
+        if (totalProcessed >= sess.totalFiles) {
+          // All chunks received - mark as processing
+          await db.update(uploadSessions)
+            .set({
+              status: 'processing',
+              updatedAt: new Date()
+            })
+            .where(eq(uploadSessions.sessionId, sessionId));
+          console.log(`✅ Session ${sessionId} complete: ${sess.uploadedFiles}/${sess.totalFiles} files uploaded, ${sess.failedFiles} failed`);
+        }
+      }
       
       const duration = Date.now() - startTime;
       console.log(`⚡ Async bulk upload completed in ${duration}ms: ${results.successful.length}/${results.total} queued for processing`);

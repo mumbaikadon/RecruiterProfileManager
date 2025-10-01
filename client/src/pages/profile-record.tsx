@@ -186,7 +186,13 @@ export default function ProfileRecord() {
           if (chunk[0]?.candidateName) formData.append('candidateName', chunk[0].candidateName);
           if (chunk[0]?.candidateEmail) formData.append('candidateEmail', chunk[0].candidateEmail);
           
-          console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} files`);
+          // For multi-chunk async uploads, pass sessionId to subsequent chunks
+          if (uploadMode === 'async' && currentSessionId) {
+            formData.append('sessionId', currentSessionId);
+            console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} files (Session: ${currentSessionId})`);
+          } else {
+            console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} files`);
+          }
           
           const endpoint = uploadMode === 'async' 
             ? "/api/profile-resumes/bulk-upload-async"
@@ -205,14 +211,16 @@ export default function ProfileRecord() {
           
           const chunkResult = await response.json();
           
-          // Handle async response differently
+          // Handle async response - store sessionId from first chunk
           if (uploadMode === 'async' && chunkResult.sessionId) {
-            // For async uploads, set session ID and break early
-            setCurrentSessionId(chunkResult.sessionId);
-            setIsTrackingSession(true);
+            if (!currentSessionId) {
+              // First chunk - capture sessionId for subsequent chunks
+              setCurrentSessionId(chunkResult.sessionId);
+              console.log(`✅ Created upload session: ${chunkResult.sessionId}`);
+            }
             aggregatedResults.successful.push(...chunkResult.successful);
             aggregatedResults.failed.push(...chunkResult.failed);
-            break; // Async uploads don't use chunk processing
+            aggregatedResults.chunksProcessed++;
           } else {
             // Aggregate results for sync uploads
             aggregatedResults.successful.push(...chunkResult.successful);
@@ -279,9 +287,20 @@ export default function ProfileRecord() {
             if (failedChunk.files[0]?.candidateName) formData.append('candidateName', failedChunk.files[0].candidateName);
             if (failedChunk.files[0]?.candidateEmail) formData.append('candidateEmail', failedChunk.files[0].candidateEmail);
             
-            console.log(`Retrying chunk ${retryIndex + 1}/${aggregatedResults.failedChunks.length}`);
+            // For async mode, include sessionId in retry
+            if (uploadMode === 'async' && currentSessionId) {
+              formData.append('sessionId', currentSessionId);
+              console.log(`Retrying async chunk ${retryIndex + 1}/${aggregatedResults.failedChunks.length} (Session: ${currentSessionId})`);
+            } else {
+              console.log(`Retrying chunk ${retryIndex + 1}/${aggregatedResults.failedChunks.length}`);
+            }
             
-            const response = await fetch("/api/profile-resumes/bulk-upload", {
+            // Use appropriate endpoint based on upload mode
+            const retryEndpoint = uploadMode === 'async' 
+              ? "/api/profile-resumes/bulk-upload-async"
+              : "/api/profile-resumes/bulk-upload";
+            
+            const response = await fetch(retryEndpoint, {
               method: "POST",
               body: formData,
               credentials: "include",
@@ -349,6 +368,12 @@ export default function ProfileRecord() {
       }
     },
     onSuccess: (result) => {
+      // For async uploads, enable session tracking after all chunks complete
+      if (uploadMode === 'async' && currentSessionId) {
+        setIsTrackingSession(true);
+        console.log(`✅ All chunks uploaded. Tracking session: ${currentSessionId}`);
+      }
+      
       // Invalidate and refetch to get the real data from server
       queryClient.invalidateQueries({ queryKey: ["/api/profile-resumes"] });
       queryClient.refetchQueries({ queryKey: ["/api/profile-resumes"] });
