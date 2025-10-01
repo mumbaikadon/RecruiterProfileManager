@@ -8,13 +8,20 @@ export interface Attachment {
   contentType?: string;
 }
 
-// Function to send email using Gmail SMTP via nodemailer
+// Interface for email threading headers
+export interface ThreadingHeaders {
+  inReplyTo?: string;
+  references?: string;
+}
+
+// Function to send email using Gmail SMTP via nodemailer (now returns Message-ID)
 export const sendEmail = async (
   to: string, 
   subject: string, 
   htmlContent: string, 
-  attachments?: Attachment[]
-): Promise<boolean> => {
+  attachments?: Attachment[],
+  threadingHeaders?: ThreadingHeaders
+): Promise<string | null> => {
   // Get the credentials from environment variables
   const username = process.env.EMAIL_USER || '';
   const password = process.env.EMAIL_PASS || '';
@@ -24,7 +31,7 @@ export const sendEmail = async (
   
   if (!username || !password) {
     logger.error('Email credentials not found. Please set EMAIL_USER and EMAIL_PASS environment variables.');
-    return false;
+    return null;
   }
   
   try {
@@ -34,6 +41,9 @@ export const sendEmail = async (
     logger.info(`To: ${to}`);
     logger.info(`Subject: ${subject}`);
     logger.info(`SMTP Server: ${smtpHost}:${smtpPort}`);
+    if (threadingHeaders?.inReplyTo) {
+      logger.info(`Threading: In-Reply-To: ${threadingHeaders.inReplyTo}`);
+    }
     
     // Create a nodemailer transporter
     const transporter = nodemailer.createTransport({
@@ -47,7 +57,7 @@ export const sendEmail = async (
     });
     
     // Define email options
-    const mailOptions = {
+    const mailOptions: any = {
       from: `"RecruiterProfileManager" <${username}>`,
       to: to,
       cc: ccEmail, // Include CC email if provided in env
@@ -59,6 +69,14 @@ export const sendEmail = async (
       attachments: attachments || []
     };
     
+    // Add threading headers if provided
+    if (threadingHeaders?.inReplyTo) {
+      mailOptions.inReplyTo = threadingHeaders.inReplyTo;
+    }
+    if (threadingHeaders?.references) {
+      mailOptions.references = threadingHeaders.references;
+    }
+    
     // Send email
     const info = await transporter.sendMail(mailOptions);
     
@@ -66,11 +84,12 @@ export const sendEmail = async (
     logger.info(`Message ID: ${info.messageId}`);
     logger.info(`----- EMAIL SENT -----`);
     
-    return true;
+    // Return the Message-ID for email threading
+    return info.messageId || null;
   } catch (error) {
     logger.error('Error sending email:', error);
     logger.error(`----- EMAIL FAILED -----`);
-    return false;
+    return null;
   }
 };
 
