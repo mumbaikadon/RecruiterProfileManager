@@ -202,10 +202,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const job = await storage.createJob(validatedData);
 
       // Assign recruiters if provided, otherwise assign all recruiters with "recruiter" role
+      let assignedRecruiterIds: number[] = [];
       try {
         // Check if recruiterIds is provided and not empty
         if (req.body.recruiterIds && Array.isArray(req.body.recruiterIds) && req.body.recruiterIds.length > 0) {
           await storage.assignRecruitersToJob(job.id, req.body.recruiterIds);
+          assignedRecruiterIds = req.body.recruiterIds;
         } else {
           // Auto-assign all users with recruiter role
           const allUsers = await storage.getUsers();
@@ -214,17 +216,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (recruiters.length > 0) {
             const recruiterIds = recruiters.map(recruiter => recruiter.id);
             await storage.assignRecruitersToJob(job.id, recruiterIds);
+            assignedRecruiterIds = recruiterIds;
           } else {
             // If no recruiters found, assign to a default user (usually admin)
             const adminUser = allUsers.find(user => user.role === 'admin');
             if (adminUser) {
               await storage.assignRecruitersToJob(job.id, [adminUser.id]);
+              assignedRecruiterIds = [adminUser.id];
             }
             // If no admin or recruiter, job will have no assignments, which is acceptable
           }
         }
+        
+        // Send email notifications to assigned recruiters and capture Message-ID for threading
+        if (assignedRecruiterIds.length > 0) {
+          const messageId = await NotificationService.sendJobAssignmentNotifications(job, assignedRecruiterIds);
+          
+          // Store Message-ID for email threading if notification was sent successfully
+          if (messageId) {
+            await storage.updateJob(job.id, {
+              emailMessageId: messageId,
+              emailThreadReferences: messageId
+            });
+            console.log(`Stored email Message-ID for new job ${job.jobId}: ${messageId}`);
+          }
+        }
       } catch (assignError) {
-        console.error('Failed to assign recruiters:', assignError);
+        console.error('Failed to assign recruiters or send notifications:', assignError);
         // Continue with job creation even if assignment fails
       }
 
@@ -415,8 +433,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validRecruiterIds,
       );
 
-      // Send email notifications to assigned recruiters
-      await NotificationService.sendJobAssignmentNotifications(job, validRecruiterIds);
+      // Send email notifications to assigned recruiters and capture Message-ID for threading
+      const messageId = await NotificationService.sendJobAssignmentNotifications(job, validRecruiterIds);
+      
+      // Store Message-ID for email threading if notification was sent successfully
+      if (messageId) {
+        await storage.updateJob(id, {
+          emailMessageId: messageId,
+          emailThreadReferences: messageId
+        });
+        console.log(`Stored email Message-ID for job ${job.jobId}: ${messageId}`);
+      }
 
       res.status(201).json(assignments);
     } catch (error) {
