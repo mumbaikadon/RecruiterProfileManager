@@ -3,10 +3,13 @@
  * Manages worker threads and job queue for processing 500+ files efficiently
  */
 
-import { db } from './db';
-import { processingJobs, profileResumes, uploadSessions } from '@shared/schema';
-import { eq, or, and, inArray, lte, desc, count } from 'drizzle-orm';
-import { WorkerThreadManager, createWorkerThreadManager } from './worker-thread';
+import { db } from "./db";
+import { processingJobs, profileResumes, uploadSessions } from "@shared/schema";
+import { eq, or, and, inArray, lte, desc, count } from "drizzle-orm";
+import {
+  WorkerThreadManager,
+  createWorkerThreadManager,
+} from "./worker-thread";
 
 interface JobSchedulerConfig {
   maxConcurrentJobs: number;
@@ -38,7 +41,7 @@ interface SessionProgress {
   pending: number;
   failed: number;
   percentage: number;
-  status: 'uploading' | 'processing' | 'completed' | 'failed';
+  status: "uploading" | "processing" | "completed" | "failed";
 }
 
 class JobScheduler {
@@ -61,7 +64,7 @@ class JobScheduler {
       retryDelayMs: config.retryDelayMs || 5000, // 5 seconds initial delay
       maxRetryDelay: config.maxRetryDelay || 60000, // Max 60 seconds delay
       enablePriorityProcessing: config.enablePriorityProcessing ?? true,
-      ...config
+      ...config,
     };
 
     this.workerManager = createWorkerThreadManager(this.config.workerThreads);
@@ -70,7 +73,7 @@ class JobScheduler {
     console.log(`📊 Job Scheduler configured:`, {
       maxConcurrentJobs: this.config.maxConcurrentJobs,
       workerThreads: this.config.workerThreads,
-      batchSize: this.config.batchSize
+      batchSize: this.config.batchSize,
     });
   }
 
@@ -84,18 +87,18 @@ class JobScheduler {
       activeWorkers: 0,
       availableWorkers: this.config.workerThreads,
       averageProcessingTime: 0,
-      queueThroughput: 0
+      queueThroughput: 0,
     };
   }
 
   async start() {
     if (this.isRunning) {
-      console.log('📋 Job Scheduler already running');
+      console.log("📋 Job Scheduler already running");
       return;
     }
 
     this.isRunning = true;
-    console.log('🚀 Starting Enhanced Job Scheduler...');
+    console.log("🚀 Starting Enhanced Job Scheduler...");
 
     // Process any pending jobs immediately
     await this.processJobBatch();
@@ -108,11 +111,11 @@ class JobScheduler {
         await this.updateSessionStatuses();
         await this.cleanupOldJobs();
       } catch (error) {
-        console.error('❌ Error in job scheduler:', error);
+        console.error("❌ Error in job scheduler:", error);
       }
     }, this.config.pollIntervalMs);
 
-    console.log('✅ Enhanced Job Scheduler started');
+    console.log("✅ Enhanced Job Scheduler started");
   }
 
   async stop() {
@@ -124,16 +127,16 @@ class JobScheduler {
     this.isRunning = false;
 
     // Wait for current jobs to complete
-    console.log('⏳ Waiting for current jobs to complete...');
+    console.log("⏳ Waiting for current jobs to complete...");
     const maxWait = 30000; // 30 seconds max
     const startTime = Date.now();
 
     while (this.processingJobIds.size > 0 && Date.now() - startTime < maxWait) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     await this.workerManager.shutdown();
-    console.log('⏹️ Enhanced Job Scheduler stopped');
+    console.log("⏹️ Enhanced Job Scheduler stopped");
   }
 
   private async processJobBatch() {
@@ -142,7 +145,7 @@ class JobScheduler {
       const availableSlots = Math.min(
         this.config.maxConcurrentJobs - this.processingJobIds.size,
         this.workerManager.getAvailableWorkers(),
-        this.config.batchSize
+        this.config.batchSize,
       );
 
       if (availableSlots <= 0) {
@@ -151,11 +154,11 @@ class JobScheduler {
 
       // Get pending jobs with priority ordering
       const whereClause = or(
-        eq(processingJobs.status, 'pending'),
+        eq(processingJobs.status, "pending"),
         and(
-          eq(processingJobs.status, 'retrying'),
-          lte(processingJobs.retryAt, new Date())
-        )
+          eq(processingJobs.status, "retrying"),
+          lte(processingJobs.retryAt, new Date()),
+        ),
       );
 
       const pendingJobs = await db
@@ -163,8 +166,10 @@ class JobScheduler {
         .from(processingJobs)
         .where(whereClause)
         .orderBy(
-          this.config.enablePriorityProcessing ? desc(processingJobs.priority) : processingJobs.createdAt,
-          processingJobs.createdAt
+          this.config.enablePriorityProcessing
+            ? desc(processingJobs.priority)
+            : processingJobs.createdAt,
+          processingJobs.createdAt,
         )
         .limit(availableSlots);
 
@@ -175,11 +180,12 @@ class JobScheduler {
       console.log(`📋 Processing batch of ${pendingJobs.length} job(s)...`);
 
       // Process jobs concurrently using worker threads
-      const jobPromises = pendingJobs.map(job => this.processJobWithWorker(job));
+      const jobPromises = pendingJobs.map((job) =>
+        this.processJobWithWorker(job),
+      );
       await Promise.allSettled(jobPromises);
-
     } catch (error) {
-      console.error('❌ Error processing job batch:', error);
+      console.error("❌ Error processing job batch:", error);
     }
   }
 
@@ -192,12 +198,14 @@ class JobScheduler {
       await db
         .update(processingJobs)
         .set({
-          status: 'processing',
-          startedAt: new Date()
+          status: "processing",
+          startedAt: new Date(),
         })
         .where(eq(processingJobs.id, jobId));
 
-      console.log(`⚙️ Processing job ${jobId} for resume ${job.profileResumeId}`);
+      console.log(
+        `⚙️ Processing job ${jobId} for resume ${job.profileResumeId}`,
+      );
 
       // Get resume details for processing
       const resume = await db
@@ -211,19 +219,20 @@ class JobScheduler {
       }
 
       // Parse processing data
-      const processingData = JSON.parse(job.processingData || '{}');
+      const processingData = JSON.parse(job.processingData || "{}");
 
       // Prepare job data for worker thread
       const workerJobData = {
         jobId: jobId,
         resumeId: job.profileResumeId,
-        filePath: `/tmp/resume_${job.profileResumeId}`, // Temporary file path
+        //filePath: `/tmp/resume_${job.profileResumeId}`, // Temporary file path
+        filePath: processingData.filePath || resume[0].filePath,
         fileName: resume[0].filename,
         fileType: resume[0].fileType,
         fileSize: resume[0].fileSize,
         candidateName: processingData.candidateName,
         candidateEmail: processingData.candidateEmail,
-        jobType: job.jobType
+        jobType: job.jobType,
       };
 
       // Create temporary file for worker processing
@@ -245,26 +254,30 @@ class JobScheduler {
         await db
           .update(processingJobs)
           .set({
-            status: 'completed',
-            completedAt: new Date()
+            status: "completed",
+            completedAt: new Date(),
           })
           .where(eq(processingJobs.id, jobId));
 
         // Update resume processing status
         await db
           .update(profileResumes)
-          .set({ processingStatus: 'completed' })
+          .set({ processingStatus: "completed" })
           .where(eq(profileResumes.id, job.profileResumeId));
 
-        console.log(`✅ Job ${jobId} completed successfully in ${processingTime}ms`);
+        console.log(
+          `✅ Job ${jobId} completed successfully in ${processingTime}ms`,
+        );
         this.jobsProcessedLastMinute++;
-
       } else {
-        await this.handleJobFailure(job, result.error || 'Worker processing failed');
+        await this.handleJobFailure(
+          job,
+          result.error || "Worker processing failed",
+        );
       }
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       await this.handleJobFailure(job, errorMessage);
     } finally {
       this.processingJobIds.delete(jobId);
@@ -273,8 +286,8 @@ class JobScheduler {
 
   private async createTempFileForWorker(resume: any, tempPath: string) {
     // Convert base64 file data to temporary file
-    const fs = await import('fs/promises');
-    const buffer = Buffer.from(resume.fileData, 'base64');
+    const fs = await import("fs/promises");
+    const buffer = Buffer.from(resume.fileData, "base64");
     await fs.writeFile(tempPath, buffer);
   }
 
@@ -288,38 +301,42 @@ class JobScheduler {
       // Calculate retry delay with exponential backoff
       const retryDelay = Math.min(
         this.config.retryDelayMs * Math.pow(2, job.retryCount),
-        this.config.maxRetryDelay
+        this.config.maxRetryDelay,
       );
 
       await db
         .update(processingJobs)
         .set({
-          status: 'retrying',
+          status: "retrying",
           retryCount: job.retryCount + 1,
           errorMessage,
-          retryAt: new Date(Date.now() + retryDelay) // Schedule retry
+          retryAt: new Date(Date.now() + retryDelay), // Schedule retry
         })
         .where(eq(processingJobs.id, jobId));
 
-      console.log(`🔄 Job ${jobId} scheduled for retry ${job.retryCount + 1}/${job.maxRetries} in ${retryDelay}ms`);
+      console.log(
+        `🔄 Job ${jobId} scheduled for retry ${job.retryCount + 1}/${job.maxRetries} in ${retryDelay}ms`,
+      );
     } else {
       // Mark as permanently failed
       await db
         .update(processingJobs)
         .set({
-          status: 'failed',
+          status: "failed",
           errorMessage,
-          completedAt: new Date()
+          completedAt: new Date(),
         })
         .where(eq(processingJobs.id, jobId));
 
       // Mark resume as failed
       await db
         .update(profileResumes)
-        .set({ processingStatus: 'failed' })
+        .set({ processingStatus: "failed" })
         .where(eq(profileResumes.id, job.profileResumeId));
 
-      console.log(`💀 Job ${jobId} permanently failed after ${job.retryCount} retries`);
+      console.log(
+        `💀 Job ${jobId} permanently failed after ${job.retryCount} retries`,
+      );
     }
   }
 
@@ -332,25 +349,34 @@ class JobScheduler {
       const jobStats = await db
         .select({
           status: processingJobs.status,
-          count: count()
+          count: count(),
         })
         .from(processingJobs)
         .groupBy(processingJobs.status);
 
-      const statsMap = new Map(jobStats.map(s => [s.status, Number(s.count)]));
+      const statsMap = new Map(
+        jobStats.map((s) => [s.status, Number(s.count)]),
+      );
 
       this.stats = {
-        totalJobs: Array.from(statsMap.values()).reduce((sum, count) => sum + count, 0),
-        pendingJobs: statsMap.get('pending') || 0,
-        processingJobs: statsMap.get('processing') || 0,
-        completedJobs: statsMap.get('completed') || 0,
-        failedJobs: statsMap.get('failed') || 0,
+        totalJobs: Array.from(statsMap.values()).reduce(
+          (sum, count) => sum + count,
+          0,
+        ),
+        pendingJobs: statsMap.get("pending") || 0,
+        processingJobs: statsMap.get("processing") || 0,
+        completedJobs: statsMap.get("completed") || 0,
+        failedJobs: statsMap.get("failed") || 0,
         activeWorkers: this.workerManager.getActiveJobs(),
         availableWorkers: this.workerManager.getAvailableWorkers(),
-        averageProcessingTime: this.processingTimes.length > 0
-          ? Math.round(this.processingTimes.reduce((sum, time) => sum + time, 0) / this.processingTimes.length)
-          : 0,
-        queueThroughput: this.jobsProcessedLastMinute
+        averageProcessingTime:
+          this.processingTimes.length > 0
+            ? Math.round(
+                this.processingTimes.reduce((sum, time) => sum + time, 0) /
+                  this.processingTimes.length,
+              )
+            : 0,
+        queueThroughput: this.jobsProcessedLastMinute,
       };
 
       // Reset throughput counter every minute
@@ -359,9 +385,8 @@ class JobScheduler {
         this.jobsProcessedLastMinute = 0;
         this.lastThroughputReset = now;
       }
-
     } catch (error) {
-      console.error('❌ Error updating stats:', error);
+      console.error("❌ Error updating stats:", error);
     }
   }
 
@@ -371,18 +396,18 @@ class JobScheduler {
       const processingSessions = await db
         .select()
         .from(uploadSessions)
-        .where(eq(uploadSessions.status, 'processing'));
+        .where(eq(uploadSessions.status, "processing"));
 
       for (const session of processingSessions) {
         const progress = await this.getSessionProgress(session.sessionId);
-        
+
         // Update session status if completed
         if (progress.percentage === 100) {
           await db
             .update(uploadSessions)
             .set({
-              status: 'completed',
-              processedFiles: progress.completed + progress.failed
+              status: "completed",
+              processedFiles: progress.completed + progress.failed,
             })
             .where(eq(uploadSessions.sessionId, session.sessionId));
         } else {
@@ -391,13 +416,13 @@ class JobScheduler {
             .update(uploadSessions)
             .set({
               processedFiles: progress.completed + progress.failed,
-              failedFiles: progress.failed
+              failedFiles: progress.failed,
             })
             .where(eq(uploadSessions.sessionId, session.sessionId));
         }
       }
     } catch (error) {
-      console.error('❌ Error updating session statuses:', error);
+      console.error("❌ Error updating session statuses:", error);
     }
   }
 
@@ -405,17 +430,17 @@ class JobScheduler {
     try {
       // Clean up completed jobs older than 24 hours
       const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      
+
       const cleanedUp = await db
         .delete(processingJobs)
         .where(
           and(
             or(
-              eq(processingJobs.status, 'completed'),
-              eq(processingJobs.status, 'failed')
+              eq(processingJobs.status, "completed"),
+              eq(processingJobs.status, "failed"),
             ),
-            lte(processingJobs.completedAt, cutoffTime)
-          )
+            lte(processingJobs.completedAt, cutoffTime),
+          ),
         )
         .returning({ id: processingJobs.id });
 
@@ -423,17 +448,17 @@ class JobScheduler {
         console.log(`🧹 Cleaned up ${cleanedUp.length} old jobs`);
       }
     } catch (error) {
-      console.error('❌ Error cleaning up old jobs:', error);
+      console.error("❌ Error cleaning up old jobs:", error);
     }
   }
 
   // Public API methods
   async createJob(
     profileResumeId: number,
-    jobType: 'extract_text' | 'generate_summary' | 'analyze_content',
+    jobType: "extract_text" | "generate_summary" | "analyze_content",
     processingData: any,
     priority: number = 0,
-    userId?: number
+    userId?: number,
   ) {
     const result = await db
       .insert(processingJobs)
@@ -442,21 +467,23 @@ class JobScheduler {
         jobType,
         processingData: JSON.stringify(processingData),
         priority,
-        createdBy: userId
+        createdBy: userId,
       })
       .returning({ id: processingJobs.id });
 
-    console.log(`➕ Created ${jobType} job ${result[0].id} for resume ${profileResumeId}`);
+    console.log(
+      `➕ Created ${jobType} job ${result[0].id} for resume ${profileResumeId}`,
+    );
     return result[0];
   }
 
   async getSessionProgress(sessionId: string): Promise<SessionProgress> {
     // Get all jobs for this session by parsing processingData
     const allJobs = await db.select().from(processingJobs);
-    
-    const sessionJobs = allJobs.filter(job => {
+
+    const sessionJobs = allJobs.filter((job) => {
       try {
-        const data = JSON.parse(job.processingData || '{}');
+        const data = JSON.parse(job.processingData || "{}");
         return data.sessionId === sessionId;
       } catch {
         return false;
@@ -464,16 +491,23 @@ class JobScheduler {
     });
 
     const total = sessionJobs.length;
-    const completed = sessionJobs.filter(j => j.status === 'completed').length;
-    const processing = sessionJobs.filter(j => j.status === 'processing').length;
-    const pending = sessionJobs.filter(j => j.status === 'pending' || j.status === 'retrying').length;
-    const failed = sessionJobs.filter(j => j.status === 'failed').length;
+    const completed = sessionJobs.filter(
+      (j) => j.status === "completed",
+    ).length;
+    const processing = sessionJobs.filter(
+      (j) => j.status === "processing",
+    ).length;
+    const pending = sessionJobs.filter(
+      (j) => j.status === "pending" || j.status === "retrying",
+    ).length;
+    const failed = sessionJobs.filter((j) => j.status === "failed").length;
 
-    const percentage = total > 0 ? Math.round(((completed + failed) / total) * 100) : 0;
+    const percentage =
+      total > 0 ? Math.round(((completed + failed) / total) * 100) : 0;
 
-    let status: SessionProgress['status'] = 'processing';
+    let status: SessionProgress["status"] = "processing";
     if (percentage === 100) {
-      status = failed === total ? 'failed' : 'completed';
+      status = failed === total ? "failed" : "completed";
     }
 
     return {
@@ -484,7 +518,7 @@ class JobScheduler {
       pending,
       failed,
       percentage,
-      status
+      status,
     };
   }
 
@@ -502,39 +536,39 @@ class JobScheduler {
       .from(processingJobs)
       .where(
         or(
-          eq(processingJobs.status, 'pending'),
-          eq(processingJobs.status, 'retrying')
-        )
+          eq(processingJobs.status, "pending"),
+          eq(processingJobs.status, "retrying"),
+        ),
       );
-    
+
     return Number(result[0].count);
   }
 }
 
 // Export singleton instance with environment-based configuration
 const schedulerConfig: Partial<JobSchedulerConfig> = {
-  maxConcurrentJobs: parseInt(process.env.MAX_CONCURRENT_JOBS || '8'),
-  workerThreads: parseInt(process.env.MAX_WORKER_THREADS || '4'),
-  batchSize: parseInt(process.env.JOB_BATCH_SIZE || '10'),
-  pollIntervalMs: parseInt(process.env.JOB_POLL_INTERVAL || '1000'),
-  enablePriorityProcessing: process.env.ENABLE_PRIORITY_PROCESSING !== 'false'
+  maxConcurrentJobs: parseInt(process.env.MAX_CONCURRENT_JOBS || "8"),
+  workerThreads: parseInt(process.env.MAX_WORKER_THREADS || "4"),
+  batchSize: parseInt(process.env.JOB_BATCH_SIZE || "10"),
+  pollIntervalMs: parseInt(process.env.JOB_POLL_INTERVAL || "1000"),
+  enablePriorityProcessing: process.env.ENABLE_PRIORITY_PROCESSING !== "false",
 };
 
 export const jobScheduler = new JobScheduler(schedulerConfig);
 
 // Auto-start when module is imported (except in tests)
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== "test") {
   jobScheduler.start().catch(console.error);
-  
+
   // Graceful shutdown handling
-  process.on('SIGTERM', async () => {
-    console.log('🔄 Graceful shutdown initiated...');
+  process.on("SIGTERM", async () => {
+    console.log("🔄 Graceful shutdown initiated...");
     await jobScheduler.stop();
     process.exit(0);
   });
-  
-  process.on('SIGINT', async () => {
-    console.log('🔄 Graceful shutdown initiated...');
+
+  process.on("SIGINT", async () => {
+    console.log("🔄 Graceful shutdown initiated...");
     await jobScheduler.stop();
     process.exit(0);
   });
