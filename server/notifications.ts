@@ -1,6 +1,6 @@
 import { sendEmail, createEmailTemplate } from "./email";
 import { storage } from "./storage";
-import type { Job, User } from "@shared/schema";
+import type { Job, User, Candidate, Submission } from "@shared/schema";
 
 /**
  * Notification service for handling various system notifications
@@ -9,12 +9,13 @@ export class NotificationService {
   
   /**
    * Send job assignment notification to a recruiter
+   * Returns the Message-ID for email threading, or null if failed
    */
-  static async sendJobAssignmentNotification(job: Job, recruiter: User): Promise<boolean> {
+  static async sendJobAssignmentNotification(job: Job, recruiter: User): Promise<string | null> {
     try {
       if (!recruiter.email) {
         console.warn(`Recruiter ${recruiter.name} (ID: ${recruiter.id}) has no email address`);
-        return false;
+        return null;
       }
 
       const subject = `New Job Assignment: ${job.title} (${job.jobId})`;
@@ -43,38 +44,124 @@ export class NotificationService {
         `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/jobs/${job.id}`
       );
 
-      const success = await sendEmail(recruiter.email, subject, emailContent);
+      const messageId = await sendEmail(recruiter.email, subject, emailContent);
       
-      if (success) {
+      if (messageId) {
         console.log(`Job assignment notification sent to ${recruiter.name} (${recruiter.email}) for job: ${job.jobId}`);
+        console.log(`Email Message-ID: ${messageId}`);
       } else {
         console.error(`Failed to send job assignment notification to ${recruiter.name} (${recruiter.email})`);
       }
       
-      return success;
+      return messageId;
     } catch (error) {
       console.error(`Error sending job assignment notification to recruiter ${recruiter.id}:`, error);
-      return false;
+      return null;
     }
   }
 
   /**
    * Send job assignment notifications to multiple recruiters
+   * Returns the first valid Message-ID for email threading
    */
-  static async sendJobAssignmentNotifications(job: Job, recruiterIds: number[]): Promise<void> {
+  static async sendJobAssignmentNotifications(job: Job, recruiterIds: number[]): Promise<string | null> {
+    let firstMessageId: string | null = null;
+    
     const notifications = recruiterIds.map(async (recruiterId) => {
       try {
         const recruiter = await storage.getUser(recruiterId);
         if (recruiter) {
-          await this.sendJobAssignmentNotification(job, recruiter);
+          const messageId = await this.sendJobAssignmentNotification(job, recruiter);
+          if (messageId && !firstMessageId) {
+            firstMessageId = messageId;
+          }
+          return messageId;
         }
       } catch (error) {
         console.error(`Failed to send notification to recruiter ${recruiterId}:`, error);
-        // Continue processing other notifications even if one fails
+        return null;
       }
     });
 
     // Process all notifications concurrently
     await Promise.allSettled(notifications);
+    
+    return firstMessageId;
+  }
+
+  /**
+   * Send candidate submission notification to assigned recruiters
+   * Uses email threading to reply in the same conversation as job assignment
+   */
+  static async sendSubmissionNotification(
+    job: Job,
+    candidate: Candidate,
+    submission: Submission,
+    recruiter: User
+  ): Promise<boolean> {
+    try {
+      if (!recruiter.email) {
+        console.warn(`Recruiter ${recruiter.name} (ID: ${recruiter.id}) has no email address`);
+        return false;
+      }
+
+      const subject = `Re: New Submission on Job Assignment: ${job.title} (${job.jobId})`;
+      
+      const emailContent = createEmailTemplate(
+        "New Candidate Submission",
+        `
+          <p>Hello ${recruiter.name},</p>
+          <p>A new candidate has been submitted for <strong>${job.title}</strong> (${job.jobId}):</p>
+          
+          <div style="background-color: #f8f9fa; padding: 20px; border-left: 4px solid #007bff; margin: 20px 0;">
+            <h3 style="margin-top: 0;">${candidate.firstName} ${candidate.lastName}</h3>
+            <p><strong>Match Score:</strong> ${submission.matchScore}%</p>
+            <p><strong>Status:</strong> ${submission.status}</p>
+            <p><strong>Rate:</strong> $${submission.agreedRate}/hr</p>
+            ${submission.notes ? `<p><strong>Notes:</strong> ${submission.notes}</p>` : ''}
+          </div>
+          
+          <p><strong>Candidate Details:</strong></p>
+          <ul>
+            <li><strong>Email:</strong> ${candidate.email || 'Not provided'}</li>
+            <li><strong>Phone:</strong> ${candidate.phone || 'Not provided'}</li>
+            <li><strong>Location:</strong> ${candidate.location || 'Not provided'}</li>
+            <li><strong>Work Authorization:</strong> ${candidate.workAuthorization || 'Not specified'}</li>
+          </ul>
+          
+          <p>Please review the submission in the RecruiterTracker system.</p>
+        `,
+        "View Submission Details",
+        `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/submissions/${submission.id}`
+      );
+
+      // Use email threading if job has emailMessageId
+      const threadingHeaders = job.emailMessageId ? {
+        inReplyTo: job.emailMessageId,
+        references: job.emailThreadReferences || job.emailMessageId
+      } : undefined;
+
+      const messageId = await sendEmail(
+        recruiter.email, 
+        subject, 
+        emailContent,
+        [], // no attachments
+        threadingHeaders
+      );
+      
+      if (messageId) {
+        console.log(`Submission notification sent to ${recruiter.name} for job ${job.jobId}, candidate ${candidate.firstName} ${candidate.lastName}`);
+        if (threadingHeaders) {
+          console.log(`Email threaded with Message-ID: ${job.emailMessageId}`);
+        }
+        return true;
+      } else {
+        console.error(`Failed to send submission notification to ${recruiter.name}`);
+        return false;
+      }
+    } catch (error) {
+      console.error(`Error sending submission notification:`, error);
+      return false;
+    }
   }
 }
