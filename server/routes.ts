@@ -4196,55 +4196,37 @@ Generated on: ${new Date().toLocaleString()}
         return res.status(404).json({ message: "Session not found" });
       }
       
-      // Get processing jobs for this session
-      console.log(`📊 [Upload Session] Fetching processing jobs for user: ${session[0].createdBy}`);
-      const jobs = await db
-        .select({
-          id: processingJobs.id,
-          profileResumeId: processingJobs.profileResumeId,
-          status: processingJobs.status,
-          jobType: processingJobs.jobType,
-          retryCount: processingJobs.retryCount,
-          errorMessage: processingJobs.errorMessage,
-          createdAt: processingJobs.createdAt,
-          startedAt: processingJobs.startedAt,
-          completedAt: processingJobs.completedAt,
-          filename: profileResumes.filename
-        })
-        .from(processingJobs)
-        .leftJoin(profileResumes, eq(processingJobs.profileResumeId, profileResumes.id))
-        .where(eq(profileResumes.uploadedBy, session[0].createdBy));
+      // Get session progress using job scheduler (filters by sessionId in processingData)
+      console.log(`📊 [Upload Session] Fetching session progress for: ${sessionId}`);
+      const { backgroundJobManager } = await import('./background-job-manager');
+      const progress = await backgroundJobManager.getSessionProgress(sessionId);
       
-      console.log(`📊 [Upload Session] Found ${jobs.length} processing jobs`);
-      
-      // Calculate progress
-      const totalJobs = jobs.length;
-      const completedJobs = jobs.filter(job => job.status === 'completed').length;
-      const failedJobs = jobs.filter(job => job.status === 'failed').length;
-      const processingJobsCount = jobs.filter(job => job.status === 'processing').length;
-      const pendingJobs = jobs.filter(job => ['pending', 'retrying'].includes(job.status)).length;
+      console.log(`📊 [Upload Session] Progress calculated:`, {
+        sessionId,
+        total: progress.total,
+        completed: progress.completed,
+        failed: progress.failed,
+        processing: progress.processing,
+        pending: progress.pending,
+        percentage: progress.percentage,
+        status: progress.status
+      });
       
       const duration = Date.now() - startTime;
-      console.log(`✅ [Upload Session] Status retrieved in ${duration}ms:`, {
-        sessionId,
-        total: totalJobs,
-        completed: completedJobs,
-        failed: failedJobs,
-        processing: processingJobsCount,
-        pending: pendingJobs
-      });
+      console.log(`✅ [Upload Session] Status retrieved in ${duration}ms`);
       
       res.json({
         session: session[0],
         progress: {
-          total: totalJobs,
-          completed: completedJobs,
-          failed: failedJobs,
-          processing: processingJobsCount,
-          pending: pendingJobs,
-          percentage: totalJobs > 0 ? Math.round((completedJobs / totalJobs) * 100) : 0
-        },
-        jobs: jobs.slice(0, 50) // Limit to first 50 jobs for performance
+          sessionId: progress.sessionId,
+          total: progress.total,
+          completed: progress.completed,
+          failed: progress.failed,
+          processing: progress.processing,
+          pending: progress.pending,
+          percentage: progress.percentage,
+          status: progress.status
+        }
       });
       
     } catch (error) {
