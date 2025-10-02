@@ -2,6 +2,31 @@
 
 RecruiterTracker is an AI-powered recruitment management platform designed to streamline the hiring process. It features a React/TypeScript frontend and a Node.js/Express backend, enabling recruiters to manage jobs, candidates, and submissions efficiently. The platform integrates OpenAI for intelligent resume analysis and candidate matching, includes duplicate candidate prevention, comprehensive tracking of the recruitment pipeline, and robust analytics for success and rejection rates. Its purpose is to enhance recruitment efficiency through automation and intelligent insights.
 
+## Recent Changes (October 2, 2025)
+
+**Critical Bug Fixes: Upload Sessions & Worker Thread Processing**
+
+### Fix #1: Upload Session Tracking
+- **Problem**: Sessions stuck in "processing" state forever
+- **Cause**: Missing `sessionId` in processingData; incorrect progress calculation querying all user jobs
+- **Fix**: Added sessionId to job data (routes.ts:4063); updated endpoint to use getSessionProgress() (routes.ts:4202-4233)
+
+### Fix #2: Worker File Reading  
+- **Problem**: Workers failed with "Received null" error
+- **Cause**: createTempFileForWorker() tried to read non-existent resume.fileData from DB (files are on disk)
+- **Fix**: Removed temp file creation (job-scheduler.ts:240); workers read directly from filePath
+
+### Fix #3: Worker Data Structure
+- **Problem**: "Cannot read properties of undefined (reading 'fileName')" crashes
+- **Cause**: worker-script.js expected nested processingData structure but received flat structure
+- **Fix**: Updated message handler to destructure correct fields (worker-script.js:16-31)
+
+### Fix #4: Real File Processing
+- **Problem**: Mock text extraction returning fake data
+- **Fix**: Implemented actual file reading and document parsing (worker-script.js:63-93)
+
+**Impact**: Upload sessions complete properly, workers process files successfully, 100% failure rate resolved
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.

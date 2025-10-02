@@ -10,21 +10,22 @@ console.log(`🧵 Worker thread ${process.pid} started for job processing`);
 
 // Handle messages from main thread
 parentPort?.on('message', async (data) => {
-  const { jobId, jobType, processingData, resumeId } = data;
+  const { jobId, jobType, filePath, fileName, fileType, resumeId, candidateName, candidateEmail } = data;
+  const startTime = Date.now();
   
   try {
-    console.log(`🔧 Worker ${process.pid} processing job ${jobId} (type: ${jobType})`);
+    console.log(`🔧 Worker ${process.pid} processing job ${jobId} (type: ${jobType}, file: ${fileName})`);
     
     let result;
     switch (jobType) {
       case 'extract_text':
-        result = await extractText(processingData);
+        result = await extractText({ filePath, fileName, fileType, resumeId, candidateName, candidateEmail });
         break;
       case 'generate_summary':
-        result = await generateSummary(processingData);
+        result = await generateSummary({ filePath, fileName, resumeId });
         break;
       case 'analyze_content':
-        result = await analyzeContent(processingData);
+        result = await analyzeContent({ filePath, fileName, resumeId });
         break;
       default:
         throw new Error(`Unknown job type: ${jobType}`);
@@ -34,11 +35,12 @@ parentPort?.on('message', async (data) => {
     parentPort?.postMessage({
       success: true,
       jobId,
-      result,
-      processingTime: Date.now() - data.startTime
+      resumeId,
+      data: result,
+      processingTime: Date.now() - startTime
     });
     
-    console.log(`✅ Worker ${process.pid} completed job ${jobId} successfully`);
+    console.log(`✅ Worker ${process.pid} completed job ${jobId} successfully in ${Date.now() - startTime}ms`);
     
   } catch (error) {
     console.error(`❌ Worker ${process.pid} failed job ${jobId}:`, error.message);
@@ -47,20 +49,44 @@ parentPort?.on('message', async (data) => {
     parentPort?.postMessage({
       success: false,
       jobId,
+      resumeId,
       error: error.message,
-      processingTime: Date.now() - data.startTime
+      processingTime: Date.now() - startTime
     });
   }
 });
 
-// Mock processing functions for now (these would be implemented with actual logic)
+// Processing functions with actual file reading
 async function extractText(data) {
-  // Simulate text extraction processing
-  await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
-  return {
-    text: `Extracted text from ${data.fileName || 'document'}`,
-    wordCount: Math.floor(Math.random() * 1000) + 100
-  };
+  const { filePath, fileName, fileType, resumeId } = data;
+  
+  try {
+    // Dynamic import for document processing
+    const { extractTextFromDocument } = await import('./document-parser.js');
+    const fs = await import('fs/promises');
+    const crypto = await import('crypto');
+    
+    // Read file from disk
+    const fileBuffer = await fs.readFile(filePath);
+    
+    // Extract text using document parser
+    const extractedText = await extractTextFromDocument(fileBuffer, fileName);
+    
+    // Calculate content hash
+    const contentHash = crypto.createHash('sha256').update(extractedText).digest('hex');
+    
+    console.log(`📄 Extracted ${extractedText.length} characters from ${fileName}`);
+    
+    return {
+      text: extractedText,
+      wordCount: extractedText.split(/\s+/).length,
+      contentHash,
+      fileName
+    };
+  } catch (error) {
+    console.error(`❌ Text extraction failed for ${fileName}:`, error.message);
+    throw error;
+  }
 }
 
 async function generateSummary(data) {

@@ -225,7 +225,6 @@ class JobScheduler {
       const workerJobData = {
         jobId: jobId,
         resumeId: job.profileResumeId,
-        //filePath: `/tmp/resume_${job.profileResumeId}`, // Temporary file path
         filePath: processingData.filePath || resume[0].filePath,
         fileName: resume[0].filename,
         fileType: resume[0].fileType,
@@ -235,8 +234,8 @@ class JobScheduler {
         jobType: job.jobType,
       };
 
-      // Create temporary file for worker processing
-      await this.createTempFileForWorker(resume[0], workerJobData.filePath);
+      // Files are already on disk, no need to create temp file
+      // (processingData.filePath or resume.filePath points to actual file)
 
       // Process job in worker thread
       const startTime = Date.now();
