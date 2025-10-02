@@ -4057,6 +4057,7 @@ Generated on: ${new Date().toLocaleString()}
           
           // Create processing job
           const processingData = {
+            sessionId,
             filePath,
             fileName: file.originalname,
             fileType: resumeData.fileType,
