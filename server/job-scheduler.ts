@@ -477,29 +477,43 @@ class JobScheduler {
   }
 
   async getSessionProgress(sessionId: string): Promise<SessionProgress> {
-    // Get all jobs for this session by parsing processingData
-    const allJobs = await db.select().from(processingJobs);
+    // Use efficient SQL aggregation with indexed sessionId column
+    const results = await db
+      .select({
+        status: processingJobs.status,
+        count: count(),
+      })
+      .from(processingJobs)
+      .where(eq(processingJobs.sessionId, sessionId))
+      .groupBy(processingJobs.status);
 
-    const sessionJobs = allJobs.filter((job) => {
-      try {
-        const data = JSON.parse(job.processingData || "{}");
-        return data.sessionId === sessionId;
-      } catch {
-        return false;
+    // Build counts from aggregated results
+    let total = 0;
+    let completed = 0;
+    let processing = 0;
+    let pending = 0;
+    let failed = 0;
+
+    for (const row of results) {
+      const statusCount = Number(row.count);
+      total += statusCount;
+
+      switch (row.status) {
+        case "completed":
+          completed = statusCount;
+          break;
+        case "processing":
+          processing = statusCount;
+          break;
+        case "pending":
+        case "retrying":
+          pending += statusCount;
+          break;
+        case "failed":
+          failed = statusCount;
+          break;
       }
-    });
-
-    const total = sessionJobs.length;
-    const completed = sessionJobs.filter(
-      (j) => j.status === "completed",
-    ).length;
-    const processing = sessionJobs.filter(
-      (j) => j.status === "processing",
-    ).length;
-    const pending = sessionJobs.filter(
-      (j) => j.status === "pending" || j.status === "retrying",
-    ).length;
-    const failed = sessionJobs.filter((j) => j.status === "failed").length;
+    }
 
     const percentage =
       total > 0 ? Math.round(((completed + failed) / total) * 100) : 0;
