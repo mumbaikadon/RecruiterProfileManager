@@ -3590,9 +3590,33 @@ Generated on: ${new Date().toLocaleString()}
       
       profileLogger.apiRequest('GET', `/api/profile-resumes/${id}/content`, (req as any).user?.id);
       
+      // First check if the resume exists and its status
+      const resume = await storage.getProfileResume(id);
+      if (!resume) {
+        return res.status(404).json({ message: "Resume not found" });
+      }
+      
+      // Check processing status
+      if (resume.processingStatus === 'failed') {
+        return res.status(400).json({ 
+          message: "Resume processing failed - no content available",
+          processingStatus: 'failed'
+        });
+      }
+      
+      if (resume.processingStatus === 'processing') {
+        return res.status(202).json({ 
+          message: "Resume is still being processed - content not yet available",
+          processingStatus: 'processing'
+        });
+      }
+      
       const content = await storage.getProfileResumeContent(id);
       if (!content) {
-        return res.status(404).json({ message: "Resume content not found" });
+        return res.status(404).json({ 
+          message: "Resume content not found - processing may have failed",
+          processingStatus: resume.processingStatus
+        });
       }
       
       const duration = Date.now() - startTime;

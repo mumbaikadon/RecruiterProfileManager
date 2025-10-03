@@ -552,7 +552,8 @@ export default function ProfileRecord() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to load resume content');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to load resume content');
       }
       
       const content = await response.json() as ResumeContent;
