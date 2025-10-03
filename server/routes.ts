@@ -4541,6 +4541,60 @@ Generated on: ${new Date().toLocaleString()}
 
   // Migration endpoint removed - Phase 3 complete
 
+  // ============================================================================
+  // DUPLICATE FILE CLEANER ENDPOINTS
+  // ============================================================================
+
+  // Get duplicate statistics (no cleanup)
+  app.get("/api/admin/duplicate-stats", requireAuth, async (_req: Request, res: Response) => {
+    try {
+      const { duplicateCleanerScheduler } = await import('./duplicate-cleaner-scheduler');
+      const stats = await duplicateCleanerScheduler.getStatistics();
+      res.json(stats);
+    } catch (error) {
+      console.error('Error getting duplicate stats:', error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Run duplicate cleanup manually (dry run)
+  app.post("/api/admin/duplicate-cleanup/dry-run", requireAuth, async (_req: Request, res: Response) => {
+    try {
+      const { duplicateCleanerScheduler } = await import('./duplicate-cleaner-scheduler');
+      const result = await duplicateCleanerScheduler.runNow(true);
+      res.json(result);
+    } catch (error) {
+      console.error('Error running dry-run cleanup:', error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Run duplicate cleanup manually (live mode)
+  app.post("/api/admin/duplicate-cleanup/run", requireAuth, async (_req: Request, res: Response) => {
+    try {
+      const { duplicateCleanerScheduler } = await import('./duplicate-cleaner-scheduler');
+      const result = await duplicateCleanerScheduler.runNow(false);
+      res.json(result);
+    } catch (error) {
+      console.error('Error running cleanup:', error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // Get scheduler status
+  app.get("/api/admin/duplicate-cleanup/status", requireAuth, async (_req: Request, res: Response) => {
+    try {
+      const { duplicateCleanerScheduler } = await import('./duplicate-cleaner-scheduler');
+      res.json({
+        isRunning: duplicateCleanerScheduler.isCleanupRunning(),
+        nextRunTime: duplicateCleanerScheduler.getNextRunTime()
+      });
+    } catch (error) {
+      console.error('Error getting scheduler status:', error);
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
