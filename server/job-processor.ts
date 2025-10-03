@@ -10,6 +10,7 @@ interface ProcessingJobData {
   candidateName?: string;
   candidateEmail?: string;
   userId: number;
+  sessionId?: string; // For tracking batch upload sessions
 }
 
 class JobProcessor {
