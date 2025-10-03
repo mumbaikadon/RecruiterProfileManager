@@ -361,12 +361,16 @@ class JobProcessor {
     priority: number = 0,
     userId?: number
   ) {
+    // Extract sessionId from processingData for indexed column
+    const sessionId = processingData?.sessionId || null;
+    
     const result = await db
       .insert(processingJobs)
       .values({
         profileResumeId,
         jobType,
         processingData: JSON.stringify(processingData),
+        sessionId, // Add sessionId to indexed column
         priority,
         createdBy: userId
       })
