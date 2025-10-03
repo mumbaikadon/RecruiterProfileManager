@@ -344,6 +344,7 @@ export const processingJobs = pgTable("processing_jobs", {
   maxRetries: integer("max_retries").notNull().default(3),
   errorMessage: text("error_message"),
   processingData: text("processing_data"), // JSON data for job context (file path, etc.)
+  sessionId: text("session_id"), // Extracted sessionId for efficient querying
   startedAt: timestamp("started_at"),
   retryAt: timestamp("retry_at"), // When to retry failed jobs
   completedAt: timestamp("completed_at"),
@@ -357,6 +358,8 @@ export const processingJobs = pgTable("processing_jobs", {
     resumeIdx: index("processing_jobs_resume_idx").on(table.profileResumeId),
     // Index on created by for user tracking
     createdByIdx: index("processing_jobs_created_by_idx").on(table.createdBy),
+    // Index for session progress tracking - critical for performance
+    sessionStatusIdx: index("processing_jobs_session_status_idx").on(table.sessionId, table.status),
   };
 });
 
