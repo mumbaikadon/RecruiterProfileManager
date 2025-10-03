@@ -173,5 +173,15 @@ app.use((req, res, next) => {
       console.error('❌ Background job manager initialization failed:', error);
       console.error('📋 Full error stack:', error instanceof Error ? error.stack : 'Unknown error details');
     }
+
+    // Start duplicate cleaner scheduler
+    try {
+      console.log('🧹 Starting duplicate file cleaner scheduler...');
+      const { duplicateCleanerScheduler } = await import('./duplicate-cleaner-scheduler');
+      duplicateCleanerScheduler.start();
+      console.log('✅ Duplicate cleaner scheduler started successfully!');
+    } catch (error) {
+      console.error('❌ Duplicate cleaner scheduler failed to start:', error);
+    }
   });
 })();
