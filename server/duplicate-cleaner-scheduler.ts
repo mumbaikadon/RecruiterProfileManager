@@ -1,8 +1,8 @@
-import cron from 'node-cron';
+import * as cron from 'node-cron';
 import { DuplicateFileCleaner } from './duplicate-cleaner';
 
 export class DuplicateCleanerScheduler {
-  private task: cron.ScheduledTask | null = null;
+  private task: any | null = null;
   private isRunning = false;
 
   /**
