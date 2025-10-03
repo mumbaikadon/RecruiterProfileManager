@@ -58,7 +58,7 @@ class JobScheduler {
   constructor(config: Partial<JobSchedulerConfig> = {}) {
     this.config = {
       maxConcurrentJobs: config.maxConcurrentJobs || 8,
-      pollIntervalMs: config.pollIntervalMs || 1000, // Check every second for high volume
+      pollIntervalMs: config.pollIntervalMs || 5000, // Check every 5 seconds - optimized to prevent DB pool exhaustion
       batchSize: config.batchSize || 10, // Process 10 jobs per batch
       workerThreads: config.workerThreads || 4,
       retryDelayMs: config.retryDelayMs || 5000, // 5 seconds initial delay
@@ -567,7 +567,7 @@ const schedulerConfig: Partial<JobSchedulerConfig> = {
   maxConcurrentJobs: parseInt(process.env.MAX_CONCURRENT_JOBS || "8"),
   workerThreads: parseInt(process.env.MAX_WORKER_THREADS || "4"),
   batchSize: parseInt(process.env.JOB_BATCH_SIZE || "10"),
-  pollIntervalMs: parseInt(process.env.JOB_POLL_INTERVAL || "1000"),
+  pollIntervalMs: parseInt(process.env.JOB_POLL_INTERVAL || "5000"), // Reduced from 1s to 5s to prevent DB connection pool exhaustion
   enablePriorityProcessing: process.env.ENABLE_PRIORITY_PROCESSING !== "false",
 };
 
