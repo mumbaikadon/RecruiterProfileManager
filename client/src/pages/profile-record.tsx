@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Download, Search, Upload, Trash2, Eye, Filter, Calendar, User, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, Download, Search, Upload, Trash2, Eye, Filter, Calendar, User, ChevronLeft, ChevronRight, AlertCircle, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 // Phase 1: Optimized interfaces - NO FULL TEXT!
@@ -1284,6 +1284,22 @@ export default function ProfileRecord() {
                         className="h-64 resize-none text-sm"
                         placeholder="Full resume content..."
                       />
+                    </div>
+                  ) : viewingResume.processingStatus === 'failed' ? (
+                    <Alert variant="destructive" className="mt-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <p className="font-semibold">Processing Failed</p>
+                        <p className="text-sm mt-1">This resume could not be processed. The file may be corrupted or in an unsupported format. Please try re-uploading the file.</p>
+                      </AlertDescription>
+                    </Alert>
+                  ) : viewingResume.processingStatus === 'processing' ? (
+                    <div className="mt-2 h-64 flex items-center justify-center border rounded-md bg-blue-50">
+                      <div className="text-center">
+                        <Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto mb-2" />
+                        <p className="text-sm text-blue-600">Processing resume in background...</p>
+                        <p className="text-xs text-blue-500 mt-1">Content will be available soon. Please refresh.</p>
+                      </div>
                     </div>
                   ) : (
                     <div className="mt-2 h-64 flex items-center justify-center border rounded-md bg-gray-50">
