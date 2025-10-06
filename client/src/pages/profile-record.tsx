@@ -551,6 +551,12 @@ export default function ProfileRecord() {
         credentials: 'include'
       });
       
+      if (response.status === 202) {
+        // Resume is still being processed
+        const data = await response.json();
+        throw new Error(data.message || 'Resume is still being processed. Please wait a moment and try again.');
+      }
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to load resume content');
@@ -1294,11 +1300,13 @@ export default function ProfileRecord() {
                         <p className="text-sm mt-1">This resume could not be processed. The file may be corrupted or in an unsupported format. Please try re-uploading the file.</p>
                       </AlertDescription>
                     </Alert>
-                  ) : viewingResume.processingStatus === 'processing' ? (
+                  ) : viewingResume.processingStatus === 'uploading' || viewingResume.processingStatus === 'processing' ? (
                     <div className="mt-2 h-64 flex items-center justify-center border rounded-md bg-blue-50">
                       <div className="text-center">
                         <Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto mb-2" />
-                        <p className="text-sm text-blue-600">Processing resume in background...</p>
+                        <p className="text-sm text-blue-600">
+                          {viewingResume.processingStatus === 'uploading' ? 'Uploading and queuing resume...' : 'Processing resume in background...'}
+                        </p>
                         <p className="text-xs text-blue-500 mt-1">Content will be available soon. Please refresh.</p>
                       </div>
                     </div>
@@ -1310,7 +1318,23 @@ export default function ProfileRecord() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => loadResumeContent(viewingResume.id)}
+                          onClick={async () => {
+                            try {
+                              await loadResumeContent(viewingResume.id);
+                            } catch (error) {
+                              // Show error alert
+                              const alert = document.createElement('div');
+                              alert.className = 'fixed top-4 right-4 bg-yellow-500 text-white p-4 rounded-lg shadow-lg z-50 max-w-md';
+                              alert.textContent = (error as Error).message;
+                              document.body.appendChild(alert);
+                              
+                              setTimeout(() => {
+                                if (document.body.contains(alert)) {
+                                  document.body.removeChild(alert);
+                                }
+                              }, 5000);
+                            }
+                          }}
                         >
                           Load Full Content
                         </Button>

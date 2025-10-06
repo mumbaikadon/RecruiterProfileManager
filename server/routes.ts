@@ -3604,10 +3604,10 @@ Generated on: ${new Date().toLocaleString()}
         });
       }
       
-      if (resume.processingStatus === 'processing') {
+      if (resume.processingStatus === 'uploading' || resume.processingStatus === 'processing') {
         return res.status(202).json({ 
           message: "Resume is still being processed - content not yet available",
-          processingStatus: 'processing'
+          processingStatus: resume.processingStatus
         });
       }
       
