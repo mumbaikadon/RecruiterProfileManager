@@ -1,0 +1,55 @@
+🔧 Worker 233 processing job 698 (type: extract_text, file: Tofunmi Ibidapo SM Resume 2025.pdf)
+❌ Text extraction failed for ESCADA AKINSO Snr BA_PO 2025.docx: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Job 696 failed: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Text extraction failed for Tofunmi Ibidapo SM Resume 2025.pdf: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Job 698 failed: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+🔧 Worker 233 processing job 697 (type: extract_text, file: Suresh Kesa PMSM_ 2025.pdf)
+❌ Text extraction failed for Suresh Kesa PMSM_ 2025.pdf: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Job 697 failed: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Worker 233 failed job 696: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Worker 233 failed job 698: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Worker 233 failed job 697: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+🔄 Job 698 scheduled for retry 1/3 in 5000ms
+🔄 Job 696 scheduled for retry 1/3 in 5000ms
+🔄 Job 697 scheduled for retry 1/3 in 5000ms
+📋 Processing batch of 4 job(s)...
+⚙️ Processing job 692 for resume 2349
+⚙️ Processing job 695 for resume 2352
+⚙️ Processing job 693 for resume 2350
+⚙️ Processing job 694 for resume 2351
+🔧 Worker 233 processing job 692 (type: extract_text, file: Akum Mbah S - Scrum Master.docx)
+❌ Text extraction failed for Akum Mbah S - Scrum Master.docx: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Job 692 failed: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+🔧 Worker 233 processing job 695 (type: extract_text, file: ESCADA AKINSO Snr BA_PO 2025 - Copy.docx)
+❌ Worker 233 failed job 692: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+🔧 Worker 233 processing job 694 (type: extract_text, file: Devender_KomatiReddy_DS_GENAI.pdf)
+❌ Text extraction failed for ESCADA AKINSO Snr BA_PO 2025 - Copy.docx: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Job 695 failed: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Text extraction failed for Devender_KomatiReddy_DS_GENAI.pdf: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Job 694 failed: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+🔧 Worker 233 processing job 693 (type: extract_text, file: CGB Data Analyst Resume (1).docx)
+❌ Worker 233 failed job 695: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Worker 233 failed job 694: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Text extraction failed for CGB Data Analyst Resume (1).docx: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Job 693 failed: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Worker 233 failed job 693: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+🔄 Job 692 scheduled for retry 2/3 in 10000ms
+🔄 Job 695 scheduled for retry 2/3 in 10000ms
+🔄 Job 694 scheduled for retry 2/3 in 10000ms
+🔄 Job 693 scheduled for retry 2/3 in 10000ms
+📋 Processing batch of 3 job(s)...
+⚙️ Processing job 696 for resume 2353
+⚙️ Processing job 698 for resume 2355
+⚙️ Processing job 697 for resume 2354
+🔧 Worker 233 processing job 696 (type: extract_text, file: ESCADA AKINSO Snr BA_PO 2025.docx)
+❌ Text extraction failed for ESCADA AKINSO Snr BA_PO 2025.docx: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Job 696 failed: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Worker 233 failed job 696: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+🔧 Worker 233 processing job 698 (type: extract_text, file: Tofunmi Ibidapo SM Resume 2025.pdf)
+❌ Text extraction failed for Tofunmi Ibidapo SM Resume 2025.pdf: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Job 698 failed: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+🔧 Worker 233 processing job 697 (type: extract_text, file: Suresh Kesa PMSM_ 2025.pdf)
+❌ Text extraction failed for Suresh Kesa PMSM_ 2025.pdf: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Job 697 failed: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Worker 233 failed job 698: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
+❌ Worker 233 failed job 697: Cannot find module '/home/runner/workspace/server/document-parser.js' imported from /home/runner/workspace/server/worker-script.js
