@@ -1,22 +1,50 @@
 /**
  * Worker Script - Handles background processing tasks in separate threads
- * This is a plain JavaScript worker script for production stability
+ * TypeScript worker script for consistency with main server
  */
 
-import { parentPort, workerData } from 'worker_threads';
+import { parentPort } from 'worker_threads';
+import type { Buffer } from 'node:buffer';
+
+interface WorkerJobData {
+  jobId: number;
+  jobType: 'extract_text' | 'generate_summary' | 'analyze_content';
+  filePath: string;
+  fileName: string;
+  fileType: string;
+  resumeId: number;
+  candidateName?: string;
+  candidateEmail?: string;
+}
+
+interface ExtractTextData {
+  filePath: string;
+  fileName: string;
+  fileType: string;
+  resumeId: number;
+  candidateName?: string;
+  candidateEmail?: string;
+}
+
+interface ExtractTextResult {
+  text: string;
+  wordCount: number;
+  contentHash: string;
+  fileName: string;
+}
 
 // Log worker startup
 console.log(`🧵 Worker thread ${process.pid} started for job processing`);
 
 // Handle messages from main thread
-parentPort?.on('message', async (data) => {
+parentPort?.on('message', async (data: WorkerJobData) => {
   const { jobId, jobType, filePath, fileName, fileType, resumeId, candidateName, candidateEmail } = data;
   const startTime = Date.now();
   
   try {
     console.log(`🔧 Worker ${process.pid} processing job ${jobId} (type: ${jobType}, file: ${fileName})`);
     
-    let result;
+    let result: any;
     switch (jobType) {
       case 'extract_text':
         result = await extractText({ filePath, fileName, fileType, resumeId, candidateName, candidateEmail });
@@ -43,25 +71,26 @@ parentPort?.on('message', async (data) => {
     console.log(`✅ Worker ${process.pid} completed job ${jobId} successfully in ${Date.now() - startTime}ms`);
     
   } catch (error) {
-    console.error(`❌ Worker ${process.pid} failed job ${jobId}:`, error.message);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ Worker ${process.pid} failed job ${jobId}:`, errorMessage);
     
     // Send error result back to main thread
     parentPort?.postMessage({
       success: false,
       jobId,
       resumeId,
-      error: error.message,
+      error: errorMessage,
       processingTime: Date.now() - startTime
     });
   }
 });
 
 // Processing functions with actual file reading
-async function extractText(data) {
+async function extractText(data: ExtractTextData): Promise<ExtractTextResult> {
   const { filePath, fileName, fileType, resumeId } = data;
   
   try {
-    // Dynamic import for document processing
+    // Dynamic import for document processing - NOW IMPORTS TYPESCRIPT!
     const { extractTextFromDocument } = await import('./document-parser.js');
     const fs = await import('fs/promises');
     const crypto = await import('crypto');
@@ -84,12 +113,13 @@ async function extractText(data) {
       fileName
     };
   } catch (error) {
-    console.error(`❌ Text extraction failed for ${fileName}:`, error.message);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ Text extraction failed for ${fileName}:`, errorMessage);
     throw error;
   }
 }
 
-async function generateSummary(data) {
+async function generateSummary(data: any) {
   // Simulate summary generation processing  
   await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
   return {
@@ -98,7 +128,7 @@ async function generateSummary(data) {
   };
 }
 
-async function analyzeContent(data) {
+async function analyzeContent(data: any) {
   // Simulate content analysis processing
   await new Promise(resolve => setTimeout(resolve, 150 + Math.random() * 250));
   return {

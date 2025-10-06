@@ -229,15 +229,15 @@ export class WorkerThreadManager {
     console.log(`🧵 Initializing ${this.maxWorkers} worker threads...`);
     
     for (let i = 0; i < this.maxWorkers; i++) {
-      // Use dedicated JavaScript worker script for stability
+      // Use TypeScript worker script - tsx loader will compile it automatically
       // Handle both development and production paths
       let workerScriptPath: string;
       
       if (import.meta.url.includes('tsx') || process.env.NODE_ENV === 'development') {
-        // Development mode with tsx - use relative path from current file
-        workerScriptPath = path.resolve(__dirname, "worker-script.js");
+        // Development mode with tsx - TypeScript files work directly
+        workerScriptPath = path.resolve(__dirname, "worker-script.ts");
       } else {
-        // Production mode - construct path relative to current working directory
+        // Production mode - would use compiled .js file
         workerScriptPath = path.resolve(process.cwd(), 'server/worker-script.js');
       }
       
@@ -266,15 +266,15 @@ export class WorkerThreadManager {
   private replaceWorker(deadWorker: Worker) {
     const index = this.workers.indexOf(deadWorker);
     if (index > -1) {
-      // Use dedicated JavaScript worker script for stability
+      // Use TypeScript worker script - tsx loader will compile it automatically
       // Handle both development and production paths
       let workerScriptPath: string;
       
       if (import.meta.url.includes('tsx') || process.env.NODE_ENV === 'development') {
-        // Development mode with tsx - use relative path from current file
-        workerScriptPath = new URL('./worker-script.js', import.meta.url).pathname;
+        // Development mode with tsx - TypeScript files work directly
+        workerScriptPath = new URL('./worker-script.ts', import.meta.url).pathname;
       } else {
-        // Production mode - construct path relative to current working directory
+        // Production mode - would use compiled .js file
         const path = require('path');
         workerScriptPath = path.resolve(process.cwd(), 'server/worker-script.js');
       }
