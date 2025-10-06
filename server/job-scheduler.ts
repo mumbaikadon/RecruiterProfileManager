@@ -4,7 +4,7 @@
  */
 
 import { db } from "./db";
-import { processingJobs, profileResumes, uploadSessions } from "@shared/schema";
+import { processingJobs, profileResumes, uploadSessions, resumeContent } from "@shared/schema";
 import { eq, or, and, inArray, lte, desc, count } from "drizzle-orm";
 import {
   WorkerThreadManager,
@@ -257,6 +257,36 @@ class JobScheduler {
             completedAt: new Date(),
           })
           .where(eq(processingJobs.id, jobId));
+
+        // Save extracted text to resume_content table if this was a text extraction job
+        if (job.jobType === 'extract_text' && result.data) {
+          try {
+            const { text, wordCount, contentHash } = result.data;
+            
+            // Optional: Compress text for storage efficiency
+            let compressedText: string | undefined;
+            try {
+              const { compressText } = await import('./file-utils');
+              compressedText = await compressText(text);
+            } catch (compressError) {
+              console.warn(`Text compression failed for resume ${job.profileResumeId}, storing uncompressed:`, compressError);
+            }
+
+            // Insert extracted text into resume_content table
+            await db.insert(resumeContent).values({
+              profileResumeId: job.profileResumeId,
+              extractedText: text,
+              compressedText: compressedText,
+              contentHash: contentHash,
+              wordCount: wordCount || 0,
+            });
+
+            console.log(`💾 Saved extracted text to database: ${text.length} characters, ${wordCount || 0} words`);
+          } catch (saveError) {
+            console.error(`❌ Failed to save extracted text for resume ${job.profileResumeId}:`, saveError);
+            throw saveError; // Re-throw to mark job as failed
+          }
+        }
 
         // Update resume processing status
         await db
