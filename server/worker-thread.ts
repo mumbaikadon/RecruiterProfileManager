@@ -229,15 +229,15 @@ export class WorkerThreadManager {
     console.log(`🧵 Initializing ${this.maxWorkers} worker threads...`);
     
     for (let i = 0; i < this.maxWorkers; i++) {
-      // Use TypeScript worker script - tsx loader will compile it automatically
+      // Use JavaScript worker script with compiled document-parser
       // Handle both development and production paths
       let workerScriptPath: string;
       
       if (import.meta.url.includes('tsx') || process.env.NODE_ENV === 'development') {
-        // Development mode with tsx - TypeScript files work directly
-        workerScriptPath = path.resolve(__dirname, "worker-script.ts");
+        // Development mode - workers use compiled .js files
+        workerScriptPath = path.resolve(__dirname, "worker-script.js");
       } else {
-        // Production mode - would use compiled .js file
+        // Production mode - use compiled .js file
         workerScriptPath = path.resolve(process.cwd(), 'server/worker-script.js');
       }
       
@@ -266,15 +266,15 @@ export class WorkerThreadManager {
   private replaceWorker(deadWorker: Worker) {
     const index = this.workers.indexOf(deadWorker);
     if (index > -1) {
-      // Use TypeScript worker script - tsx loader will compile it automatically
+      // Use JavaScript worker script with compiled document-parser
       // Handle both development and production paths
       let workerScriptPath: string;
       
       if (import.meta.url.includes('tsx') || process.env.NODE_ENV === 'development') {
-        // Development mode with tsx - TypeScript files work directly
-        workerScriptPath = new URL('./worker-script.ts', import.meta.url).pathname;
+        // Development mode - workers use compiled .js files
+        workerScriptPath = new URL('./worker-script.js', import.meta.url).pathname;
       } else {
-        // Production mode - would use compiled .js file
+        // Production mode - use compiled .js file
         const path = require('path');
         workerScriptPath = path.resolve(process.cwd(), 'server/worker-script.js');
       }

@@ -46,7 +46,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
 
     // Limit pages to prevent extreme memory usage on huge PDFs
     const parsePromise = pdfParse(buffer, { max: 50 /* pages */ });
-    const data = await withTimeout(parsePromise, 15000, 'pdf-parse');
+    const data = await withTimeout(parsePromise, 15000, 'pdf-parse') as any;
 
     const text = (data?.text ?? '').toString();
     const normalized = text.replace(/[\u0000\r]/g, ' ').replace(/\s+/g, ' ').trim();

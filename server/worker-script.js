@@ -1,50 +1,22 @@
 /**
  * Worker Script - Handles background processing tasks in separate threads
- * TypeScript worker script for consistency with main server
+ * Plain JavaScript worker script for Node.js Worker Threads compatibility
  */
 
 import { parentPort } from 'worker_threads';
-import type { Buffer } from 'node:buffer';
-
-interface WorkerJobData {
-  jobId: number;
-  jobType: 'extract_text' | 'generate_summary' | 'analyze_content';
-  filePath: string;
-  fileName: string;
-  fileType: string;
-  resumeId: number;
-  candidateName?: string;
-  candidateEmail?: string;
-}
-
-interface ExtractTextData {
-  filePath: string;
-  fileName: string;
-  fileType: string;
-  resumeId: number;
-  candidateName?: string;
-  candidateEmail?: string;
-}
-
-interface ExtractTextResult {
-  text: string;
-  wordCount: number;
-  contentHash: string;
-  fileName: string;
-}
 
 // Log worker startup
 console.log(`🧵 Worker thread ${process.pid} started for job processing`);
 
 // Handle messages from main thread
-parentPort?.on('message', async (data: WorkerJobData) => {
+parentPort?.on('message', async (data) => {
   const { jobId, jobType, filePath, fileName, fileType, resumeId, candidateName, candidateEmail } = data;
   const startTime = Date.now();
   
   try {
     console.log(`🔧 Worker ${process.pid} processing job ${jobId} (type: ${jobType}, file: ${fileName})`);
     
-    let result: any;
+    let result;
     switch (jobType) {
       case 'extract_text':
         result = await extractText({ filePath, fileName, fileType, resumeId, candidateName, candidateEmail });
@@ -86,11 +58,11 @@ parentPort?.on('message', async (data: WorkerJobData) => {
 });
 
 // Processing functions with actual file reading
-async function extractText(data: ExtractTextData): Promise<ExtractTextResult> {
+async function extractText(data) {
   const { filePath, fileName, fileType, resumeId } = data;
   
   try {
-    // Dynamic import for document processing - NOW IMPORTS TYPESCRIPT!
+    // Dynamic import for document processing - NOW WORKS WITH COMPILED JS!
     const { extractTextFromDocument } = await import('./document-parser.js');
     const fs = await import('fs/promises');
     const crypto = await import('crypto');
@@ -119,7 +91,7 @@ async function extractText(data: ExtractTextData): Promise<ExtractTextResult> {
   }
 }
 
-async function generateSummary(data: any) {
+async function generateSummary(data) {
   // Simulate summary generation processing  
   await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
   return {
@@ -128,7 +100,7 @@ async function generateSummary(data: any) {
   };
 }
 
-async function analyzeContent(data: any) {
+async function analyzeContent(data) {
   // Simulate content analysis processing
   await new Promise(resolve => setTimeout(resolve, 150 + Math.random() * 250));
   return {
