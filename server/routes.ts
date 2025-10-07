@@ -1376,19 +1376,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Send email notifications to all assigned recruiters about the new submission
         try {
-          const assignments = await storage.getJobAssignments(job.id);
-          console.log(`Sending submission notifications to ${assignments.length} assigned recruiters for job ${job.jobId}`);
-          
-          for (const assignment of assignments) {
-            const recruiter = await storage.getUser(assignment.recruiterId);
-            if (recruiter) {
-              await NotificationService.sendSubmissionNotification(
-                job,
-                candidate,
-                submission,
-                recruiter
-              );
-            }
+          const resumeFile = await storage.getResumeFile(submission.candidateId);
+          const recruiter = await storage.getUser(submission.recruiterId);
+          if (recruiter) {
+            await NotificationService.sendSubmissionNotification(
+              job,
+              candidate,
+              submission,
+              recruiter,
+              resumeFile ? resumeFile.fileName : null,
+              resumeFile ? resumeFile.fileContent : null,
+              resumeFile ? resumeFile.mimeType : null
+            );
           }
         } catch (notificationError) {
           console.error('Failed to send submission notifications:', notificationError);

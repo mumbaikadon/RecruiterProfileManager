@@ -1,4 +1,4 @@
-import { sendEmail, createEmailTemplate } from "./email";
+import { sendEmail, createEmailTemplate, Attachment } from "./email";
 import { storage } from "./storage";
 import type { Job, User, Candidate, Submission } from "@shared/schema";
 
@@ -109,7 +109,10 @@ export class NotificationService {
     job: Job,
     candidate: Candidate,
     submission: Submission,
-    recruiter: User
+    recruiter: User,
+    fileName: string | null,
+    fileContent: Buffer | null,
+    fileType: string | null
   ): Promise<boolean> {
     try {
       if (!recruiter.email) {
@@ -157,6 +160,15 @@ export class NotificationService {
           inReplyTo: assignment.emailMessageId,
           references: assignment.emailThreadReferences || assignment.emailMessageId
         };
+      }
+
+      const attachments: Attachment[] = [];
+      if (fileName && fileContent && fileType) {
+        attachments.push({
+          filename: fileName,
+          content: fileContent,
+          contentType: fileType
+        });
       }
 
       const messageId = await sendEmail(

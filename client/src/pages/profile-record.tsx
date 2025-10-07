@@ -904,7 +904,7 @@ export default function ProfileRecord() {
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   className="flex-1"
                 />
-                <Button onClick={handleSearch} disabled={isSearching}>
+                <Button onClick={() => handleSearch()} disabled={isSearching}>
                   {isSearching ? "Searching..." : "Search"}
                 </Button>
                 {(searchTerm || searchResults.length > 0) && (

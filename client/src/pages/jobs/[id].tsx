@@ -472,9 +472,7 @@ const JobDetailPage: React.FC = () => {
           recruiterId={
             // Use the first assigned recruiter for this job, fallback to current user, then to 1
             (() => {
-              const assignedId = job.assignedRecruiters && job.assignedRecruiters.length > 0 
-                ? job.assignedRecruiters[0].id
-                : user?.id || 1;
+              const assignedId = user?.id || 1;
               console.log(`=== JOB RECRUITER ASSIGNMENT ===`);
               console.log(`Job ID: ${numericId}, Job assigned recruiters:`, job.assignedRecruiters);
               console.log(`Current user ID: ${user?.id}, Selected recruiter ID: ${assignedId}`);
