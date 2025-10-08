@@ -128,20 +128,16 @@ export class NotificationService {
           <p>Hello ${recruiter.name},</p>
           <p>A new candidate has been submitted for <strong>${job.title}</strong> (${job.jobId}):</p>
           
-          <div style="background-color: #f8f9fa; padding: 20px; border-left: 4px solid #007bff; margin: 20px 0;">
-            <h3 style="margin-top: 0;">${candidate.firstName} ${candidate.lastName}</h3>
-            <p><strong>Match Score:</strong> ${submission.matchScore}%</p>
-            <p><strong>Status:</strong> ${submission.status}</p>
-            <p><strong>Rate:</strong> $${submission.agreedRate}/hr</p>
-            ${submission.notes ? `<p><strong>Notes:</strong> ${submission.notes}</p>` : ''}
-          </div>
-          
           <p><strong>Candidate Details:</strong></p>
           <ul>
+            <li><strong>First Name:</strong> ${candidate.firstName || 'Not provided'}</li>
+            <li><strong>Last Name:</strong> ${candidate.lastName || 'Not provided'}</li>
             <li><strong>Email:</strong> ${candidate.email || 'Not provided'}</li>
             <li><strong>Phone:</strong> ${candidate.phone || 'Not provided'}</li>
             <li><strong>Location:</strong> ${candidate.location || 'Not provided'}</li>
             <li><strong>Work Authorization:</strong> ${candidate.workAuthorization || 'Not specified'}</li>
+            <li><strong>Rate:</strong> $${submission.agreedRate}/hr</li>
+            <li><strong>LinkedIn:</strong> ${candidate.linkedIn || 'Not provided'}</li>
           </ul>
           
           <p>Please review the submission in the RecruiterTracker system.</p>
