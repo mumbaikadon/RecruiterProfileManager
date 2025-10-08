@@ -128,6 +128,10 @@ export class NotificationService {
           <p>Hello ${recruiter.name},</p>
           <p>A new candidate has been submitted for <strong>${job.title}</strong> (${job.jobId}):</p>
           
+          <div style="background-color: #f8f9fa; padding: 20px; border-left: 4px solid #007bff; margin: 20px 0;">            
+            <p><strong>Match Score:</strong> ${submission.matchScore}%</p>
+          </div>
+          
           <p><strong>Candidate Details:</strong></p>
           <ul>
             <li><strong>First Name:</strong> ${candidate.firstName || 'Not provided'}</li>
@@ -171,7 +175,7 @@ export class NotificationService {
         recruiter.email, 
         subject, 
         emailContent,
-        attachments,
+        [], // no attachments
         threadingHeaders
       );
       
