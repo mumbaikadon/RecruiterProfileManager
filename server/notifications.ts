@@ -175,7 +175,7 @@ export class NotificationService {
         recruiter.email, 
         subject, 
         emailContent,
-        [], // no attachments
+        attachments,
         threadingHeaders
       );
       
